@@ -1,0 +1,26 @@
+{
+  "name": "github-desktop-manager",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio para gestión de repositorios GitHub",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "concurrently \"npm run build:watch\" \"wait-on dist/main/index.js && electron .\"",
+    "build:watch": "tsc -w"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^8.2.2",
+    "electron": "^27.1.0",
+    "typescript": "^5.2.2",
+    "wait-on": "^7.0.1"
+  }
+}
