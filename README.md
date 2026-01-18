@@ -9,13 +9,13 @@
 
 En la carpeta raíz correr los siguientes comandos:
 - npm install
-- npm install electron --save-dev
+- npm install electron electron-store
 - npm install --save-dev @types/node typescript electron-builder concurrently
 - npm install typescript
 - npm install react-router-dom
 
 # Para correr el proyecto
-- en caso de que existan las carpetas "dist" y "build" en la carpeta raíz, borrarlas
+En caso de que existan las carpetas "dist" y "build" en la carpeta raíz, borrarlas
 - cd src/renderer
 - npm run build
 - cd ../..
