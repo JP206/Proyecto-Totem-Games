@@ -4,11 +4,9 @@
   "description": "Aplicación de escritorio para localizar videojuegos",
   "main": "dist/main/index.js",
   "scripts": {
-    "clean": "rm -rf dist",
     "build": "tsc",
     "start": "npm run build && electron .",
-    "dev": "concurrently \"npm run build:watch\" \"wait-on dist/main/index.js && electron .\"",
-    "build:watch": "tsc -w"
+    "probar": "cd src/renderer && npm run build && cd ../.. && npm start"
   },
   "dependencies": {
     "electron-store": "^8.1.0",
