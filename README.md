@@ -16,7 +16,4 @@ En la carpeta raíz correr los siguientes comandos:
 
 # Para correr el proyecto
 En caso de que existan las carpetas "dist" y "build" en la carpeta raíz, borrarlas
-- cd src/renderer
-- npm run build
-- cd ../..
-- npm start
+- npm run probar
