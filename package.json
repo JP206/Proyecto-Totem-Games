@@ -1,7 +1,7 @@
 {
-  "name": "github-desktop-manager",
+  "name": "proyecto-totem-games-app",
   "version": "1.0.0",
-  "description": "Aplicación de escritorio para gestión de repositorios GitHub",
+  "description": "Aplicación de escritorio para localizar videojuegos",
   "main": "dist/main/index.js",
   "scripts": {
     "clean": "rm -rf dist",
