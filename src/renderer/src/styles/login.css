@@ -1,0 +1,269 @@
+/* src/renderer/src/pages/Login.css */
+
+/* Login container */
+.login-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0d1117;
+}
+
+/* Login card */
+.login-card {
+  background-color: #24292e;
+  padding: 40px;
+  border-radius: 12px;
+  border: 1px solid #444;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.login-title {
+  margin: 0 0 10px 0;
+  color: #f0f6fc;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.login-subtitle {
+  color: #8b949e;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Form */
+.login-form {
+  margin-bottom: 30px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #c9d1d9;
+}
+
+/* Token input */
+.token-input {
+  width: 100%;
+  padding: 12px 15px;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #f0f6fc;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  transition: border-color 0.2s;
+}
+
+.token-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
+.token-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.token-input::placeholder {
+  color: #6e7681;
+}
+
+/* Token link button */
+.token-link-btn {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #58a6ff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+}
+
+.token-link-btn:hover:not(:disabled) {
+  background-color: rgba(88, 166, 255, 0.1);
+  border-color: #58a6ff;
+}
+
+.token-link-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error message */
+.error-message {
+  background-color: rgba(248, 81, 73, 0.1);
+  border: 1px solid #f85149;
+  color: #f85149;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Submit button */
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background-color: #2ea44f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #3fb950;
+}
+
+.submit-btn:disabled {
+  background-color: #238636;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.submit-btn.loading {
+  background-color: #238636;
+}
+
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Instructions card */
+.instructions-card {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: rgba(56, 139, 253, 0.1);
+  border: 1px solid #388bfd;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.instructions-title {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #58a6ff;
+  font-size: 14px;
+}
+
+.instructions-list {
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+.instructions-list li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.instructions-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Code tags */
+.code-tag {
+  background-color: #0d1117;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: #f0f6fc;
+  margin: 0 4px;
+  border: 1px solid #30363d;
+}
+
+/* Spin animation (define aquí si no está en Dashboard.css) */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 20px;
+  }
+  
+  .login-card {
+    padding: 30px 20px;
+  }
+  
+  .login-title {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 25px 15px;
+  }
+  
+  .login-title {
+    font-size: 18px;
+  }
+  
+  .login-icon {
+    font-size: 40px;
+  }
+  
+  .submit-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .instructions-card {
+    padding: 15px;
+  }
+  
+  .instructions-list {
+    padding-left: 16px;
+  }
+}

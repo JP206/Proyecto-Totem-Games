@@ -1,6 +1,7 @@
 // src/renderer/src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import DesktopManager from '../utils/desktop';
+import "../styles/dashboard.css";
 
 const Dashboard: React.FC = () => {
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
@@ -42,7 +43,8 @@ const Dashboard: React.FC = () => {
       const response = await fetch('https://api.github.com/user/repos', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json'
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Proyecto-Totem-Games'
         }
       });
 
@@ -123,82 +125,50 @@ const Dashboard: React.FC = () => {
 
   const gitPull = async (repoPath: string, repoName: string) => {
     try {
-        const desktop = DesktopManager.getInstance(); // ✅ Añadir esta línea
-        const output = await desktop.gitCommand({
+      const desktop = DesktopManager.getInstance();
+      const output = await desktop.gitCommand({
         command: 'pull',
         cwd: repoPath
-        });
-        
-        await desktop.showMessage(
+      });
+      
+      await desktop.showMessage(
         `Repositorio "${repoName}" actualizado:\n${output}`,
         'Git Pull exitoso'
-        );
+      );
     } catch (error: any) {
-        const desktop = DesktopManager.getInstance(); // ✅ Y también aquí
-        await desktop.showMessage(error, 'Error en Git Pull', 'error');
+      const desktop = DesktopManager.getInstance();
+      await desktop.showMessage(error, 'Error en Git Pull', 'error');
     }
   };
 
   return (
-    <div>
+    <div className="dashboard">
       {/* Header con info del usuario */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '30px',
-        backgroundColor: '#24292e',
-        padding: '20px',
-        borderRadius: '8px',
-        border: '1px solid #444'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+      <div className="dashboard-header">
+        <div className="user-info">
           {user?.avatar_url && (
             <img 
               src={user.avatar_url} 
               alt={user.login}
-              style={{
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                border: '2px solid #2ea44f'
-              }}
+              className="user-avatar"
             />
           )}
-          <div>
-            <h3 style={{ margin: '0 0 5px 0' }}>{user?.name || user?.login}</h3>
-            <p style={{ margin: 0, color: '#8b949e', fontSize: '14px' }}>
+          <div className="user-details">
+            <h3 className="user-name">{user?.name || user?.login}</h3>
+            <p className="user-username">
               @{user?.login} • {githubRepos.length} repositorios
             </p>
           </div>
         </div>
         
         <button
-          onClick={() => selectLocalFolder()}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#238636',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '14px'
-          }}
+          onClick={selectLocalFolder}
+          className={`folder-btn ${loading.local ? 'loading' : ''}`}
           disabled={loading.local}
         >
           {loading.local ? (
             <>
-              <div style={{
-                width: '14px',
-                height: '14px',
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderTopColor: 'white',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
+              <div className="spinner-small" />
               Cargando...
             </>
           ) : (
@@ -210,80 +180,43 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Dos columnas: Local y GitHub */}
-      <div style={{ display: 'flex', gap: '20px' }}>
+      <div className="dashboard-columns">
         {/* Columna 1: Repositorios Locales */}
-        <div style={{ flex: 1 }}>
-          <div style={{
-            backgroundColor: '#24292e',
-            padding: '20px',
-            borderRadius: '8px',
-            border: '1px solid #444',
-            height: '100%'
-          }}>
-            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="column column-local">
+          <div className="card">
+            <h3 className="card-title">
               💻 Repositorios Locales
               {selectedFolder && (
-                <span style={{
-                  fontSize: '12px',
-                  backgroundColor: '#388bfd',
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
+                <span className="badge badge-blue">
                   {localRepos.length}
                 </span>
               )}
             </h3>
             
             {selectedFolder ? (
-              <div style={{ marginBottom: '15px', fontSize: '13px', color: '#8b949e', wordBreak: 'break-all' }}>
+              <div className="folder-path">
                 📍 {selectedFolder}
               </div>
             ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                color: '#8b949e',
-                fontSize: '14px'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '15px' }}>📁</div>
+              <div className="empty-state">
+                <div className="empty-icon">📁</div>
                 <p>Selecciona una carpeta para ver tus repositorios locales</p>
               </div>
             )}
 
             {localRepos.length > 0 && (
-              <div style={{ display: 'grid', gap: '10px' }}>
+              <div className="repos-list">
                 {localRepos.map((repo, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: '#0d1117',
-                      padding: '15px',
-                      borderRadius: '6px',
-                      border: '1px solid #30363d'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={index} className="repo-card repo-card-local">
+                    <div className="repo-card-content">
                       <div>
-                        <div style={{ fontWeight: '600', fontSize: '14px' }}>{repo.name}</div>
-                        <div style={{ fontSize: '12px', color: '#8b949e', marginTop: '5px' }}>
-                          {repo.path}
-                        </div>
+                        <div className="repo-name">{repo.name}</div>
+                        <div className="repo-path">{repo.path}</div>
                       </div>
                       
                       <button
                         onClick={() => gitPull(repo.path, repo.name)}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: '#388bfd',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px'
-                        }}
+                        className="btn-pull"
                       >
                         ⬇️ Pull
                       </button>
@@ -296,22 +229,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Columna 2: Repositorios GitHub */}
-        <div style={{ flex: 2 }}>
-          <div style={{
-            backgroundColor: '#24292e',
-            padding: '20px',
-            borderRadius: '8px',
-            border: '1px solid #444'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="column column-github">
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
                 🌐 Repositorios de GitHub
-                <span style={{
-                  fontSize: '12px',
-                  backgroundColor: '#2ea44f',
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
+                <span className="badge badge-green">
                   {githubRepos.length}
                 </span>
               </h3>
@@ -319,73 +242,42 @@ const Dashboard: React.FC = () => {
               <button
                 onClick={fetchGithubRepos}
                 disabled={loading.github}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#238636',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
+                className="btn-refresh"
               >
                 🔄 Actualizar
               </button>
             </div>
 
             {loading.github ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  border: '3px solid rgba(56, 139, 253, 0.3)',
-                  borderTopColor: '#388bfd',
-                  borderRadius: '50%',
-                  margin: '0 auto 15px',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                <p style={{ color: '#8b949e' }}>Cargando repositorios de GitHub...</p>
+              <div className="loading-state">
+                <div className="spinner-large" />
+                <p>Cargando repositorios de GitHub...</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '15px' }}>
+              <div className="repos-grid">
                 {githubRepos.map((repo) => (
-                  <div
-                    key={repo.id}
-                    style={{
-                      backgroundColor: '#0d1117',
-                      padding: '20px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                          <h4 style={{ margin: 0, fontSize: '16px' }}>
+                  <div key={repo.id} className="repo-card repo-card-github">
+                    <div className="repo-card-content">
+                      <div className="repo-info">
+                        <div className="repo-header">
+                          <h4 className="repo-title">
                             {repo.name}
-                            {repo.private && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#f85149' }}>🔒 Privado</span>}
+                            {repo.private && (
+                              <span className="private-badge">🔒 Privado</span>
+                            )}
                           </h4>
-                          <span style={{
-                            fontSize: '11px',
-                            backgroundColor: '#6e7681',
-                            padding: '2px 6px',
-                            borderRadius: '10px'
-                          }}>
+                          <span className="language-badge">
                             {repo.language || 'Code'}
                           </span>
                         </div>
                         
                         {repo.description && (
-                          <p style={{ color: '#8b949e', fontSize: '14px', marginBottom: '15px' }}>
+                          <p className="repo-description">
                             {repo.description}
                           </p>
                         )}
                         
-                        <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#8b949e' }}>
+                        <div className="repo-stats">
                           <span>⭐ {repo.stargazers_count}</span>
                           <span>🍴 {repo.forks_count}</span>
                           <span>📅 {new Date(repo.updated_at).toLocaleDateString()}</span>
@@ -395,19 +287,7 @@ const Dashboard: React.FC = () => {
                       <button
                         onClick={() => cloneRepository(repo)}
                         disabled={!selectedFolder}
-                        style={{
-                          padding: '8px 16px',
-                          backgroundColor: selectedFolder ? '#2ea44f' : '#6e7681',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: selectedFolder ? 'pointer' : 'not-allowed',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          whiteSpace: 'nowrap'
-                        }}
+                        className={`btn-clone ${!selectedFolder ? 'disabled' : ''}`}
                       >
                         📥 Clonar Local
                       </button>
