@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DesktopManager from '../utils/desktop';
+import '../styles/login.css';
 
 const Login: React.FC = () => {
   const [token, setToken] = useState('');
@@ -42,7 +43,8 @@ const Login: React.FC = () => {
       const response = await fetch('https://api.github.com/user', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json'
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Proyecto-Totem-Games'
         }
       });
 
@@ -81,33 +83,19 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div style={{
-      maxWidth: '500px',
-      margin: '0 auto',
-      padding: '40px 20px'
-    }}>
-      <div style={{
-        backgroundColor: '#24292e',
-        padding: '40px',
-        borderRadius: '12px',
-        border: '1px solid #444'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '15px' }}>🔐</div>
-          <h2 style={{ margin: '0 0 10px 0' }}>Iniciar Sesión en GitHub</h2>
-          <p style={{ color: '#8b949e', fontSize: '14px' }}>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-icon">🔐</div>
+          <h2 className="login-title">Iniciar Sesión en GitHub</h2>
+          <p className="login-subtitle">
             Usa tu token personal para acceder a tus repositorios
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              fontSize: '14px'
-            }}>
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label className="form-label">
               Token de Acceso Personal
             </label>
             
@@ -116,35 +104,14 @@ const Login: React.FC = () => {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              style={{
-                width: '100%',
-                padding: '12px 15px',
-                backgroundColor: '#0d1117',
-                border: '1px solid #30363d',
-                borderRadius: '6px',
-                color: 'white',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
+              className="token-input"
               disabled={loading}
             />
             
             <button
               type="button"
               onClick={openTokenPage}
-              style={{
-                marginTop: '8px',
-                padding: '8px 12px',
-                backgroundColor: 'transparent',
-                border: '1px solid #30363d',
-                borderRadius: '6px',
-                color: '#58a6ff',
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
+              className="token-link-btn"
               disabled={loading}
             >
               <span>🔗</span>
@@ -153,18 +120,7 @@ const Login: React.FC = () => {
           </div>
 
           {error && (
-            <div style={{
-              backgroundColor: 'rgba(248, 81, 73, 0.1)',
-              border: '1px solid #f85149',
-              color: '#f85149',
-              padding: '12px',
-              borderRadius: '6px',
-              marginBottom: '20px',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
+            <div className="error-message">
               <span>⚠️</span>
               {error}
             </div>
@@ -173,32 +129,11 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !token.trim()}
-            style={{
-              width: '100%',
-              padding: '14px',
-              backgroundColor: loading || !token.trim() ? '#238636' : '#2ea44f',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: loading || !token.trim() ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '10px'
-            }}
+            className={`submit-btn ${loading ? 'loading' : ''}`}
           >
             {loading ? (
               <>
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTopColor: 'white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
+                <div className="spinner" />
                 Verificando...
               </>
             ) : (
@@ -207,33 +142,21 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        <div style={{
-          marginTop: '30px',
-          padding: '20px',
-          backgroundColor: 'rgba(56, 139, 253, 0.1)',
-          border: '1px solid #388bfd',
-          borderRadius: '6px',
-          fontSize: '13px',
-          color: '#8b949e'
-        }}>
-          <p style={{ marginTop: 0, fontWeight: '600', color: '#58a6ff' }}>
+        <div className="instructions-card">
+          <p className="instructions-title">
             📝 ¿Cómo obtener tu token?
           </p>
-          <ol style={{ paddingLeft: '20px', marginBottom: 0 }}>
+          <ol className="instructions-list">
             <li>Ve a GitHub Settings → Developer settings → Personal access tokens</li>
             <li>Haz clic en "Generate new token"</li>
-            <li>Selecciona los scopes: <code style={{ backgroundColor: '#0d1117', padding: '2px 6px', borderRadius: '4px' }}>repo</code> y <code style={{ backgroundColor: '#0d1117', padding: '2px 6px', borderRadius: '4px' }}>user</code></li>
+            <li>Selecciona los scopes: 
+              <code className="code-tag">repo</code> y 
+              <code className="code-tag">user</code>
+            </li>
             <li>Copia el token y pégalo aquí</li>
           </ol>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

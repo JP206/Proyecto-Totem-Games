@@ -1,13 +1,13 @@
-// src/renderer/src/electron.d.ts
+// src/renderer/src/utils/electron.d.ts
 export interface GitCloneData {
   url: string;
   destination: string;
-  token: string;
+  token?: string;
 }
 
 export interface GitCommandData {
   command: string;
-  cwd: string;
+  cwd: string; // Current working directory
 }
 
 export interface MessageData {
@@ -21,7 +21,7 @@ export interface FileItem {
   path: string;
   isDirectory: boolean;
   isFile: boolean;
-  isGitRepo: boolean;
+  isGitRepo?: boolean;
   size: number;
 }
 
@@ -31,7 +31,7 @@ export interface ElectronAPI {
   readFolder: (path: string) => Promise<FileItem[]>;
   
   // Git operations
-  cloneRepository: (data: GitCloneData) => Promise<any>;
+  cloneRepository: (data: GitCloneData) => Promise<{ success: boolean; output: string; path: string }>;
   gitCommand: (data: GitCommandData) => Promise<string>;
   
   // Configuración

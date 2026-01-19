@@ -4,14 +4,13 @@
   "description": "Aplicación de escritorio para localizar videojuegos",
   "main": "dist/main/index.js",
   "scripts": {
-    "clean": "rm -rf dist",
     "build": "tsc",
     "start": "npm run build && electron .",
-    "dev": "concurrently \"npm run build:watch\" \"wait-on dist/main/index.js && electron .\"",
-    "build:watch": "tsc -w"
+    "probar": "rmdir /s /q dist && cd src/renderer && rmdir /s /q build && npm run build && cd ../.. && npm start",
+    "inicializar_proy": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && cd src/renderer && npm i && cd ../.."
   },
   "dependencies": {
-    "electron-store": "^8.1.0",
+    "electron-store": "^8.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.12.0",
@@ -19,12 +18,13 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.19.30",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^8.2.2",
-    "electron": "^27.1.0",
-    "typescript": "^5.2.2",
+    "electron": "^27.3.11",
+    "electron-builder": "^26.4.0",
+    "typescript": "^5.9.3",
     "wait-on": "^7.2.0"
   }
 }

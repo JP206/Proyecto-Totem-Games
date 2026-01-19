@@ -1,109 +1,267 @@
 // src/main/index.ts
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import Store from 'electron-store';
+
+const execAsync = promisify(exec);
+const store = new Store();
 
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
-  console.log('🚀 Creando ventana de Electron...');
-  
   mainWindow = new BrowserWindow({
+    icon: path.join(__dirname, '../../resources/logo_totemgames.ico'),
+    title: 'Proyecto Totem Games App',
     width: 1200,
     height: 800,
-    backgroundColor: '#1a1a1a',
-    show: false, // No mostrar hasta que esté listo
     webPreferences: {
-      nodeIntegration: false, // IMPORTANTE: false para seguridad
-      contextIsolation: true, // IMPORTANTE: true para seguridad
-      preload: path.join(__dirname, 'preload.js')
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false,
+      allowRunningInsecureContent: true
     }
   });
 
-  // RUTA 1: Primero intenta cargar el BUILD de React
-  const reactBuildPath = path.join(__dirname, '../../src/renderer/build/index.html');
+  mainWindow.loadFile(path.join(__dirname, '../../src/renderer/build/index.html'));
   
-  console.log('🔍 Buscando React build en:', reactBuildPath);
-  
-  if (fs.existsSync(reactBuildPath)) {
-    console.log('✅ BUILD encontrado, cargando React compilado...');
-    mainWindow.loadFile(reactBuildPath);
-  } else {
-    // RUTA 2: Si no hay build, carga el HTML básico
-    console.log('⚠️  BUILD no encontrado, cargando HTML básico...');
-    const basicHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { 
-          background: #1a1a1a; 
-          color: white; 
-          font-family: Arial; 
-          padding: 50px;
-          text-align: center;
-        }
-        .container {
-          max-width: 600px;
-          margin: 100px auto;
-          background: #24292e;
-          padding: 40px;
-          border-radius: 12px;
-          border: 1px solid #444;
-        }
-        h1 { color: #2ea44f; }
-        code { 
-          background: #0d1117; 
-          padding: 15px; 
-          border-radius: 8px;
-          display: block;
-          margin: 20px 0;
-          font-family: 'Courier New', monospace;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>React no compilado</h1>
-        <p>Para compilar React y ver la aplicación, ejecuta:</p>
-        <code>cd src/renderer && npm run build</code>
-        <p>Luego reinicia Electron.</p>
-      </div>
-      <script>
-        console.log('HTML básico cargado');
-      </script>
-    </body>
-    </html>
-    `;
-    
-    mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(basicHTML)}`);
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
   }
-
-  // Mostrar cuando esté listo
-  mainWindow.once('ready-to-show', () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.webContents.openDevTools(); // Para debuggear
-    }
-  });
-
-  // Debug: ver errores de carga
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error('❌ Error cargando página:', errorCode, errorDescription);
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
 }
 
+// ========== APIS IPC ==========
+
+// 1. SELECCIONAR CARPETA
+ipcMain.handle('select-folder', async (): Promise<string | null> => {
+  if (!mainWindow) return null;
+  
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Seleccionar carpeta'
+  });
+  
+  return result.canceled ? null : result.filePaths[0];
+});
+
+// 2. LEER CONTENIDO DE CARPETA
+ipcMain.handle('read-folder', async (event: any, folderPath: string) => {
+  try {
+    const files = await fs.readdir(folderPath, { withFileTypes: true });
+    
+    const filePromises = files.map(async (file) => {
+      const filePath = path.join(folderPath, file.name);
+      let size = 0;
+      let isGitRepo = false;
+      
+      if (file.isFile()) {
+        try {
+          const stats = await fs.stat(filePath);
+          size = stats.size;
+        } catch {
+          size = 0;
+        }
+      } else if (file.isDirectory()) {
+        // Verificar si es un repositorio git
+        const gitPath = path.join(filePath, '.git');
+        try {
+          await fs.access(gitPath);
+          isGitRepo = true;
+        } catch {
+          isGitRepo = false;
+        }
+      }
+      
+      return {
+        name: file.name,
+        path: filePath,
+        isDirectory: file.isDirectory(),
+        isFile: file.isFile(),
+        isGitRepo,
+        size
+      };
+    });
+    
+    return await Promise.all(filePromises);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error leyendo carpeta: ${errorMessage}`);
+  }
+});
+
+// 3. EJECUTAR COMANDO GENÉRICO
+ipcMain.handle('execute-command', async (event: any, data: { command: string, cwd?: string }) => {
+  try {
+    const { stdout, stderr } = await execAsync(data.command, { 
+      cwd: data.cwd || process.cwd(),
+      timeout: 30000
+    });
+    
+    if (stderr) console.warn('Stderr:', stderr);
+    return { success: true, output: stdout, error: stderr };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return { 
+      success: false, 
+      output: '', 
+      error: errorMessage 
+    };
+  }
+});
+
+// 4. CLONAR REPOSITORIO GIT (CON TOKEN)
+ipcMain.handle('git-clone', async (event: any, data: { 
+  url: string, 
+  destination: string, 
+  token?: string 
+}) => {
+  try {
+    let cloneUrl = data.url;
+    
+    // Si hay token, autenticar la URL
+    if (data.token) {
+      cloneUrl = data.url.replace('https://', `https://${data.token}@`);
+    }
+    
+    const command = `git clone "${cloneUrl}" "${data.destination}"`;
+    console.log('Ejecutando comando git clone:', command);
+    
+    const { stdout, stderr } = await execAsync(command, {
+      timeout: 120000 // 2 minutos para clones grandes
+    });
+    
+    if (stderr && !stderr.includes('Cloning into')) {
+      console.warn('Advertencias en clone:', stderr);
+    }
+    
+    return { 
+      success: true, 
+      output: stdout, 
+      path: data.destination 
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error en git-clone:', errorMessage);
+    
+    // Verificar si es error de autenticación
+    if (errorMessage.includes('Authentication')) {
+      throw new Error('Token de GitHub inválido o expirado');
+    }
+    
+    throw new Error(`Error clonando repositorio: ${errorMessage}`);
+  }
+});
+
+// 5. COMANDO GIT GENÉRICO
+ipcMain.handle('git-command', async (event: any, data: { command: string, cwd: string }) => {
+  try {
+    const { stdout, stderr } = await execAsync(data.command, { 
+      cwd: data.cwd,
+      timeout: 60000
+    });
+    
+    if (stderr) {
+      console.warn('Stderr en git-command:', stderr);
+    }
+    
+    return stdout;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    throw new Error(`Error ejecutando comando git: ${errorMessage}`);
+  }
+});
+
+// 6. CONFIGURACIÓN (Store)
+ipcMain.handle('set-config', async (event: any, data: { key: string, value: any }) => {
+  try {
+    store.set(data.key, data.value);
+    return true;
+  } catch (error) {
+    console.error('Error guardando configuración:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-config', async (event: any, key: string) => {
+  try {
+    return store.get(key);
+  } catch (error) {
+    console.error('Error obteniendo configuración:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('delete-config', async (event: any, key: string) => {
+  try {
+    store.delete(key);
+    return true;
+  } catch (error) {
+    console.error('Error eliminando configuración:', error);
+    return false;
+  }
+});
+
+// 7. UTILITARIOS
+ipcMain.handle('open-external', async (event: any, url: string) => {
+  await shell.openExternal(url);
+});
+
+ipcMain.handle('show-message', async (event: any, data: { 
+  type: 'info' | 'error' | 'warning' | 'question',
+  title: string,
+  message: string 
+}) => {
+  if (!mainWindow) return;
+  
+  const options: any = {
+    type: data.type,
+    title: data.title,
+    message: data.message,
+    buttons: ['OK']
+  };
+  
+  if (data.type === 'question') {
+    options.buttons = ['Sí', 'No'];
+  }
+  
+  await dialog.showMessageBox(mainWindow, options);
+});
+
+// 8. EVENTOS DEL MENÚ (para ser disparados desde el menú de la aplicación)
+ipcMain.on('menu:select-folder', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('menu:select-folder');
+  }
+});
+
+ipcMain.on('menu:refresh-repos', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('menu:refresh-repos');
+  }
+});
+
+ipcMain.on('menu:logout', () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('menu:logout');
+  }
+});
+
+// ========== INICIALIZACIÓN ==========
 app.whenReady().then(() => {
-  console.log('✅ Electron listo');
   createWindow();
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (mainWindow === null) {
+    createWindow();
   }
 });
