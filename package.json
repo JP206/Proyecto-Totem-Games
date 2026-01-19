@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "npm run build && electron .",
     "probar": "rmdir /s /q dist && cd src/renderer && rmdir /s /q build && npm run build && cd ../.. && npm start",
-    "node_modules": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && cd src/renderer && npm i && cd ../.."
+    "inicializar_proy": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && cd src/renderer && npm i && cd ../.."
   },
   "dependencies": {
     "electron-store": "^8.2.0",

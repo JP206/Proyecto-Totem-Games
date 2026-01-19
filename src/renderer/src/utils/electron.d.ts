@@ -2,12 +2,12 @@
 export interface GitCloneData {
   url: string;
   destination: string;
-  token?: string; // Hacer opcional
+  token?: string;
 }
 
 export interface GitCommandData {
   command: string;
-  cwd: string;
+  cwd: string; // Current working directory
 }
 
 export interface MessageData {

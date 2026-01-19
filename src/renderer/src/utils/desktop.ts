@@ -6,9 +6,6 @@ class DesktopManager {
   private electron: ElectronAPI;
 
   private constructor() {
-    if (!window.electronAPI) {
-      throw new Error('Esta aplicación requiere Electron. Por favor, usa la versión de escritorio.');
-    }
     this.electron = window.electronAPI;
     this.setupEventListeners();
   }
