@@ -11,7 +11,7 @@ export interface GitCommandData {
 }
 
 export interface MessageData {
-  type: 'info' | 'error' | 'warning' | 'question';
+  type: "info" | "error" | "warning" | "question";
   title: string;
   message: string;
 }
@@ -29,25 +29,27 @@ export interface ElectronAPI {
   // Sistema de archivos
   selectFolder: () => Promise<string | null>;
   readFolder: (path: string) => Promise<FileItem[]>;
-  
+
   // Git operations
-  cloneRepository: (data: GitCloneData) => Promise<{ success: boolean; output: string; path: string }>;
+  cloneRepository: (
+    data: GitCloneData,
+  ) => Promise<{ success: boolean; output: string; path: string }>;
   gitCommand: (data: GitCommandData) => Promise<string>;
-  
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;
   deleteConfig: (key: string) => Promise<boolean>;
-  
+
   // Utilitarios
   openExternal: (url: string) => Promise<void>;
   showMessage: (data: MessageData) => Promise<void>;
-  
+
   // Eventos
   onMenuSelectFolder: (callback: () => void) => void;
   onMenuRefreshRepos: (callback: () => void) => void;
   onMenuLogout: (callback: () => void) => void;
-  
+
   // Información
   platform: string;
   appVersion: string;

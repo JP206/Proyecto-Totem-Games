@@ -1,10 +1,10 @@
 // src/main/index.ts
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
-import path from 'path';
-import fs from 'fs/promises';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import Store from 'electron-store';
+import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import path from "path";
+import fs from "fs/promises";
+import { exec } from "child_process";
+import { promisify } from "util";
+import Store from "electron-store";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -13,21 +13,23 @@ let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    icon: path.join(__dirname, '../../resources/logo_totemgames.ico'),
-    title: 'Proyecto Totem Games App',
+    icon: path.join(__dirname, "../../resources/logo_totemgames.ico"),
+    title: "Proyecto Totem Games App",
     width: 1200,
     height: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, "preload.js"),
       webSecurity: false,
-      allowRunningInsecureContent: true
-    }
+      allowRunningInsecureContent: true,
+    },
   });
 
-  mainWindow.loadFile(path.join(__dirname, '../../src/renderer/build/index.html'));
-  
+  mainWindow.loadFile(
+    path.join(__dirname, "../../src/renderer/build/index.html"),
+  );
+
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
@@ -36,27 +38,27 @@ function createWindow() {
 // ========== APIS IPC ==========
 
 // 1. SELECCIONAR CARPETA
-ipcMain.handle('select-folder', async (): Promise<string | null> => {
+ipcMain.handle("select-folder", async (): Promise<string | null> => {
   if (!mainWindow) return null;
-  
+
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    title: 'Seleccionar carpeta'
+    properties: ["openDirectory"],
+    title: "Seleccionar carpeta",
   });
-  
+
   return result.canceled ? null : result.filePaths[0];
 });
 
 // 2. LEER CONTENIDO DE CARPETA
-ipcMain.handle('read-folder', async (event: any, folderPath: string) => {
+ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
   try {
     const files = await fs.readdir(folderPath, { withFileTypes: true });
-    
+
     const filePromises = files.map(async (file) => {
       const filePath = path.join(folderPath, file.name);
       let size = 0;
       let isGitRepo = false;
-      
+
       if (file.isFile()) {
         try {
           const stats = await fs.stat(filePath);
@@ -66,7 +68,7 @@ ipcMain.handle('read-folder', async (event: any, folderPath: string) => {
         }
       } else if (file.isDirectory()) {
         // Verificar si es un repositorio git
-        const gitPath = path.join(filePath, '.git');
+        const gitPath = path.join(filePath, ".git");
         try {
           await fs.access(gitPath);
           isGitRepo = true;
@@ -74,178 +76,203 @@ ipcMain.handle('read-folder', async (event: any, folderPath: string) => {
           isGitRepo = false;
         }
       }
-      
+
       return {
         name: file.name,
         path: filePath,
         isDirectory: file.isDirectory(),
         isFile: file.isFile(),
         isGitRepo,
-        size
+        size,
       };
     });
-    
+
     return await Promise.all(filePromises);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
     throw new Error(`Error leyendo carpeta: ${errorMessage}`);
   }
 });
 
 // 3. EJECUTAR COMANDO GENÉRICO
-ipcMain.handle('execute-command', async (event: any, data: { command: string, cwd?: string }) => {
-  try {
-    const { stdout, stderr } = await execAsync(data.command, { 
-      cwd: data.cwd || process.cwd(),
-      timeout: 30000
-    });
-    
-    if (stderr) console.warn('Stderr:', stderr);
-    return { success: true, output: stdout, error: stderr };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-    return { 
-      success: false, 
-      output: '', 
-      error: errorMessage 
-    };
-  }
-});
+ipcMain.handle(
+  "execute-command",
+  async (event: any, data: { command: string; cwd?: string }) => {
+    try {
+      const { stdout, stderr } = await execAsync(data.command, {
+        cwd: data.cwd || process.cwd(),
+        timeout: 30000,
+      });
+
+      if (stderr) console.warn("Stderr:", stderr);
+      return { success: true, output: stdout, error: stderr };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      return {
+        success: false,
+        output: "",
+        error: errorMessage,
+      };
+    }
+  },
+);
 
 // 4. CLONAR REPOSITORIO GIT (CON TOKEN)
-ipcMain.handle('git-clone', async (event: any, data: { 
-  url: string, 
-  destination: string, 
-  token?: string 
-}) => {
-  try {
-    let cloneUrl = data.url;
-    
-    // Si hay token, autenticar la URL
-    if (data.token) {
-      cloneUrl = data.url.replace('https://', `https://${data.token}@`);
+ipcMain.handle(
+  "git-clone",
+  async (
+    event: any,
+    data: {
+      url: string;
+      destination: string;
+      token?: string;
+    },
+  ) => {
+    try {
+      let cloneUrl = data.url;
+
+      // Si hay token, autenticar la URL
+      if (data.token) {
+        cloneUrl = data.url.replace("https://", `https://${data.token}@`);
+      }
+
+      const command = `git clone "${cloneUrl}" "${data.destination}"`;
+      console.log("Ejecutando comando git clone:", command);
+
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: 120000, // 2 minutos para clones grandes
+      });
+
+      if (stderr && !stderr.includes("Cloning into")) {
+        console.warn("Advertencias en clone:", stderr);
+      }
+
+      return {
+        success: true,
+        output: stdout,
+        path: data.destination,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+
+      // Verificar si es error de autenticación
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
     }
-    
-    const command = `git clone "${cloneUrl}" "${data.destination}"`;
-    console.log('Ejecutando comando git clone:', command);
-    
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: 120000 // 2 minutos para clones grandes
-    });
-    
-    if (stderr && !stderr.includes('Cloning into')) {
-      console.warn('Advertencias en clone:', stderr);
-    }
-    
-    return { 
-      success: true, 
-      output: stdout, 
-      path: data.destination 
-    };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('Error en git-clone:', errorMessage);
-    
-    // Verificar si es error de autenticación
-    if (errorMessage.includes('Authentication')) {
-      throw new Error('Token de GitHub inválido o expirado');
-    }
-    
-    throw new Error(`Error clonando repositorio: ${errorMessage}`);
-  }
-});
+  },
+);
 
 // 5. COMANDO GIT GENÉRICO
-ipcMain.handle('git-command', async (event: any, data: { command: string, cwd: string }) => {
-  try {
-    const { stdout, stderr } = await execAsync(data.command, { 
-      cwd: data.cwd,
-      timeout: 60000
-    });
-    
-    if (stderr) {
-      console.warn('Stderr en git-command:', stderr);
+ipcMain.handle(
+  "git-command",
+  async (event: any, data: { command: string; cwd: string }) => {
+    try {
+      const { stdout, stderr } = await execAsync(data.command, {
+        cwd: data.cwd,
+        timeout: 60000,
+      });
+
+      if (stderr) {
+        console.warn("Stderr en git-command:", stderr);
+      }
+
+      return stdout;
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      throw new Error(`Error ejecutando comando git: ${errorMessage}`);
     }
-    
-    return stdout;
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-    throw new Error(`Error ejecutando comando git: ${errorMessage}`);
-  }
-});
+  },
+);
 
 // 6. CONFIGURACIÓN (Store)
-ipcMain.handle('set-config', async (event: any, data: { key: string, value: any }) => {
-  try {
-    store.set(data.key, data.value);
-    return true;
-  } catch (error) {
-    console.error('Error guardando configuración:', error);
-    return false;
-  }
-});
+ipcMain.handle(
+  "set-config",
+  async (event: any, data: { key: string; value: any }) => {
+    try {
+      store.set(data.key, data.value);
+      return true;
+    } catch (error) {
+      console.error("Error guardando configuración:", error);
+      return false;
+    }
+  },
+);
 
-ipcMain.handle('get-config', async (event: any, key: string) => {
+ipcMain.handle("get-config", async (event: any, key: string) => {
   try {
     return store.get(key);
   } catch (error) {
-    console.error('Error obteniendo configuración:', error);
+    console.error("Error obteniendo configuración:", error);
     return null;
   }
 });
 
-ipcMain.handle('delete-config', async (event: any, key: string) => {
+ipcMain.handle("delete-config", async (event: any, key: string) => {
   try {
     store.delete(key);
     return true;
   } catch (error) {
-    console.error('Error eliminando configuración:', error);
+    console.error("Error eliminando configuración:", error);
     return false;
   }
 });
 
 // 7. UTILITARIOS
-ipcMain.handle('open-external', async (event: any, url: string) => {
+ipcMain.handle("open-external", async (event: any, url: string) => {
   await shell.openExternal(url);
 });
 
-ipcMain.handle('show-message', async (event: any, data: { 
-  type: 'info' | 'error' | 'warning' | 'question',
-  title: string,
-  message: string 
-}) => {
-  if (!mainWindow) return;
-  
-  const options: any = {
-    type: data.type,
-    title: data.title,
-    message: data.message,
-    buttons: ['OK']
-  };
-  
-  if (data.type === 'question') {
-    options.buttons = ['Sí', 'No'];
-  }
-  
-  await dialog.showMessageBox(mainWindow, options);
-});
+ipcMain.handle(
+  "show-message",
+  async (
+    event: any,
+    data: {
+      type: "info" | "error" | "warning" | "question";
+      title: string;
+      message: string;
+    },
+  ) => {
+    if (!mainWindow) return;
+
+    const options: any = {
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      buttons: ["OK"],
+    };
+
+    if (data.type === "question") {
+      options.buttons = ["Sí", "No"];
+    }
+
+    await dialog.showMessageBox(mainWindow, options);
+  },
+);
 
 // 8. EVENTOS DEL MENÚ (para ser disparados desde el menú de la aplicación)
-ipcMain.on('menu:select-folder', () => {
+ipcMain.on("menu:select-folder", () => {
   if (mainWindow) {
-    mainWindow.webContents.send('menu:select-folder');
+    mainWindow.webContents.send("menu:select-folder");
   }
 });
 
-ipcMain.on('menu:refresh-repos', () => {
+ipcMain.on("menu:refresh-repos", () => {
   if (mainWindow) {
-    mainWindow.webContents.send('menu:refresh-repos');
+    mainWindow.webContents.send("menu:refresh-repos");
   }
 });
 
-ipcMain.on('menu:logout', () => {
+ipcMain.on("menu:logout", () => {
   if (mainWindow) {
-    mainWindow.webContents.send('menu:logout');
+    mainWindow.webContents.send("menu:logout");
   }
 });
 
@@ -254,13 +281,13 @@ app.whenReady().then(() => {
   createWindow();
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on('activate', () => {
+app.on("activate", () => {
   if (mainWindow === null) {
     createWindow();
   }

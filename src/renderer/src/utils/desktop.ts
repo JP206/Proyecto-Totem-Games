@@ -1,5 +1,10 @@
 // src/renderer/src/utils/desktop.ts
-import { ElectronAPI, MessageData, GitCloneData, GitCommandData } from './electron';
+import {
+  ElectronAPI,
+  MessageData,
+  GitCloneData,
+  GitCommandData,
+} from "./electron";
 
 class DesktopManager {
   private static instance: DesktopManager;
@@ -20,15 +25,15 @@ class DesktopManager {
   private setupEventListeners(): void {
     // Escuchar eventos del menú
     this.electron.onMenuSelectFolder(() => {
-      window.dispatchEvent(new CustomEvent('desktop:select-folder'));
+      window.dispatchEvent(new CustomEvent("desktop:select-folder"));
     });
 
     this.electron.onMenuRefreshRepos(() => {
-      window.dispatchEvent(new CustomEvent('desktop:refresh-repos'));
+      window.dispatchEvent(new CustomEvent("desktop:refresh-repos"));
     });
 
     this.electron.onMenuLogout(() => {
-      window.dispatchEvent(new CustomEvent('desktop:logout'));
+      window.dispatchEvent(new CustomEvent("desktop:logout"));
     });
   }
 
@@ -66,7 +71,11 @@ class DesktopManager {
   }
 
   // Utilitarios
-  async showMessage(message: string, title: string = 'GitHub Desktop', type: MessageData['type'] = 'info'): Promise<void> {
+  async showMessage(
+    message: string,
+    title: string = "GitHub Desktop",
+    type: MessageData["type"] = "info",
+  ): Promise<void> {
     await this.electron.showMessage({ type, title, message });
   }
 
