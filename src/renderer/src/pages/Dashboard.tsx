@@ -1,15 +1,29 @@
 // src/renderer/src/pages/Dashboard.tsx
-import React, { useState, useEffect } from 'react';
-import DesktopManager from '../utils/desktop';
+import React, { useState, useEffect } from "react";
+import DesktopManager from "../utils/desktop";
 import "../styles/dashboard.css";
+
+import {
+  Folder,
+  Monitor,
+  MapPin,
+  Download,
+  RefreshCw,
+  Lock,
+  Star,
+  GitBranch,
+  Calendar,
+  DownloadCloud,
+  Github,
+} from "lucide-react";
 
 const Dashboard: React.FC = () => {
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
   const [localRepos, setLocalRepos] = useState<any[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string>('');
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
   const [loading, setLoading] = useState({
     github: true,
-    local: false
+    local: false,
   });
   const [user, setUser] = useState<any>(null);
 
@@ -21,53 +35,57 @@ const Dashboard: React.FC = () => {
   const loadUserData = async () => {
     try {
       const desktop = DesktopManager.getInstance();
-      const userData = await desktop.getConfig('github_user');
+      const userData = await desktop.getConfig("github_user");
       setUser(userData);
     } catch (error) {
-      console.error('Error cargando usuario:', error);
+      console.error("Error cargando usuario:", error);
     }
   };
 
   const fetchGithubRepos = async () => {
-    setLoading(prev => ({ ...prev, github: true }));
-    
+    setLoading((prev) => ({ ...prev, github: true }));
+
     try {
       const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig('github_token');
-      
+      const token = await desktop.getConfig("github_token");
+
       if (!token) {
-        await desktop.showMessage('No estás autenticado', 'Error', 'error');
+        await desktop.showMessage("No estás autenticado", "Error", "error");
         return;
       }
 
-      const response = await fetch('https://api.github.com/user/repos', {
+      const response = await fetch("https://api.github.com/user/repos", {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Proyecto-Totem-Games'
-        }
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "Proyecto-Totem-Games",
+        },
       });
 
       if (response.ok) {
         const repos = await response.json();
         setGithubRepos(repos);
       } else {
-        await desktop.showMessage('Error al cargar repositorios', 'GitHub Error', 'error');
+        await desktop.showMessage(
+          "Error al cargar repositorios",
+          "GitHub Error",
+          "error",
+        );
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
-      setLoading(prev => ({ ...prev, github: false }));
+      setLoading((prev) => ({ ...prev, github: false }));
     }
   };
 
   const selectLocalFolder = async () => {
-    setLoading(prev => ({ ...prev, local: true }));
-    
+    setLoading((prev) => ({ ...prev, local: true }));
+
     try {
       const desktop = DesktopManager.getInstance();
       const folder = await desktop.selectFolder();
-      
+
       if (folder) {
         setSelectedFolder(folder);
         const files = await desktop.readFolder(folder);
@@ -75,51 +93,57 @@ const Dashboard: React.FC = () => {
         setLocalRepos(repos);
       }
     } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(error.message, 'Error', 'error');
+      await DesktopManager.getInstance().showMessage(
+        error.message,
+        "Error",
+        "error",
+      );
     } finally {
-      setLoading(prev => ({ ...prev, local: false }));
+      setLoading((prev) => ({ ...prev, local: false }));
     }
   };
 
   const cloneRepository = async (repo: any) => {
     if (!selectedFolder) {
       await DesktopManager.getInstance().showMessage(
-        'Primero selecciona una carpeta local',
-        'Selecciona carpeta',
-        'warning'
+        "Primero selecciona una carpeta local",
+        "Selecciona carpeta",
+        "warning",
       );
       return;
     }
 
     try {
       const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig('github_token');
-      
+      const token = await desktop.getConfig("github_token");
+
       if (!token) {
-        await desktop.showMessage('No estás autenticado', 'Error', 'error');
+        await desktop.showMessage("No estás autenticado", "Error", "error");
         return;
       }
 
       const destination = `${selectedFolder}/${repo.name}`;
-      
+
       await desktop.cloneRepository({
         url: repo.clone_url,
         destination,
-        token
+        token,
       });
-      
+
       await desktop.showMessage(
         `Repositorio "${repo.name}" clonado exitosamente en:\n${destination}`,
-        'Clonado exitoso'
+        "Clonado exitoso",
       );
-      
-      // Actualizar lista local
+
       const files = await desktop.readFolder(selectedFolder);
       const repos = files.filter((f: any) => f.isGitRepo);
       setLocalRepos(repos);
-      
     } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(error, 'Error al clonar', 'error');
+      await DesktopManager.getInstance().showMessage(
+        error,
+        "Error al clonar",
+        "error",
+      );
     }
   };
 
@@ -127,28 +151,31 @@ const Dashboard: React.FC = () => {
     try {
       const desktop = DesktopManager.getInstance();
       const output = await desktop.gitCommand({
-        command: 'pull',
-        cwd: repoPath
+        command: "pull",
+        cwd: repoPath,
       });
-      
+
       await desktop.showMessage(
         `Repositorio "${repoName}" actualizado:\n${output}`,
-        'Git Pull exitoso'
+        "Git Pull exitoso",
       );
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(error, 'Error en Git Pull', 'error');
+      await DesktopManager.getInstance().showMessage(
+        error,
+        "Error en Git Pull",
+        "error",
+      );
     }
   };
 
   return (
     <div className="dashboard">
-      {/* Header con info del usuario */}
+      {/* Header */}
       <div className="dashboard-header">
         <div className="user-info">
           {user?.avatar_url && (
-            <img 
-              src={user.avatar_url} 
+            <img
+              src={user.avatar_url}
               alt={user.login}
               className="user-avatar"
             />
@@ -160,10 +187,10 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         <button
           onClick={selectLocalFolder}
-          className={`folder-btn ${loading.local ? 'loading' : ''}`}
+          className={`folder-btn ${loading.local ? "loading" : ""}`}
           disabled={loading.local}
         >
           {loading.local ? (
@@ -173,33 +200,34 @@ const Dashboard: React.FC = () => {
             </>
           ) : (
             <>
-              📁 {selectedFolder ? 'Cambiar Carpeta' : 'Seleccionar Carpeta'}
+              <Folder size={16} />
+              {selectedFolder ? "Cambiar Carpeta" : "Seleccionar Carpeta"}
             </>
           )}
         </button>
       </div>
 
-      {/* Dos columnas: Local y GitHub */}
       <div className="dashboard-columns">
-        {/* Columna 1: Repositorios Locales */}
+        {/* Local repos */}
         <div className="column column-local">
           <div className="card">
             <h3 className="card-title">
-              💻 Repositorios Locales
+              <Monitor size={18} />
+              Repositorios Locales
               {selectedFolder && (
-                <span className="badge badge-blue">
-                  {localRepos.length}
-                </span>
+                <span className="badge badge-blue">{localRepos.length}</span>
               )}
             </h3>
-            
+
             {selectedFolder ? (
               <div className="folder-path">
-                📍 {selectedFolder}
+                <MapPin size={14} /> {selectedFolder}
               </div>
             ) : (
               <div className="empty-state">
-                <div className="empty-icon">📁</div>
+                <div className="empty-icon">
+                  <Folder size={48} />
+                </div>
                 <p>Selecciona una carpeta para ver tus repositorios locales</p>
               </div>
             )}
@@ -213,12 +241,12 @@ const Dashboard: React.FC = () => {
                         <div className="repo-name">{repo.name}</div>
                         <div className="repo-path">{repo.path}</div>
                       </div>
-                      
+
                       <button
                         onClick={() => gitPull(repo.path, repo.name)}
                         className="btn-pull"
                       >
-                        ⬇️ Pull
+                        <Download size={14} /> Pull
                       </button>
                     </div>
                   </div>
@@ -228,23 +256,22 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Columna 2: Repositorios GitHub */}
+        {/* GitHub repos */}
         <div className="column column-github">
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">
-                🌐 Repositorios de GitHub
-                <span className="badge badge-green">
-                  {githubRepos.length}
-                </span>
+                <Github size={18} />
+                Repositorios de GitHub
+                <span className="badge badge-green">{githubRepos.length}</span>
               </h3>
-              
+
               <button
                 onClick={fetchGithubRepos}
                 disabled={loading.github}
                 className="btn-refresh"
               >
-                🔄 Actualizar
+                <RefreshCw size={14} /> Actualizar
               </button>
             </div>
 
@@ -263,33 +290,42 @@ const Dashboard: React.FC = () => {
                           <h4 className="repo-title">
                             {repo.name}
                             {repo.private && (
-                              <span className="private-badge">🔒 Privado</span>
+                              <span className="private-badge">
+                                <Lock size={12} /> Privado
+                              </span>
                             )}
                           </h4>
                           <span className="language-badge">
-                            {repo.language || 'Code'}
+                            {repo.language || "Code"}
                           </span>
                         </div>
-                        
+
                         {repo.description && (
-                          <p className="repo-description">
-                            {repo.description}
-                          </p>
+                          <p className="repo-description">{repo.description}</p>
                         )}
-                        
+
                         <div className="repo-stats">
-                          <span>⭐ {repo.stargazers_count}</span>
-                          <span>🍴 {repo.forks_count}</span>
-                          <span>📅 {new Date(repo.updated_at).toLocaleDateString()}</span>
+                          <span>
+                            <Star size={12} /> {repo.stargazers_count}
+                          </span>
+                          <span>
+                            <GitBranch size={12} /> {repo.forks_count}
+                          </span>
+                          <span>
+                            <Calendar size={12} />{" "}
+                            {new Date(repo.updated_at).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
-                      
+
                       <button
                         onClick={() => cloneRepository(repo)}
                         disabled={!selectedFolder}
-                        className={`btn-clone ${!selectedFolder ? 'disabled' : ''}`}
+                        className={`btn-clone ${
+                          !selectedFolder ? "disabled" : ""
+                        }`}
                       >
-                        📥 Clonar Local
+                        <DownloadCloud size={14} /> Clonar Local
                       </button>
                     </div>
                   </div>

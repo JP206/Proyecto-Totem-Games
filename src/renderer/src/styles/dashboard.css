@@ -2,16 +2,20 @@
 
 /* Animación spinner */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Dashboard container */
 .dashboard {
   padding: 20px;
-  background-color: #0d1117;
+  background-color: var(--color-primary-main);
   min-height: 100vh;
-  color: #c9d1d9;
+  color: var(--color-neutral-lighter);
 }
 
 /* Header */
@@ -20,10 +24,10 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  background-color: #24292e;
+  background-color: var(--color-primary-subtle);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 2px solid var(--color-neutral-medium);
 }
 
 .user-info {
@@ -36,7 +40,7 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid #2ea44f;
+  border: 2px solid var(--color-success);
 }
 
 .user-details {
@@ -46,32 +50,32 @@
 
 .user-name {
   margin: 0 0 5px 0;
-  color: #f0f6fc;
-  font-size: 18px;
+  color: var(--color-white);
+  font-size: var(--text-lg);
 }
 
 .user-username {
   margin: 0;
-  color: #8b949e;
-  font-size: 14px;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
 }
 
 .folder-btn {
   padding: 10px 20px;
-  background-color: #238636;
-  color: white;
+  background-color: var(--color-primary-main);
+  color: var(--color-white);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--text-sm);
   transition: background-color 0.2s;
 }
 
 .folder-btn:hover:not(:disabled) {
-  background-color: #2ea043;
+  background-color: var(--color-primary-light);
 }
 
 .folder-btn:disabled {
@@ -100,10 +104,10 @@
 
 /* Cards */
 .card {
-  background-color: #24292e;
+  background-color: var(--color-neutral-dark);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 2px solid var(--color-neutral-medium);
   height: 100%;
 }
 
@@ -119,32 +123,32 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #f0f6fc;
+  color: var(--color-white);
 }
 
 /* Badges */
 .badge {
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
 }
 
 .badge-blue {
-  background-color: #388bfd;
-  color: white;
+  background-color: var(--color-secondary-cyan);
+  color: var(--color-white);
 }
 
 .badge-green {
-  background-color: #2ea44f;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-white);
 }
 
 /* Folder path */
 .folder-path {
   margin-bottom: 15px;
-  font-size: 13px;
-  color: #8b949e;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
   word-break: break-all;
 }
 
@@ -152,8 +156,8 @@
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #8b949e;
-  font-size: 14px;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
 }
 
 .empty-icon {
@@ -172,7 +176,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border-top-color: var(--color-white);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -180,8 +184,8 @@
 .spinner-large {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(56, 139, 253, 0.3);
-  border-top-color: #388bfd;
+  border: 3px solid var(--color-primary-subtle);
+  border-top-color: var(--color-secondary-cyan);
   border-radius: 50%;
   margin: 0 auto 15px;
   animation: spin 1s linear infinite;
@@ -201,22 +205,22 @@
 /* Repository cards */
 .repo-card {
   border-radius: 6px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--color-neutral-medium);
   transition: all 0.2s;
 }
 
 .repo-card-local {
-  background-color: #0d1117;
+  background-color: var(--color-neutral-darker);
   padding: 15px;
 }
 
 .repo-card-github {
-  background-color: #0d1117;
+  background-color: var(--color-neutral-darker);
   padding: 20px;
 }
 
 .repo-card-github:hover {
-  border-color: #58a6ff;
+  border-color: var(--color-secondary-cyan);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -241,61 +245,61 @@
 
 .repo-name {
   font-weight: 600;
-  font-size: 14px;
-  color: #f0f6fc;
+  font-size: var(--text-sm);
+  color: var(--color-white);
 }
 
 .repo-title {
   margin: 0;
-  font-size: 16px;
-  color: #f0f6fc;
+  font-size: var(--text-base);
+  color: var(--color-white);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .repo-path {
-  font-size: 12px;
-  color: #8b949e;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-light);
   margin-top: 5px;
 }
 
 .repo-description {
-  color: #8b949e;
-  font-size: 14px;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
   margin-bottom: 15px;
 }
 
 .repo-stats {
   display: flex;
   gap: 15px;
-  font-size: 13px;
-  color: #8b949e;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
 }
 
 /* Badges in repo cards */
 .private-badge {
-  font-size: 12px;
-  color: #f85149;
+  font-size: var(--text-xs);
+  color: var(--color-error);
 }
 
 .language-badge {
-  font-size: 11px;
-  background-color: #6e7681;
+  font-size: var(--text-xs);
+  background-color: var(--color-neutral-medium);
   padding: 2px 6px;
   border-radius: 10px;
-  color: white;
+  color: var(--color-white);
 }
 
 /* Buttons */
 .btn-pull {
   padding: 6px 12px;
-  background-color: #388bfd;
-  color: white;
+  background-color: var(--color-secondary-cyan);
+  color: var(--color-white);
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -303,17 +307,17 @@
 }
 
 .btn-pull:hover {
-  background-color: #4d9cff;
+  background-color: var(--color-secondary-cyan-hover);
 }
 
 .btn-refresh {
   padding: 8px 16px;
-  background-color: #238636;
-  color: white;
+  background-color: var(--color-primary-main);
+  color: var(--color-white);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -321,7 +325,7 @@
 }
 
 .btn-refresh:hover:not(:disabled) {
-  background-color: #2ea043;
+  background-color: var(--color-primary-light);
 }
 
 .btn-refresh:disabled {
@@ -331,12 +335,12 @@
 
 .btn-clone {
   padding: 8px 16px;
-  background-color: #2ea44f;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -345,11 +349,11 @@
 }
 
 .btn-clone:hover:not(.disabled) {
-  background-color: #3fb950;
+  background-color: var(--color-success-hover);
 }
 
 .btn-clone.disabled {
-  background-color: #6e7681;
+  background-color: var(--color-neutral-medium);
   cursor: not-allowed;
 }
 
@@ -358,7 +362,7 @@
   .dashboard-columns {
     flex-direction: column;
   }
-  
+
   .column-local,
   .column-github {
     width: 100%;
@@ -371,13 +375,13 @@
     gap: 15px;
     align-items: flex-start;
   }
-  
+
   .repo-card-content {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
   }
-  
+
   .card-header {
     flex-direction: column;
     gap: 15px;

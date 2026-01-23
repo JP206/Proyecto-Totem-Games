@@ -2,23 +2,23 @@
 
 /* Login container */
 .login-container {
-  max-width: 500px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 40px 20px;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #0d1117;
+  background-color: var(--color-primary-main);
 }
 
 /* Login card */
 .login-card {
-  background-color: #24292e;
+  background-color: var(--color-primary-subtle);
   padding: 40px;
   border-radius: 12px;
-  border: 1px solid #444;
-  width: 100%;
+  border: 1px solid var(--color-neutral-medium);
+  max-width: 500px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
@@ -31,19 +31,21 @@
 .login-icon {
   font-size: 48px;
   margin-bottom: 15px;
-  display: block;
+  display: flex;
+  justify-content: center;
+  color: var(--color-white);
 }
 
 .login-title {
   margin: 0 0 10px 0;
-  color: #f0f6fc;
-  font-size: 24px;
+  color: var(--color-white);
+  font-size: var(--text-2xl);
   font-weight: 600;
 }
 
 .login-subtitle {
-  color: #8b949e;
-  font-size: 14px;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
   margin: 0;
 }
 
@@ -60,28 +62,28 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  font-size: 14px;
-  color: #c9d1d9;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-lighter);
 }
 
 /* Token input */
 .token-input {
   width: 100%;
   padding: 12px 15px;
-  background-color: #0d1117;
-  border: 1px solid #30363d;
+  background-color: var(--color-neutral-darker);
+  border: 1px solid var(--color-neutral-medium);
   border-radius: 6px;
-  color: #f0f6fc;
-  font-size: 14px;
+  color: var(--color-white);
+  font-size: var(--text-sm);
   box-sizing: border-box;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   transition: border-color 0.2s;
 }
 
 .token-input:focus {
   outline: none;
-  border-color: #58a6ff;
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+  border-color: var(--color-secondary-cyan);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
 }
 
 .token-input:disabled {
@@ -90,7 +92,7 @@
 }
 
 .token-input::placeholder {
-  color: #6e7681;
+  color: var(--color-neutral-medium);
 }
 
 /* Token link button */
@@ -98,10 +100,10 @@
   margin-top: 8px;
   padding: 8px 12px;
   background-color: transparent;
-  border: 1px solid #30363d;
+  border: 1px solid var(--color-neutral-medium);
   border-radius: 6px;
-  color: #58a6ff;
-  font-size: 12px;
+  color: var(--color-secondary-cyan);
+  font-size: var(--text-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -110,8 +112,8 @@
 }
 
 .token-link-btn:hover:not(:disabled) {
-  background-color: rgba(88, 166, 255, 0.1);
-  border-color: #58a6ff;
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-secondary-cyan);
 }
 
 .token-link-btn:disabled {
@@ -122,12 +124,12 @@
 /* Error message */
 .error-message {
   background-color: rgba(248, 81, 73, 0.1);
-  border: 1px solid #f85149;
-  color: #f85149;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
   padding: 12px;
   border-radius: 6px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -137,11 +139,11 @@
 .submit-btn {
   width: 100%;
   padding: 14px;
-  background-color: #2ea44f;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-white);
   border: none;
   border-radius: 6px;
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -152,17 +154,17 @@
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: #3fb950;
+  background-color: var(--color-success-hover);
 }
 
 .submit-btn:disabled {
-  background-color: #238636;
+  background-color: var(--color-primary-main);
   opacity: 0.7;
   cursor: not-allowed;
 }
 
 .submit-btn.loading {
-  background-color: #238636;
+  background-color: var(--color-primary-main);
 }
 
 /* Spinner */
@@ -170,7 +172,7 @@
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border-top-color: var(--color-white);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -179,19 +181,22 @@
 .instructions-card {
   margin-top: 30px;
   padding: 20px;
-  background-color: rgba(56, 139, 253, 0.1);
-  border: 1px solid #388bfd;
+  background-color: var(--color-neutral-darker);
+  border: 1px solid var(--color-secondary-cyan);
   border-radius: 6px;
-  font-size: 13px;
-  color: #8b949e;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
 }
 
 .instructions-title {
   margin-top: 0;
   margin-bottom: 10px;
   font-weight: 600;
-  color: #58a6ff;
-  font-size: 14px;
+  color: var(--color-secondary-cyan);
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .instructions-list {
@@ -202,6 +207,7 @@
 .instructions-list li {
   margin-bottom: 8px;
   line-height: 1.5;
+  color: var(--color-neutral-light);
 }
 
 .instructions-list li:last-child {
@@ -210,20 +216,24 @@
 
 /* Code tags */
 .code-tag {
-  background-color: #0d1117;
+  background-color: var(--color-neutral-darker);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  color: #f0f6fc;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: var(--text-xs);
+  color: var(--color-white);
   margin: 0 4px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--color-neutral-medium);
 }
 
 /* Spin animation (define aquí si no está en Dashboard.css) */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive design */
@@ -231,13 +241,13 @@
   .login-container {
     padding: 20px;
   }
-  
+
   .login-card {
     padding: 30px 20px;
   }
-  
+
   .login-title {
-    font-size: 20px;
+    font-size: var(--text-xl);
   }
 }
 
@@ -245,24 +255,24 @@
   .login-card {
     padding: 25px 15px;
   }
-  
+
   .login-title {
-    font-size: 18px;
+    font-size: var(--text-lg);
   }
-  
+
   .login-icon {
     font-size: 40px;
   }
-  
+
   .submit-btn {
     padding: 12px;
-    font-size: 14px;
+    font-size: var(--text-sm);
   }
-  
+
   .instructions-card {
     padding: 15px;
   }
-  
+
   .instructions-list {
     padding-left: 16px;
   }
