@@ -5,6 +5,12 @@ export interface GitCloneData {
   token?: string;
 }
 
+export interface GitGetIssuesData {
+  repoName: string;
+  repoOwner: string;
+  token: string;
+}
+
 export interface GitCommandData {
   command: string;
   cwd: string; // Current working directory
@@ -35,6 +41,8 @@ export interface ElectronAPI {
     data: GitCloneData,
   ) => Promise<{ success: boolean; output: string; path: string }>;
   gitCommand: (data: GitCommandData) => Promise<string>;
+
+  getIssues: (data: GitGetIssuesData) => Promise<any[]>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

@@ -1,0 +1,81 @@
+.content {
+  flex: 1;
+  padding: 20px;
+  background: #f8f8f8;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.header button {
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.header .add {
+  border: 2px solid green;
+  background: white;
+}
+
+/* HEADER TABLA */
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 3fr 1fr 1fr;
+  padding: 12px;
+  background: #e6f4ea;
+  font-weight: bold;
+  border-radius: 6px;
+}
+
+/* BODY */
+.table-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ROW */
+.row {
+  display: grid;
+  grid-template-columns: 2fr 3fr 1fr 1fr;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.row:hover {
+  background: #f2f2f2;
+  transform: translateY(-1px);
+}
+
+.title {
+  font-weight: 600;
+}
+
+.description {
+  color: #666;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ESTADOS */
+.status {
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.status.open {
+  color: green;
+}
+
+.status.closed {
+  color: red;
+}
