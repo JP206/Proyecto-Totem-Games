@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Issues from "./pages/Issues";
 import { injectTheme } from "./theme";
 
 function App() {
@@ -25,6 +26,9 @@ function App() {
 
         {/* Ruta para Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* Ruta para Issues */}
+        <Route path="/issues" element={ < Issues /> } />
       </Routes>
     </Router>
   );

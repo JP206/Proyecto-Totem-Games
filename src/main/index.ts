@@ -169,6 +169,46 @@ ipcMain.handle(
   },
 );
 
+// OBTENER ISSUES GIT
+ipcMain.handle(
+  "git-get-issues",
+  async (
+    event: any,
+    data: {
+      repoName: string;
+      repoOwner: string;
+      token: string;
+    },
+  ) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+
+      // Verificar si es error de autenticación
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(
   "git-command",
