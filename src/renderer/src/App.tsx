@@ -1,3 +1,4 @@
+// src/renderer/src/App.tsx
 import React, { useEffect } from "react";
 import {
   HashRouter as Router,
@@ -7,6 +8,7 @@ import {
 } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
 import { injectTheme } from "./theme";
 
 function App() {
@@ -25,6 +27,9 @@ function App() {
 
         {/* Ruta para Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
+        
+        {/* Ruta para Landing de un proyecto */}
+        <Route path="/project/:projectName" element={<Landing />} />
       </Routes>
     </Router>
   );

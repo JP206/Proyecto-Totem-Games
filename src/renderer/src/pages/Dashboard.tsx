@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import DesktopManager from "../utils/desktop";
 import "../styles/dashboard.css";
+import { useNavigate } from "react-router-dom";
 
 import {
   Folder,
@@ -26,10 +27,12 @@ const Dashboard: React.FC = () => {
     local: false,
   });
   const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUserData();
     fetchGithubRepos();
+    loadSavedFolder();
   }, []);
 
   const loadUserData = async () => {
@@ -40,6 +43,29 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error("Error cargando usuario:", error);
     }
+  };
+
+  const loadSavedFolder = async () => {
+    try {
+      const desktop = DesktopManager.getInstance();
+      const savedFolder = await desktop.getConfig("selected_folder");
+
+      if (savedFolder) {
+        setSelectedFolder(savedFolder);
+        // Cargar repositorios de la carpeta guardada
+        const files = await desktop.readFolder(savedFolder);
+        const repos = files.filter((f: any) => f.isGitRepo);
+        setLocalRepos(repos);
+      }
+    } catch (error) {
+      console.error("Error cargando carpeta guardada:", error);
+    }
+  };
+
+  const navigateToProject = (repoPath: string, repoName: string) => {
+    navigate(`/project/${encodeURIComponent(repoName)}`, {
+      state: { repoPath, repoName }
+    });
   };
 
   const fetchGithubRepos = async () => {
@@ -87,6 +113,9 @@ const Dashboard: React.FC = () => {
       const folder = await desktop.selectFolder();
 
       if (folder) {
+        // Guardar la carpeta seleccionada
+        await desktop.setConfig("selected_folder", folder);
+
         setSelectedFolder(folder);
         const files = await desktop.readFolder(folder);
         const repos = files.filter((f: any) => f.isGitRepo);
@@ -150,8 +179,9 @@ const Dashboard: React.FC = () => {
   const gitPull = async (repoPath: string, repoName: string) => {
     try {
       const desktop = DesktopManager.getInstance();
+
       const output = await desktop.gitCommand({
-        command: "pull",
+        command: `git pull origin main`,
         cwd: repoPath,
       });
 
@@ -232,10 +262,15 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {localRepos.length > 0 && (
+            {localRepos.length > 0 ? (
               <div className="repos-list">
                 {localRepos.map((repo, index) => (
-                  <div key={index} className="repo-card repo-card-local">
+                  <div
+                    key={index}
+                    className="repo-card repo-card-local"
+                    onClick={() => navigateToProject(repo.path, repo.name)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="repo-card-content">
                       <div>
                         <div className="repo-name">{repo.name}</div>
@@ -243,7 +278,10 @@ const Dashboard: React.FC = () => {
                       </div>
 
                       <button
-                        onClick={() => gitPull(repo.path, repo.name)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Evitar que el click en el botón navegue
+                          gitPull(repo.path, repo.name);
+                        }}
                         className="btn-pull"
                       >
                         <Download size={14} /> Pull
@@ -252,7 +290,11 @@ const Dashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
-            )}
+            ) : selectedFolder ? (
+              <div className="empty-repos">
+                <p>No se encontraron repositorios Git en esta carpeta</p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -321,9 +363,8 @@ const Dashboard: React.FC = () => {
                       <button
                         onClick={() => cloneRepository(repo)}
                         disabled={!selectedFolder}
-                        className={`btn-clone ${
-                          !selectedFolder ? "disabled" : ""
-                        }`}
+                        className={`btn-clone ${!selectedFolder ? "disabled" : ""
+                          }`}
                       >
                         <DownloadCloud size={14} /> Clonar Local
                       </button>
