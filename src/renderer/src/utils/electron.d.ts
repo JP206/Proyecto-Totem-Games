@@ -5,10 +5,17 @@ export interface GitCloneData {
   token?: string;
 }
 
-export interface GitGetIssuesData {
+export interface RepoInformation {
   repoName: string;
   repoOwner: string;
   token: string;
+}
+
+export interface IssueData {
+  title: string;
+  description: string;
+  status: "open" | "closed";
+  id: number;
 }
 
 export interface GitCommandData {
@@ -42,7 +49,9 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; output: string; path: string }>;
   gitCommand: (data: GitCommandData) => Promise<string>;
 
-  getIssues: (data: GitGetIssuesData) => Promise<any[]>;
+  getIssues: (data: RepoInformation) => Promise<IssueData[]>;
+
+  markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) => Promise<boolean>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

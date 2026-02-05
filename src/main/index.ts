@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Store from "electron-store";
+import { RepoInformation } from "../renderer/src/utils/electron";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -190,6 +191,47 @@ ipcMain.handle(
           "Authorization": `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+
+      // Verificar si es error de autenticación
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// MARCAR ISSUE COMO RESUELTO
+ipcMain.handle(
+  "git-mark-issue-as-resolved",
+  async (
+    event: any,
+    issueId: number,
+    data: RepoInformation
+  ) => {
+    try {
+      console.log(data);
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueId}`;
+      
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          "state": "closed"
+        })
       });
 
       return response.json();

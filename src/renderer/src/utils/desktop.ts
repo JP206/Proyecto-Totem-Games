@@ -3,7 +3,7 @@ import {
   ElectronAPI,
   MessageData,
   GitCloneData,
-  GitGetIssuesData,
+  RepoInformation,
   GitCommandData,
 } from "./electron";
 
@@ -54,8 +54,12 @@ class DesktopManager {
     return await this.electron.cloneRepository(data);
   }
 
-  async getIssues(data: GitGetIssuesData) {
+  async getIssues(data: RepoInformation) {
     return await this.electron.getIssues(data);
+  }
+
+  async markIssueAsResolved(issueId: number, repoInfo: RepoInformation) {
+    return await this.electron.markIssueAsResolved(issueId, repoInfo);
   }
 
   async gitCommand(data: GitCommandData): Promise<string> {
