@@ -1,40 +1,42 @@
 import { useEffect, useState } from "react";
 import DesktopManager from "../utils/desktop";
 import "../styles/issues.css";
+import { IssueData } from "../utils/electron";
 
 export default function Issues() {
   const [issues, setIssues] = useState<any[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
 
   useEffect(() => {
     loadIssues();
   }, []);
 
   const loadIssues = async () => {
-      const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig("github_token");
-      if (!token) return;
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
+    if (!token) return;
 
-      const data = await desktop.getIssues({
-        repoName: "juego-totem-games",
-        repoOwner: "biancaluzz",
-        token,
-      });
+    const data = await desktop.getIssues({
+      repoName: "juego-totem-games",
+      repoOwner: "biancaluzz",
+      token,
+    });
 
-      const formattedIssues = data
-        .filter((issue: any) => !issue.pull_request)
-        .map((issue: any) => ({
-          id: issue.number,
-          title: issue.title,
-          description: issue.body,
-          date: new Date(issue.created_at).toLocaleDateString(),
-          status: issue.state,
-        }));
+    const formattedIssues = data
+      .filter((issue: any) => !issue.pull_request)
+      .map((issue: any) => ({
+        id: issue.number,
+        title: issue.title,
+        description: issue.body,
+        date: new Date(issue.created_at).toLocaleDateString(),
+        status: issue.state,
+      }));
 
-      setIssues(formattedIssues);
-    };
+    setIssues(formattedIssues);
+  };
 
   const markAsResolved = async (issueId: number) => {
     const desktop = DesktopManager.getInstance();
@@ -47,18 +49,68 @@ export default function Issues() {
       token,
     });
 
-    loadIssues();
+    await loadIssues();
     setIsModalOpen(false)
+  }
+
+  const editIssue = async () => {
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
+    if (!token) return;
+
+    if (!selectedIssue) {
+      // Create issue
+      let issueData: IssueData = {
+        title: editedTitle,
+        description: editedDescription,
+        id: null,
+        assignees: null,
+      }
+
+      await desktop.createIssue(issueData, {
+          repoName: "juego-totem-games",
+          repoOwner: "biancaluzz",
+          token
+        }
+      )
+
+      await loadIssues();
+      setIsModalOpen(false);
+    }
+    else {
+      // Edit existing issue
+      let issueData: IssueData = {
+        title: editedTitle,
+        description: editedDescription,
+        id: selectedIssue.id,
+        assignees: null,
+      }
+
+      await desktop.editIssue(issueData, {
+          repoName: "juego-totem-games",
+          repoOwner: "biancaluzz",
+          token
+        }
+      )
+
+      await loadIssues();
+      setIsModalOpen(false);
+    }
   }
 
   return (
     <main className="content">
       <div className="header">
         <button>Filtro</button>
-        <button className="add">Añadir</button>
+        <button className="add"
+          onClick={() => {
+            setSelectedIssue(null);
+            setEditedTitle("");
+            setEditedDescription("");
+            setIsModalOpen(true);
+          }}>Añadir</button>
       </div>
 
-      {/* HEADER DE TABLA */}
       <div className="table-header">
         <span>Issue</span>
         <span>Descripción</span>
@@ -66,7 +118,6 @@ export default function Issues() {
         <span>Estado</span>
       </div>
 
-      {/* FILAS */}
       <div className="table-body">
         {issues.map(issue => (
           <div
@@ -74,6 +125,8 @@ export default function Issues() {
             className="row"
             onClick={() => {
               setSelectedIssue(issue);
+              setEditedTitle(issue.title);
+              setEditedDescription(issue.description);
               setIsModalOpen(true);
             }}
           >
@@ -86,24 +139,53 @@ export default function Issues() {
           </div>
         ))}
       </div>
-      
-      {isModalOpen && selectedIssue && (
+
+      {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
+
             <div className="modal-header">
-              <h3>Issue #{selectedIssue.id}</h3>
-              <span className={`status ${selectedIssue.status}`}>
-                {selectedIssue.status}
-              </span>
+              <input
+                className="modal-title"
+                value={editedTitle}
+                onChange={e => setEditedTitle(e.target.value)}
+              />
+
+              {selectedIssue && (
+                <span className={`status ${selectedIssue.status}`}>
+                  {selectedIssue.status}
+                </span>
+              )}
             </div>
 
             <div className="modal-body">
               <p><strong>Descripción</strong></p>
-              <p>{selectedIssue.description || "Sin descripción"}</p>
+
+              <textarea
+                className="modal-description"
+                value={editedDescription}
+                onChange={e => setEditedDescription(e.target.value)}
+                rows={6}
+              />
             </div>
 
             <div className="modal-actions">
-              <button className="resolve" onClick={() => markAsResolved(selectedIssue.id)}>Marcar como resuelto</button>
+              <button
+                className="save"
+                onClick={() => { editIssue() }}
+              >
+                Guardar
+              </button>
+
+              {selectedIssue && selectedIssue.status !== "closed" && (
+                <button
+                  className="resolve"
+                  onClick={() => markAsResolved(selectedIssue.id)}
+                >
+                  Marcar como resuelto
+                </button>
+              )}
+
               <button onClick={() => setIsModalOpen(false)}>Cerrar</button>
             </div>
           </div>

@@ -14,8 +14,8 @@ export interface RepoInformation {
 export interface IssueData {
   title: string;
   description: string;
-  status: "open" | "closed";
-  id: number;
+  id: number | null; // Null if creating an issue
+  assignees: string[] | null;
 }
 
 export interface GitCommandData {
@@ -52,6 +52,10 @@ export interface ElectronAPI {
   getIssues: (data: RepoInformation) => Promise<IssueData[]>;
 
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) => Promise<boolean>;
+
+  editIssue: (issueData: IssueData, repoInfo: RepoInformation) => Promise<boolean>;
+
+  createIssue: (issueData: IssueData, repoInfo: RepoInformation) => Promise<boolean>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

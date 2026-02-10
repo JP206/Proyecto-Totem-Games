@@ -125,3 +125,25 @@
   padding: 8px 14px;
   cursor: pointer;
 }
+
+.modal-title {
+  font-size: 18px;
+  font-weight: bold;
+  width: 70%;
+  border: 1px solid #ccc;
+  padding: 6px;
+}
+
+.modal-description {
+  width: 100%;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #ccc;
+}
+
+.modal-actions .save {
+  background: #cce5ff;
+  border: 1px solid #339;
+  padding: 8px 14px;
+  cursor: pointer;
+}

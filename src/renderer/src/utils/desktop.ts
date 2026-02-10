@@ -5,6 +5,7 @@ import {
   GitCloneData,
   RepoInformation,
   GitCommandData,
+  IssueData,
 } from "./electron";
 
 class DesktopManager {
@@ -60,6 +61,14 @@ class DesktopManager {
 
   async markIssueAsResolved(issueId: number, repoInfo: RepoInformation) {
     return await this.electron.markIssueAsResolved(issueId, repoInfo);
+  }
+
+  async editIssue(issueData: IssueData, repoInfo: RepoInformation) {
+    return await this.electron.editIssue(issueData, repoInfo);
+  }
+
+  async createIssue(issueData: IssueData, repoInfo: RepoInformation) {
+    return await this.electron.createIssue(issueData, repoInfo);
   }
 
   async gitCommand(data: GitCommandData): Promise<string> {

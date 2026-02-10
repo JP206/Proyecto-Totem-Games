@@ -1,6 +1,7 @@
 // src/main/preload.ts
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { RepoInformation } from "../renderer/src/utils/electron";
+import { IssueData } from "../renderer/src/utils/electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   // 1. SISTEMA DE ARCHIVOS
@@ -22,6 +23,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-mark-issue-as-resolved", issueId, repoInfo),
+
+  editIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
+    ipcRenderer.invoke("git-edit-issue", issueData, repoInfo),
+
+  createIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
+    ipcRenderer.invoke("git-create-issue", issueData, repoInfo),
 
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
