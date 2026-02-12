@@ -10,6 +10,7 @@ export default function Issues() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
 
+  // Load issues when first entering screen
   useEffect(() => {
     loadIssues();
   }, []);
@@ -58,6 +59,8 @@ export default function Issues() {
     const token = await desktop.getConfig("github_token");
     if (!token) return;
 
+    let response;
+
     if (!selectedIssue) {
       // Create issue
       let issueData: IssueData = {
@@ -67,15 +70,12 @@ export default function Issues() {
         assignees: null,
       }
 
-      await desktop.createIssue(issueData, {
+      response = await desktop.createIssue(issueData, {
           repoName: "juego-totem-games",
           repoOwner: "biancaluzz",
           token
         }
       )
-
-      await loadIssues();
-      setIsModalOpen(false);
     }
     else {
       // Edit existing issue
@@ -86,13 +86,15 @@ export default function Issues() {
         assignees: null,
       }
 
-      await desktop.editIssue(issueData, {
+      response = await desktop.editIssue(issueData, {
           repoName: "juego-totem-games",
           repoOwner: "biancaluzz",
           token
         }
       )
+    }
 
+    if (response) {
       await loadIssues();
       setIsModalOpen(false);
     }

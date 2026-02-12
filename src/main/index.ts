@@ -182,7 +182,7 @@ ipcMain.handle(
     },
   ) => {
     try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=bug`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -219,7 +219,6 @@ ipcMain.handle(
     data: RepoInformation
   ) => {
     try {
-      console.log(data);
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueId}`;
       
       const response = await fetch(url, {
@@ -260,7 +259,6 @@ ipcMain.handle(
     data: RepoInformation
   ) => {
     try {
-      console.log(data);
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueData.id}`;
       
       const response = await fetch(url, {
@@ -283,8 +281,6 @@ ipcMain.handle(
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
-
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -303,7 +299,6 @@ ipcMain.handle(
     data: RepoInformation
   ) => {
     try {
-      console.log(data);
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
       
       const response = await fetch(url, {
@@ -317,6 +312,7 @@ ipcMain.handle(
           ...{ title: issueData.title },
           ...(issueData.description != null && { body: issueData.description }),
           ...(issueData.assignees != null && { assignees: issueData.assignees }),
+          "labels": ["bug"]
         })
       });
 
@@ -326,8 +322,6 @@ ipcMain.handle(
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
-
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }

@@ -9,7 +9,8 @@
     "probar": "rmdir /s /q dist && cd src/renderer && rmdir /s /q build && npm run build && cd ../.. && npm start",
     "inicializar_proy": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && npm i react-scripts --force && npm i lucide-react && cd src/renderer && npm i && cd ../..",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "fix_probar": "cd src/renderer && npm run build && cd ../.. && npm start"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
