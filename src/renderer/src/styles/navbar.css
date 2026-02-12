@@ -35,7 +35,7 @@
   flex: 0 0 auto;
 }
 
-/* Base button styles - unificado */
+/* Base button styles */
 .nav-btn,
 .nav-btn-explorer {
   display: flex;
@@ -145,7 +145,7 @@
   flex: 0 0 auto;
 }
 
-/* TOOLTIPS - simplificado */
+/* TOOLTIPS */
 .nav-btn[title]:hover::after,
 .nav-btn-explorer[title]:hover::after {
   content: attr(title);
@@ -213,7 +213,7 @@
   transform: translateX(0);
 }
 
-/* Responsive - unificado */
+/* Responsive */
 @media (max-width: 768px) {
   .project-title { font-size: var(--text-base); }
   .project-path { font-size: 11px; }
@@ -241,7 +241,6 @@
   .navbar-right .nav-btn:not(.active):not(:first-child) { display: none; }
 }
 
-/* Solo lo esencial */
 .nav-btn.active { animation: buttonPulse 2s infinite; }
 
 @keyframes buttonPulse {

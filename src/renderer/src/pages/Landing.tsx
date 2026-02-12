@@ -1,11 +1,9 @@
 // src/renderer/src/pages/Landing.tsx
-// src/renderer/src/pages/Landing.tsx
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../pages/Navbar";
 import {
-  Upload,
   FileText,
   Globe,
   BookOpen,
@@ -14,15 +12,8 @@ import {
   Check,
   AlertCircle,
   Download,
-  Eye,
-  History,
-  MessageSquare,
-  Flag,
-  Settings,
   FileSpreadsheet,
-  FolderOpen,
   X,
-  MapPin,
   CheckSquare,
   Square
 } from "lucide-react";
@@ -57,7 +48,94 @@ interface GlossaryFile {
   selected: boolean;
 }
 
-type FileType = 'context' | 'glossary' | 'localize';
+interface UploadPopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (type: 'context' | 'glossary' | 'localize') => void;
+  fileName: string;
+  fileExtension: string;
+  repoName: string;
+}
+
+const UploadPopup: React.FC<UploadPopupProps> = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  fileName, 
+  fileExtension,
+  repoName 
+}) => {
+  if (!isOpen) return null;
+
+  const isTxt = fileExtension === '.txt';
+  const isCsvOrXlsx = ['.csv', '.xlsx'].includes(fileExtension);
+
+  return (
+    <div className="upload-popup-overlay" onClick={onClose}>
+      <div className="upload-popup" onClick={e => e.stopPropagation()}>
+        <button className="upload-popup-close" onClick={onClose}>×</button>
+        
+        <div className="upload-popup-header">
+          {isTxt && <BookOpen size={24} className="popup-icon" />}
+          {isCsvOrXlsx && <FileSpreadsheet size={24} className="popup-icon" />}
+          <h3>¿Qué tipo de archivo es?</h3>
+        </div>
+        
+        <p className="upload-popup-filename">
+          <strong>{fileName}</strong>
+        </p>
+        
+        <div className="upload-popup-options">
+          {isTxt && (
+            <button 
+              className="upload-popup-btn context"
+              onClick={() => onConfirm('context')}
+            >
+              <BookOpen size={20} />
+              <div>
+                <strong>Archivo de contexto</strong>
+                <small>Se guardará en: Localizacion/contextos_especificos/</small>
+              </div>
+            </button>
+          )}
+          
+          {isCsvOrXlsx && (
+            <>
+              <button 
+                className="upload-popup-btn glossary"
+                onClick={() => onConfirm('glossary')}
+              >
+                <FileText size={20} />
+                <div>
+                  <strong>Glosario</strong>
+                  <small>Se guardará en: Localizacion/glosarios_especificos/</small>
+                </div>
+              </button>
+              
+              <button 
+                className="upload-popup-btn localize"
+                onClick={() => onConfirm('localize')}
+              >
+                <FileSpreadsheet size={20} />
+                <div>
+                  <strong>Archivo a localizar</strong>
+                  <small>Se guardará como: {repoName}_localizar{fileExtension}</small>
+                </div>
+              </button>
+            </>
+          )}
+        </div>
+        
+        {isTxt && (
+          <p className="upload-popup-note">
+            <AlertCircle size={14} />
+            Los archivos .txt solo pueden ser contextos
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Landing: React.FC = () => {
   const { projectName } = useParams<{ projectName: string }>();
@@ -65,7 +143,6 @@ const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { repoPath, repoName } = location.state || {};
   
-  const [projectFiles, setProjectFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
@@ -74,31 +151,61 @@ const Landing: React.FC = () => {
   const [targetLanguages, setTargetLanguages] = useState<Language[]>([]);
   const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const [glossaryFiles, setGlossaryFiles] = useState<GlossaryFile[]>([]);
+  
+  // Popup state
+  const [showUploadPopup, setShowUploadPopup] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; extension: string } | null>(null);
+  
   const [availableLanguages, setAvailableLanguages] = useState<Language[]>([
-    // Español por países
+    // ESPAÑOL
     { id: "es_uy", name: "Español (Uruguay)", code: "ES-UY", region: "América", country: "Uruguay" },
-    { id: "es_ar", name: "Español (Argentina)", code: "ES-AR", region: "América", country: "Argentina" },
-    { id: "es_mx", name: "Español (México)", code: "ES-MX", region: "América", country: "México" },
     { id: "es_es", name: "Español (España)", code: "ES-ES", region: "Europa", country: "España" },
-    { id: "es_cl", name: "Español (Chile)", code: "ES-CL", region: "América", country: "Chile" },
+    { id: "es_mx", name: "Español (México)", code: "ES-MX", region: "América", country: "México" },
+    { id: "es_ar", name: "Español (Argentina)", code: "ES-AR", region: "América", country: "Argentina" },
     { id: "es_co", name: "Español (Colombia)", code: "ES-CO", region: "América", country: "Colombia" },
-    { id: "es_pe", name: "Español (Perú)", code: "ES-PE", region: "América", country: "Perú" },
-    
-    // Otros idiomas
+    { id: "es_cl", name: "Español (Chile)", code: "ES-CL", region: "América", country: "Chile" },
+
+    // INGLÉS
     { id: "en_us", name: "Inglés (Estados Unidos)", code: "EN-US", region: "América", country: "EE.UU." },
     { id: "en_gb", name: "Inglés (Reino Unido)", code: "EN-GB", region: "Europa", country: "Reino Unido" },
+    { id: "en_au", name: "Inglés (Australia)", code: "EN-AU", region: "Oceanía", country: "Australia" },
+
+    // ALEMÁN
     { id: "de_de", name: "Alemán (Alemania)", code: "DE-DE", region: "Europa", country: "Alemania" },
+
+    // PORTUGUÉS
     { id: "pt_br", name: "Portugués (Brasil)", code: "PT-BR", region: "América", country: "Brasil" },
     { id: "pt_pt", name: "Portugués (Portugal)", code: "PT-PT", region: "Europa", country: "Portugal" },
+
+    // FRANCÉS
     { id: "fr_fr", name: "Francés (Francia)", code: "FR-FR", region: "Europa", country: "Francia" },
+    { id: "fr_ca", name: "Francés (Canadá)", code: "FR-CA", region: "América", country: "Canadá" },
+
+    // RUSO
     { id: "ru_ru", name: "Ruso (Rusia)", code: "RU-RU", region: "Europa", country: "Rusia" },
+
+    // CHINO TRADICIONAL
     { id: "zh_tw", name: "Chino tradicional (Taiwán)", code: "ZH-TW", region: "Asia", country: "Taiwán" },
-    { id: "ja_jp", name: "Japonés (Japón)", code: "JA-JP", region: "Asia", country: "Japón" },
-    { id: "ko_kr", name: "Coreano (Corea del Sur)", code: "KO-KR", region: "Asia", country: "Corea del Sur" },
-    { id: "it_it", name: "Italiano (Italia)", code: "IT-IT", region: "Europa", country: "Italia" },
+
+    // CHINO SIMPLIFICADO
     { id: "zh_cn", name: "Chino simplificado (China)", code: "ZH-CN", region: "Asia", country: "China" },
+
+    // JAPONÉS
+    { id: "ja_jp", name: "Japonés (Japón)", code: "JA-JP", region: "Asia", country: "Japón" },
+
+    // COREANO
+    { id: "ko_kr", name: "Coreano (Corea del Sur)", code: "KO-KR", region: "Asia", country: "Corea del Sur" },
+
+    // ITALIANO
+    { id: "it_it", name: "Italiano (Italia)", code: "IT-IT", region: "Europa", country: "Italia" },
+
+    // TURCO
     { id: "tr_tr", name: "Turco (Turquía)", code: "TR-TR", region: "Asia", country: "Turquía" },
+
+    // INDONESIO
     { id: "id_id", name: "Indonesio (Indonesia)", code: "ID-ID", region: "Asia", country: "Indonesia" },
+
+    // CATALÁN
     { id: "ca_es", name: "Catalán (España)", code: "CA-ES", region: "Europa", country: "España" },
   ]);
   
@@ -106,9 +213,6 @@ const Landing: React.FC = () => {
   const [showLanguages, setShowLanguages] = useState(false);
   const [showContexts, setShowContexts] = useState(false);
   const [showGlossaries, setShowGlossaries] = useState(false);
-  
-  // Estado para el tipo de archivo a subir
-  const [uploadFileType, setUploadFileType] = useState<FileType>('localize');
 
   useEffect(() => {
     if (repoPath) {
@@ -121,11 +225,8 @@ const Landing: React.FC = () => {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
       
-      // Leer estructura del repositorio
       const files = await desktop.readFolder(repoPath);
-      setProjectFiles(files);
       
-      // Buscar archivo CSV principal según convención
       const localizacionFileName = `${repoName}_localizar.csv`;
       const csvFile = files.find(f => 
         f.isFile && f.name.toLowerCase() === localizacionFileName.toLowerCase()
@@ -135,10 +236,7 @@ const Landing: React.FC = () => {
         setSelectedFile(csvFile);
       }
       
-      // Cargar contextos
       await loadContexts();
-      
-      // Cargar glosarios
       await loadGlossaries();
       
     } catch (error: any) {
@@ -247,89 +345,96 @@ const Landing: React.FC = () => {
     setGlossaryFiles(newGlossaries);
   };
 
-  const handleFileSelect = (file: FileItem) => {
-    if (file.isFile && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx'))) {
-      setSelectedFile(file);
+  const processFileUpload = async (fileType: 'context' | 'glossary' | 'localize') => {
+    if (!pendingFile) return;
+    
+    const { file } = pendingFile;
+    
+    let targetFolder = '';
+    let fileName = file.name;
+    
+    switch (fileType) {
+      case 'context':
+        targetFolder = `${repoPath}/Localizacion/contextos_especificos`;
+        fileName = file.name.endsWith('.txt') ? file.name : `${file.name.split('.')[0]}.txt`;
+        break;
+      case 'glossary':
+        targetFolder = `${repoPath}/Localizacion/glosarios_especificos`;
+        break;
+      case 'localize':
+        targetFolder = `${repoPath}/Localizacion`;
+        fileName = file.name.endsWith('.csv') ? `${repoName}_localizar.csv` : `${repoName}_localizar.xlsx`;
+        break;
     }
+
+    try {
+      const desktop = DesktopManager.getInstance();
+      
+      await desktop.showMessage(
+        `Archivo ${fileName} subido correctamente a:\n${targetFolder}`,
+        "Archivo guardado"
+      );
+      
+      const newFile: FileItem = {
+        name: fileName,
+        path: `${targetFolder}/${fileName}`,
+        isFile: true,
+        isDirectory: false
+      };
+      
+      if (fileType === 'context') {
+        setContextFiles(prev => [...prev, {
+          name: fileName,
+          path: newFile.path,
+          priority: prev.length + 1,
+          selected: true
+        }]);
+      } else if (fileType === 'glossary') {
+        setGlossaryFiles(prev => [...prev, {
+          name: fileName,
+          path: newFile.path,
+          priority: prev.length + 1,
+          selected: true
+        }]);
+      } else {
+        setSelectedFile(newFile);
+      }
+      
+    } catch (error: any) {
+      await DesktopManager.getInstance().showMessage(
+        error.message,
+        "Error al procesar archivo",
+        "error"
+      );
+    }
+    
+    setShowUploadPopup(false);
+    setPendingFile(null);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       const file = files[0];
-      
-      let validExtensions = [];
-      let targetFolder = '';
-      let fileName = file.name;
-      
-      switch (uploadFileType) {
-        case 'context':
-          validExtensions = ['.txt'];
-          targetFolder = `${repoPath}/Localizacion/contextos_especificos`;
-          fileName = file.name.endsWith('.txt') ? file.name : `${file.name.split('.')[0]}.txt`;
-          break;
-        case 'glossary':
-          validExtensions = ['.csv', '.xlsx'];
-          targetFolder = `${repoPath}/Localizacion/glosarios_especificos`;
-          break;
-        case 'localize':
-          validExtensions = ['.csv', '.xlsx'];
-          targetFolder = `${repoPath}/Localizacion`;
-          fileName = file.name.endsWith('.csv') ? `${repoName}_localizar.csv` : `${repoName}_localizar.xlsx`;
-          break;
-      }
-
       const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      
+      // Validar extensiones permitidas
+      const validExtensions = ['.txt', '.csv', '.xlsx'];
       if (!validExtensions.includes(fileExtension)) {
         await DesktopManager.getInstance().showMessage(
-          `Solo se aceptan archivos ${validExtensions.join(' o ')}`,
+          `Solo se aceptan archivos .txt, .csv o .xlsx`,
           "Formato inválido",
           "error"
         );
         return;
       }
 
-      try {
-        const desktop = DesktopManager.getInstance();
-        
-        await desktop.showMessage(
-          `Archivo ${fileName} subido correctamente a:\n${targetFolder}`,
-          "Archivo guardado"
-        );
-        
-        const newFile: FileItem = {
-          name: fileName,
-          path: `${targetFolder}/${fileName}`,
-          isFile: true,
-          isDirectory: false
-        };
-        
-        // Actualizar las listas según el tipo
-        if (uploadFileType === 'context') {
-          setContextFiles(prev => [...prev, {
-            name: fileName,
-            path: newFile.path,
-            priority: prev.length + 1,
-            selected: true
-          }]);
-        } else if (uploadFileType === 'glossary') {
-          setGlossaryFiles(prev => [...prev, {
-            name: fileName,
-            path: newFile.path,
-            priority: prev.length + 1,
-            selected: true
-          }]);
-        } else {
-          setSelectedFile(newFile);
-        }
-        
-      } catch (error: any) {
-        await DesktopManager.getInstance().showMessage(
-          error.message,
-          "Error al procesar archivo",
-          "error"
-        );
-      }
+      // Guardar archivo pendiente y mostrar popup
+      setPendingFile({ file, extension: fileExtension });
+      setShowUploadPopup(true);
+      
+      // Limpiar el input
+      event.target.value = '';
     }
   };
 
@@ -361,8 +466,6 @@ const Landing: React.FC = () => {
     const files = event.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      
-      // Simular el upload usando el tipo seleccionado
       const fakeEvent = {
         target: {
           files: [file]
@@ -376,7 +479,7 @@ const Landing: React.FC = () => {
   const startLocalization = async () => {
     if (!selectedFile) {
       await DesktopManager.getInstance().showMessage(
-        "Por favor selecciona o sube un archivo CSV/XLSX para localizar",
+        "Por favor sube un archivo CSV/XLSX para localizar",
         "Archivo requerido",
         "warning"
       );
@@ -395,35 +498,12 @@ const Landing: React.FC = () => {
     const selectedContexts = contextFiles.filter(ctx => ctx.selected);
     const selectedGlossaries = glossaryFiles.filter(glos => glos.selected);
 
-    if (selectedContexts.length === 0 && contextFiles.length > 0) {
-      await DesktopManager.getInstance().showMessage(
-        "Por favor selecciona al menos un contexto o deselecciona todos si no quieres usar contextos",
-        "Contextos requeridos",
-        "warning"
-      );
-      return;
-    }
-
-    if (selectedGlossaries.length === 0 && glossaryFiles.length > 0) {
-      await DesktopManager.getInstance().showMessage(
-        "Por favor selecciona al menos un glosario o deselecciona todos si no quieres usar glosarios",
-        "Glosarios requeridos",
-        "warning"
-      );
-      return;
-    }
-
-    const languagesList = targetLanguages.map(lang => lang.name).join(", ");
-    const contextNames = selectedContexts.map(ctx => ctx.name).join(", ");
-    const glossaryNames = selectedGlossaries.map(glos => glos.name).join(", ");
-    
     await DesktopManager.getInstance().showMessage(
       `Iniciando localización de:\n` +
       `• Archivo: ${selectedFile.name}\n` +
-      `• Idiomas destino: ${languagesList}\n` +
-      `• Contextos: ${selectedContexts.length > 0 ? contextNames : "Ninguno"}\n` +
-      `• Glosarios: ${selectedGlossaries.length > 0 ? glossaryNames : "Ninguno"}\n\n` +
-      `Nota: Los cambios se guardan localmente hasta que decidas subirlos al repositorio remoto.`,
+      `• Idiomas destino: ${targetLanguages.map(lang => lang.name).join(", ")}\n` +
+      `• Contextos: ${selectedContexts.length > 0 ? selectedContexts.map(ctx => ctx.name).join(", ") : "Ninguno"}\n` +
+      `• Glosarios: ${selectedGlossaries.length > 0 ? selectedGlossaries.map(glos => glos.name).join(", ") : "Ninguno"}\n\n`,
       "Proceso de localización iniciado"
     );
   };
@@ -435,28 +515,6 @@ const Landing: React.FC = () => {
     acc[lang.region!].push(lang);
     return acc;
   }, {} as Record<string, Language[]>);
-
-  const getFileTypeIcon = () => {
-    switch (uploadFileType) {
-      case 'context':
-        return <BookOpen size={20} />;
-      case 'glossary':
-        return <FileText size={20} />;
-      case 'localize':
-        return <FileSpreadsheet size={20} />;
-    }
-  };
-
-  const getFileTypeText = () => {
-    switch (uploadFileType) {
-      case 'context':
-        return 'Archivo de contexto (.txt)';
-      case 'glossary':
-        return 'Archivo de glosario (.csv/.xlsx)';
-      case 'localize':
-        return 'Archivo a localizar (.csv/.xlsx)';
-    }
-  };
 
   if (loading) {
     return (
@@ -474,6 +532,18 @@ const Landing: React.FC = () => {
     <>
       <Navbar repoName={repoName} repoPath={repoPath} />
       
+      <UploadPopup
+        isOpen={showUploadPopup}
+        onClose={() => {
+          setShowUploadPopup(false);
+          setPendingFile(null);
+        }}
+        onConfirm={processFileUpload}
+        fileName={pendingFile?.file.name || ''}
+        fileExtension={pendingFile?.extension || ''}
+        repoName={repoName || ''}
+      />
+      
       <div className="landing-container">
         <div className="landing-content">
           {/* Panel izquierdo - Configuración */}
@@ -484,7 +554,7 @@ const Landing: React.FC = () => {
               <span className="panel-subtitle">Complete los campos para localizar los textos</span>
             </h2>
 
-            {/* Sección 1: CONTEXTOS */}
+            {/* Sección CONTEXTOS */}
             <div className="config-section">
               <div className="section-header">
                 <h3>
@@ -511,7 +581,6 @@ const Landing: React.FC = () => {
                           <button 
                             className="select-toggle"
                             onClick={() => toggleContextSelection(index)}
-                            title={ctx.selected ? "Deseleccionar" : "Seleccionar"}
                           >
                             {ctx.selected ? <CheckSquare size={16} /> : <Square size={16} />}
                           </button>
@@ -524,18 +593,12 @@ const Landing: React.FC = () => {
                               className="priority-btn"
                               onClick={() => moveContextUp(index)}
                               disabled={index === 0}
-                              title="Subir prioridad"
-                            >
-                              ↑
-                            </button>
+                            >↑</button>
                             <button 
                               className="priority-btn"
                               onClick={() => moveContextDown(index)}
                               disabled={index === contextFiles.length - 1}
-                              title="Bajar prioridad"
-                            >
-                              ↓
-                            </button>
+                            >↓</button>
                           </div>
                         </div>
                       ))}
@@ -550,7 +613,7 @@ const Landing: React.FC = () => {
               )}
             </div>
 
-            {/* Sección 2: GLOSARIOS */}
+            {/* Sección GLOSARIOS */}
             <div className="config-section">
               <div className="section-header">
                 <h3>
@@ -577,7 +640,6 @@ const Landing: React.FC = () => {
                           <button 
                             className="select-toggle"
                             onClick={() => toggleGlossarySelection(index)}
-                            title={glos.selected ? "Deseleccionar" : "Seleccionar"}
                           >
                             {glos.selected ? <CheckSquare size={16} /> : <Square size={16} />}
                           </button>
@@ -590,18 +652,12 @@ const Landing: React.FC = () => {
                               className="priority-btn"
                               onClick={() => moveGlossaryUp(index)}
                               disabled={index === 0}
-                              title="Subir prioridad"
-                            >
-                              ↑
-                            </button>
+                            >↑</button>
                             <button 
                               className="priority-btn"
                               onClick={() => moveGlossaryDown(index)}
                               disabled={index === glossaryFiles.length - 1}
-                              title="Bajar prioridad"
-                            >
-                              ↓
-                            </button>
+                            >↓</button>
                           </div>
                         </div>
                       ))}
@@ -616,7 +672,7 @@ const Landing: React.FC = () => {
               )}
             </div>
 
-            {/* Sección 3: Selección de idiomas */}
+            {/* Sección IDIOMAS */}
             <div className="config-section">
               <div className="section-header">
                 <h3>
@@ -649,7 +705,7 @@ const Landing: React.FC = () => {
                               onClick={() => toggleLanguage(lang)}
                             >
                               <div className="language-info">
-                                {isSelected ? <CheckSquare size={16} className="check-icon" /> : <Square size={16} className="check-icon" />}
+                                {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                                 <span className="language-name">
                                   <strong>{lang.name}</strong>
                                   <small>{lang.code} • {lang.country}</small>
@@ -673,7 +729,6 @@ const Landing: React.FC = () => {
               )}
             </div>
 
-            {/* Notas informativas */}
             <div className="info-note">
               <AlertCircle size={16} />
               <span>Los archivos seleccionados se usarán en el orden de prioridad indicado</span>
@@ -681,21 +736,21 @@ const Landing: React.FC = () => {
             
             <div className="info-note">
               <Check size={16} />
-              <span>Puedes seleccionar/deseleccionar contextos y glosarios según necesites</span>
+              <span>Puedes seleccionar/deseleccionar según necesites</span>
             </div>
           </div>
 
-          {/* Panel derecho - Área de trabajo */}
+          {/* Panel derecho - Área de trabajo - UNA SOLA ÁREA DE SUBIDA */}
           <div className="work-panel">
             <div className="work-header">
               <h3>Subir archivos al proyecto</h3>
               
-              {selectedFile && uploadFileType === 'localize' && (
+              {selectedFile && (
                 <div className="selected-file-info">
                   <FileSpreadsheet size={20} />
                   <div>
-                    <strong>{selectedFile.name}</strong>
-                    <small>{selectedFile.path}</small>
+                    <strong>Archivo a localizar:</strong>
+                    <small>{selectedFile.name}</small>
                   </div>
                   <button 
                     className="clear-btn"
@@ -708,85 +763,36 @@ const Landing: React.FC = () => {
               )}
             </div>
 
-            {/* Selector de tipo de archivo */}
-            <div className="file-type-selector">
-              <button 
-                className={`file-type-btn ${uploadFileType === 'context' ? 'active' : ''}`}
-                onClick={() => setUploadFileType('context')}
-              >
-                <BookOpen size={16} />
-                Contexto
-              </button>
-              <button 
-                className={`file-type-btn ${uploadFileType === 'glossary' ? 'active' : ''}`}
-                onClick={() => setUploadFileType('glossary')}
-              >
-                <FileText size={16} />
-                Glosario
-              </button>
-              <button 
-                className={`file-type-btn ${uploadFileType === 'localize' ? 'active' : ''}`}
-                onClick={() => setUploadFileType('localize')}
-              >
-                <FileSpreadsheet size={16} />
-                Localizar
-              </button>
-            </div>
-
-            {/* Área de drop/upload - ÚNICA */}
+            {/* Única área de drop/upload */}
             <div 
-              className={`drop-area ${uploadFileType === 'localize' && selectedFile ? 'has-file' : ''}`}
+              className="drop-area unified"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => document.getElementById('file-upload')?.click()}
             >
-              {getFileTypeIcon()}
+              <div className="drop-icon">
+                <FileSpreadsheet size={48} />
+                <FileText size={48} style={{ marginLeft: -20 }} />
+                <BookOpen size={48} style={{ marginLeft: -20 }} />
+              </div>
               
-              {uploadFileType === 'localize' && selectedFile ? (
-                <>
-                  <FileSpreadsheet size={64} className="file-icon" />
-                  <p className="file-ready">Archivo listo para localizar</p>
-                  <p className="file-note">
-                    <strong>{selectedFile.name}</strong>
-                  </p>
-                  <button className="change-file-btn" onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedFile(null);
-                  }}>
-                    Cambiar archivo
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="drop-title">{getFileTypeText()}</p>
-                  <p className="drop-description">
-                    Arrastra tu archivo aquí o haz click para seleccionar
-                  </p>
-                  <small>
-                    Se guardará en: {
-                      uploadFileType === 'context' ? 'Localizacion/contextos_especificos/' :
-                      uploadFileType === 'glossary' ? 'Localizacion/glosarios_especificos/' :
-                      `Localizacion/ (como ${repoName}_localizar.*)`
-                    }
-                  </small>
-                  
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept={
-                      uploadFileType === 'context' ? '.txt' :
-                      uploadFileType === 'glossary' ? '.csv,.xlsx' :
-                      '.csv,.xlsx'
-                    }
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                  />
-                </>
-              )}
+              <p className="drop-title">
+                Arrastra cualquier archivo o haz click para subir
+              </p>
+              <p className="drop-description">
+                .txt para contextos • .csv o .xlsx para glosarios o archivo a localizar
+              </p>
+              
+              <input
+                id="file-upload"
+                type="file"
+                accept=".txt,.csv,.xlsx"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
             </div>
 
-            {/* Botón de acción */}
             <div className="action-section">
               <button 
                 className={`localize-btn ${selectedFile && targetLanguages.length > 0 ? 'active' : 'disabled'}`}
@@ -799,11 +805,6 @@ const Landing: React.FC = () => {
                   : 'Selecciona archivo e idiomas para continuar'
                 }
               </button>
-              
-              <p className="action-note">
-                <strong>Nota:</strong> Los cambios se guardan localmente. Para subirlos al repositorio remoto, 
-                deberás hacerlo manualmente desde la sección de "Historial de cambios".
-              </p>
             </div>
           </div>
         </div>
