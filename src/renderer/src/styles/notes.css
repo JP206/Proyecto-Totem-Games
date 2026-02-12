@@ -1,0 +1,120 @@
+.notes-container {
+  display: flex;
+  height: 100vh;
+  background: #eee;
+}
+
+/* LEFT PANEL */
+
+.notes-list {
+  width: 350px;
+  background: #f4e9b5;
+  padding: 20px;
+}
+
+.note-item {
+  padding: 10px;
+  border: 1px solid #999;
+  margin-bottom: 10px;
+  cursor: pointer;
+  background: white;
+}
+
+.note-item:hover {
+  background: #ddd;
+}
+
+/* MODAL */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal {
+  width: 600px;
+  background: white;
+  padding: 20px;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  flex: 1;
+  margin: 0 10px;
+  font-size: 18px;
+}
+
+.modal-content {
+  width: 100%;
+  height: 200px;
+  margin-top: 15px;
+}
+
+.modal-actions {
+  margin-top: 15px;
+  text-align: right;
+}
+
+.save-button {
+  padding: 6px 12px;
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* CONFIRM DELETE */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirm-box {
+  background: white;
+  padding: 20px;
+  border: 1px solid #444;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.delete-confirm {
+  background: #e57373;
+  padding: 5px 10px;
+}
+
+.cancel-confirm {
+  background: #81c784;
+  padding: 5px 10px;
+}
+
+.header button {
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.header .add {
+  border: 2px solid green;
+  background: white;
+}
