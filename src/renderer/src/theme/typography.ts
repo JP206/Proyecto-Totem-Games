@@ -1,3 +1,5 @@
+// src/renderer/src/themes/typography.ts
+
 export const typography = {
   fontFamily: {
     title: "'futura-lt-w01-book', 'futura-lt-w05-book', sans-serif",

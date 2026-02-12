@@ -163,7 +163,9 @@ const Login: React.FC = () => {
             </li>
             <li>Haz clic en "Generate new token (classic)"</li>
             <li>
-              Completa "Note" con lo que gustes y selecciona la expiración deseada
+              Completa "Note" con lo que gustes y selecciona la expiración deseada. 
+            </li>
+            <li> Marca
               <code className="code-tag">repo</code> y
               <code className="code-tag">user</code>
             </li>
