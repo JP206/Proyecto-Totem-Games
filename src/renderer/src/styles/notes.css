@@ -1,120 +1,207 @@
+/* ================= CONTENEDOR ================= */
+
 .notes-container {
   display: flex;
   height: 100vh;
-  background: #eee;
+  background-color: var(--color-primary-main);
+  color: var(--color-neutral-lighter);
 }
 
-/* LEFT PANEL */
+/* ================= PANEL IZQUIERDO ================= */
 
 .notes-list {
-  width: 350px;
-  background: #f4e9b5;
-  padding: 20px;
+  width: 600px;
+  padding: 30px;
+  background-color: var(--color-primary-subtle);
+  border-right: 2px solid var(--color-neutral-medium);
+  display: flex;
+  flex-direction: column;
 }
 
-.note-item {
-  padding: 10px;
-  border: 1px solid #999;
-  margin-bottom: 10px;
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.notes-header h2 {
+  margin: 0;
+  color: var(--color-white);
+}
+
+.add {
+  padding: 8px 18px;
+  background-color: var(--color-primary-main);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
-  background: white;
+  transition: 0.2s;
+}
+
+.add:hover {
+  background-color: var(--color-primary-light);
+}
+
+/* ================= ITEMS ================= */
+
+.note-item {
+  background-color: var(--color-neutral-dark);
+  border: 1px solid var(--color-neutral-medium);
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
 .note-item:hover {
-  background: #ddd;
+  border-color: var(--color-secondary-cyan);
+  transform: translateY(-2px);
 }
 
-/* MODAL */
+/* ================= MODAL OVERLAY ================= */
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: center;   /* CENTRADO HORIZONTAL */
+  align-items: center;       /* CENTRADO VERTICAL */
+  z-index: 1000;
 }
 
+/* ================= MODAL ================= */
+
 .modal {
-  width: 600px;
-  background: white;
-  padding: 20px;
-  position: relative;
+  background-color: var(--color-neutral-dark);
+  width: 70%;
+  max-width: 900px;
+  max-height: 85vh;
+  border-radius: 8px;
+  border: 2px solid var(--color-neutral-medium);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;   /* 🔥 evita que el contenido se salga */
 }
+
+/* ================= HEADER ================= */
 
 .modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: var(--color-neutral-light);
+  cursor: pointer;
 }
 
 .modal-title {
   flex: 1;
-  margin: 0 10px;
-  font-size: 18px;
-}
-
-.modal-content {
-  width: 100%;
-  height: 200px;
-  margin-top: 15px;
-}
-
-.modal-actions {
-  margin-top: 15px;
-  text-align: right;
-}
-
-.save-button {
-  padding: 6px 12px;
+  font-size: 22px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-neutral-medium);
+  color: var(--color-white);
+  outline: none;
+  padding: 5px 0;
 }
 
 .delete-button {
-  background: transparent;
+  background: none;
   border: none;
-  cursor: pointer;
   font-size: 18px;
+  cursor: pointer;
 }
 
-/* CONFIRM DELETE */
+/* ================= TEXTAREA ================= */
+
+.modal-content {
+  flex: 1;                    /* ocupa espacio disponible */
+  width: 100%;
+  min-height: 200px;
+  resize: none;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid var(--color-neutral-medium);
+  background-color: var(--color-neutral-darker);
+  color: var(--color-white);
+  font-size: 14px;
+  box-sizing: border-box;     /* 🔥 evita overflow lateral */
+  overflow-y: auto;           /* scroll interno si crece */
+}
+
+/* ================= ACTIONS ================= */
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save-button {
+  padding: 8px 20px;
+  background-color: var(--color-secondary-cyan);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.save-button:hover {
+  background-color: var(--color-secondary-cyan-hover);
+}
+
+/* ================= CONFIRM DELETE ================= */
 
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 1100;
 }
 
 .confirm-box {
-  background: white;
-  padding: 20px;
-  border: 1px solid #444;
+  background-color: var(--color-neutral-dark);
+  border: 2px solid var(--color-neutral-medium);
+  border-radius: 8px;
+  padding: 25px;
+  width: 320px;
+  text-align: center;
 }
 
 .confirm-actions {
+  margin-top: 20px;
   display: flex;
   justify-content: space-between;
-  margin-top: 10px;
 }
 
 .delete-confirm {
-  background: #e57373;
-  padding: 5px 10px;
-}
-
-.cancel-confirm {
-  background: #81c784;
-  padding: 5px 10px;
-}
-
-.header button {
-  padding: 8px 14px;
+  background-color: var(--color-error);
+  color: var(--color-white);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.header .add {
-  border: 2px solid green;
-  background: white;
+.cancel-confirm {
+  background-color: var(--color-success);
+  color: var(--color-white);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
 }

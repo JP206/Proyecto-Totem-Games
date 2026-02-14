@@ -154,6 +154,7 @@ export default function Notes() {
 
                             <input
                                 className="modal-title"
+                                placeholder="Título"
                                 value={editedTitle}
                                 onChange={e => setEditedTitle(e.target.value)}
                             />
@@ -168,6 +169,7 @@ export default function Notes() {
 
                         <textarea
                             className="modal-content"
+                            placeholder="Descripción"
                             value={editedDescription}
                             onChange={e => setEditedDescription(e.target.value)}
                         />

@@ -20,7 +20,7 @@ function App() {
     <Router>
       <Routes>
         {/* Por defecto va a Login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Navigate to="/notes" />} />
 
         {/* Ruta para Login */}
         <Route path="/login" element={<Login />} />
