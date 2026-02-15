@@ -9,6 +9,7 @@ import {
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
+import Issues from "./pages/Issues";
 import { injectTheme } from "./theme";
 
 function App() {
@@ -30,6 +31,9 @@ function App() {
         
         {/* Ruta para Landing de un proyecto */}
         <Route path="/project/:projectName" element={<Landing />} />
+
+        {/* Ruta para Issues */}
+        <Route path="/issues" element={ < Issues /> } />
       </Routes>
     </Router>
   );

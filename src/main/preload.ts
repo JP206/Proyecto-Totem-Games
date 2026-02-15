@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     token?: string;
   }) => ipcRenderer.invoke("git-clone", data),
 
+  getIssues: (data: {
+    repoName: string;
+    repoOwner: string;
+    token: string;
+  }) => ipcRenderer.invoke("git-get-issues", data),
+
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
 

@@ -3,6 +3,7 @@ import {
   ElectronAPI,
   MessageData,
   GitCloneData,
+  GitGetIssuesData,
   GitCommandData,
   SaveFileData
 } from "./electron";
@@ -74,6 +75,10 @@ class DesktopManager {
   // Git operations
   async cloneRepository(data: GitCloneData) {
     return await this.electron.cloneRepository(data);
+  }
+
+  async getIssues(data: GitGetIssuesData) {
+    return await this.electron.getIssues(data);
   }
 
   async gitCommand(data: GitCommandData): Promise<string> {
