@@ -20,7 +20,7 @@ export interface IssueData {
 
 export interface GitCommandData {
   command: string;
-  cwd: string; // Current working directory
+  cwd: string;
 }
 
 export interface MessageData {
@@ -38,10 +38,19 @@ export interface FileItem {
   size: number;
 }
 
+export interface SaveFileData {
+  content: number[]; // Array de bytes del archivo
+  destinationPath: string;
+  fileName: string;
+}
+
 export interface ElectronAPI {
   // Sistema de archivos
   selectFolder: () => Promise<string | null>;
   readFolder: (path: string) => Promise<FileItem[]>;
+  fileExists: (path: string) => Promise<boolean>;
+  deleteFile: (path: string) => Promise<boolean>;
+  saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
 
   // Git operations
   cloneRepository: (
@@ -70,11 +79,6 @@ export interface ElectronAPI {
   onMenuSelectFolder: (callback: () => void) => void;
   onMenuRefreshRepos: (callback: () => void) => void;
   onMenuLogout: (callback: () => void) => void;
-
-  // Información
-  platform: string;
-  appVersion: string;
-  isDev: boolean;
 }
 
 declare global {

@@ -6,6 +6,7 @@ import {
   RepoInformation,
   GitCommandData,
   IssueData,
+  SaveFileData
 } from "./electron";
 
 class DesktopManager {
@@ -25,7 +26,6 @@ class DesktopManager {
   }
 
   private setupEventListeners(): void {
-    // Escuchar eventos del menú
     this.electron.onMenuSelectFolder(() => {
       window.dispatchEvent(new CustomEvent("desktop:select-folder"));
     });
@@ -48,6 +48,29 @@ class DesktopManager {
 
   async readFolder(path: string) {
     return await this.electron.readFolder(path);
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    return await this.electron.fileExists(path);
+  }
+
+  async deleteFile(path: string): Promise<boolean> {
+    return await this.electron.deleteFile(path);
+  }
+
+  async saveFile(file: File, destinationPath: string): Promise<{ success: boolean; path: string }> {
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Convertir a array de números para enviar por IPC
+    const byteArray = Array.from(new Uint8Array(arrayBuffer));
+    
+    const saveData: SaveFileData = {
+      content: byteArray,
+      destinationPath: destinationPath.substring(0, destinationPath.lastIndexOf('/')),
+      fileName: destinationPath.substring(destinationPath.lastIndexOf('/') + 1)
+    };
+    
+    return await this.electron.saveFile(saveData);
   }
 
   // Git operations
@@ -99,24 +122,6 @@ class DesktopManager {
 
   async openInBrowser(url: string): Promise<void> {
     await this.electron.openExternal(url);
-  }
-
-  // Información
-  getPlatform(): string {
-    return this.electron.platform;
-  }
-
-  getAppVersion(): string {
-    return this.electron.appVersion;
-  }
-
-  isDevelopment(): boolean {
-    return this.electron.isDev;
-  }
-
-  // Verificar si estamos en Electron
-  static isElectron(): boolean {
-    return !!window.electronAPI;
   }
 }
 
