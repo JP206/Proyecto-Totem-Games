@@ -460,7 +460,7 @@ ipcMain.handle(
   },
 );
 
-// 8. EVENTOS DEL MENÚ (para ser disparados desde el menú de la aplicación)
+// 8. EVENTOS DEL MENÚ
 ipcMain.on("menu:select-folder", () => {
   if (mainWindow) {
     mainWindow.webContents.send("menu:select-folder");
@@ -478,6 +478,52 @@ ipcMain.on("menu:logout", () => {
     mainWindow.webContents.send("menu:logout");
   }
 });
+
+// 9. VERIFICAR SI ARCHIVO EXISTE
+ipcMain.handle("file-exists", async (event: any, filePath: string) => {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+// 10. ELIMINAR ARCHIVO
+ipcMain.handle("delete-file", async (event: any, filePath: string) => {
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch (error) {
+    console.error("Error eliminando archivo:", error);
+    return false;
+  }
+});
+
+// 11. GUARDAR ARCHIVO (recibe array de bytes)
+ipcMain.handle(
+  "save-file",
+  async (
+    event: any,
+    data: { content: number[]; destinationPath: string; fileName: string },
+  ) => {
+    try {
+      // Asegurar que la carpeta destino existe
+      await fs.mkdir(data.destinationPath, { recursive: true });
+
+      const fullPath = path.join(data.destinationPath, data.fileName);
+
+      // Convertir array de números a Buffer y guardar
+      const buffer = Buffer.from(data.content);
+      await fs.writeFile(fullPath, buffer);
+
+      return { success: true, path: fullPath };
+    } catch (error) {
+      console.error("Error guardando archivo:", error);
+      throw error;
+    }
+  },
+);
 
 // ========== INICIALIZACIÓN ==========
 app.whenReady().then(() => {

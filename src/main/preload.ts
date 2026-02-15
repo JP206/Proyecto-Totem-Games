@@ -59,4 +59,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 6. INFO DEL SISTEMA
   platform: process.platform,
   isDev: process.env.NODE_ENV === "development",
+
+  // 7. VERIFICAR SI ARCHIVO EXISTE
+  fileExists: (path: string) => ipcRenderer.invoke("file-exists", path),
+
+  // 8. ELIMINAR ARCHIVO
+  deleteFile: (path: string) => ipcRenderer.invoke("delete-file", path),
+
+  // 9. GUARDAR ARCHIVO
+  saveFile: (data: { content: number[]; destinationPath: string; fileName: string }) =>
+    ipcRenderer.invoke("save-file", data),
 });
