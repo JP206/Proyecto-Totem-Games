@@ -1,5 +1,4 @@
-// src/renderer/src/pages/Navbar.tsx
-
+// src/renderer/src/components/Navbar.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,12 +14,11 @@ import {
 import "../styles/navbar.css";
 
 interface NavbarProps {
-  projectName?: string;
   repoPath?: string;
   repoName?: string;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ projectName, repoPath, repoName }) => {
+const Navbar: React.FC<NavbarProps> = ({ repoPath, repoName }) => {
   const navigate = useNavigate();
 
   return (
@@ -52,10 +50,7 @@ const Navbar: React.FC<NavbarProps> = ({ projectName, repoPath, repoName }) => {
 
       {/* RIGHT SECTION: Todos los botones de funcionalidades */}
       <div className="navbar-right">
-        <button 
-          className="nav-btn active" 
-          title="Localización"
-        >
+        <button className="nav-btn active" title="Localización">
           <Layers size={20} />
         </button>
         
