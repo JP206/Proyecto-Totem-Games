@@ -7,12 +7,13 @@
     "build": "tsc",
     "start": "npm run build && electron .",
     "probar": "rmdir /s /q dist && cd src/renderer && rmdir /s /q build && npm run build && cd ../.. && npm start",
-    "inicializar_proy": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && npm i react-scripts --force && npm i lucide-react && cd src/renderer && npm i && cd ../..",
+    "inicializar_proy": "npm i && npm i electron electron-store && npm i --save-dev @types/node typescript electron-builder concurrently && npm i typescript && npm i react-router-dom && npm i react-scripts --force && npm i lucide-react && npm i diff2html --force && cd src/renderer && npm i && cd ../..",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix_probar": "cd src/renderer && npm run build && cd ../.. && npm start"
   },
   "dependencies": {
+    "diff2html": "^3.4.56",
     "electron-store": "^8.2.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",

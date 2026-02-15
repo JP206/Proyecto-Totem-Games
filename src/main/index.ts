@@ -176,11 +176,7 @@ ipcMain.handle(
   "git-get-issues",
   async (
     event: any,
-    data: {
-      repoName: string;
-      repoOwner: string;
-      token: string;
-    },
+    data: RepoInformation,
     label: string
   ) => {
     try {
@@ -338,11 +334,7 @@ ipcMain.handle(
   "git-get-notes",
   async (
     event: any,
-    data: {
-      repoName: string;
-      repoOwner: string;
-      token: string;
-    },
+    data: RepoInformation
   ) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=documentation`;
@@ -378,11 +370,7 @@ ipcMain.handle(
   "git-get-changes",
   async (
     event: any,
-    data: {
-      repoName: string;
-      repoOwner: string;
-      token: string;
-    }
+    data: RepoInformation
   ) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/commits`;
@@ -401,14 +389,14 @@ ipcMain.handle(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error en git-clone:", errorMessage);
+      console.error("Error obteniendo cambios:", errorMessage);
 
       // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
 
-      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+      throw new Error(`Error obteniendo cambios: ${errorMessage}`);
     }
   },
 );
@@ -416,40 +404,29 @@ ipcMain.handle(
 // OBTENER DIFF ENTRE DOS COMMITS
 ipcMain.handle(
   "git-get-diff",
-  async (
+  (
     event: any,
     base: string,
     head: string,
-    data: {
-      repoName: string;
-      repoOwner: string;
-      token: string;
-    }
+    data: RepoInformation
   ) => {
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/compare/${base}...${head}`,
-        {
-          headers: {
-            Authorization: `Bearer ${data.token}`,
-            Accept: "application/vnd.github.v3.diff",
-          },
-        }
-      );
-
-      return await response.text();
+      console.log(data)
+      const url: string = `https://github.com/${data.repoOwner}/${data.repoName}/compare/${base}..${head}`
+     
+      return url;
 
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error en git-clone:", errorMessage);
+      console.error("Error comparando diff:", errorMessage);
 
       // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
 
-      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+      throw new Error(`Error comparando diff: ${errorMessage}`);
     }
   },
 );

@@ -8,13 +8,13 @@ export default function ChangeHistory() {
 
     const repoOwner = "biancaluzz";
     const repoName = "juego-totem-games";
+    const desktop = DesktopManager.getInstance();
 
     useEffect(() => {
         loadChanges();
     }, []);
 
     const loadChanges = async () => {
-        const desktop = DesktopManager.getInstance();
         const token = await desktop.getConfig("github_token");
         if (!token) return;
 
@@ -24,28 +24,22 @@ export default function ChangeHistory() {
             token,
         });
 
-        data.sort((a, b) =>
-            new Date(b.commit.author.date).getTime() - new Date(a.commit.author.date).getTime()
-        );
-
-        data.map ((change: any) => {
-            change.commit.author.date = new Date(change.commit.author.date).toLocaleString();
-            return change;
-        });
-
         setChanges(data);
     };
 
-    const openDiff = (index: number) => {
-        const current = changes[index];
-        const previous = changes[index + 1];
+    const openDiff = async (index: number) => {
+        const token = await desktop.getConfig("github_token");
+        if (!token) return;
 
-        if (!previous) return; // Si es el último commit, no hay anterior
-
-        const head = current.sha;
-        const base = previous.sha;
-
-        const compareUrl = `https://github.com/${repoOwner}/${repoName}/compare/${base}...${head}`;
+        const compareUrl = await desktop.getDiff(
+            changes[0].sha,
+            changes[index].sha,
+            {
+                repoName,
+                repoOwner,
+                token,
+            }
+        );
 
         setSelectedUrl(compareUrl);
     };
