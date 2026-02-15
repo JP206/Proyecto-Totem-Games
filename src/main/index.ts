@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Store from "electron-store";
+import { IssueData, RepoInformation } from "../renderer/src/utils/electron";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -181,7 +182,7 @@ ipcMain.handle(
     },
   ) => {
     try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=bug`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -200,6 +201,127 @@ ipcMain.handle(
       console.error("Error en git-clone:", errorMessage);
 
       // Verificar si es error de autenticación
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// MARCAR ISSUE COMO RESUELTO
+ipcMain.handle(
+  "git-mark-issue-as-resolved",
+  async (
+    event: any,
+    issueId: number,
+    data: RepoInformation
+  ) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueId}`;
+      
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          "state": "closed"
+        })
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+
+      // Verificar si es error de autenticación
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// EDITAR ISSUE
+ipcMain.handle(
+  "git-edit-issue",
+  async (
+    event: any,
+    issueData: IssueData,
+    data: RepoInformation
+  ) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueData.id}`;
+      
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          ...(issueData.title != null && { title: issueData.title }),
+          ...(issueData.description != null && { body: issueData.description }),
+          ...(issueData.assignees != null && { assignees: issueData.assignees }),
+        })
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// CREAR ISSUE
+ipcMain.handle(
+  "git-create-issue",
+  async (
+    event: any,
+    issueData: IssueData,
+    data: RepoInformation
+  ) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          ...{ title: issueData.title },
+          ...(issueData.description != null && { body: issueData.description }),
+          ...(issueData.assignees != null && { assignees: issueData.assignees }),
+          "labels": ["bug"]
+        })
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }

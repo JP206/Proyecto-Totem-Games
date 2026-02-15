@@ -3,8 +3,9 @@ import {
   ElectronAPI,
   MessageData,
   GitCloneData,
-  GitGetIssuesData,
+  RepoInformation,
   GitCommandData,
+  IssueData,
   SaveFileData
 } from "./electron";
 
@@ -77,8 +78,20 @@ class DesktopManager {
     return await this.electron.cloneRepository(data);
   }
 
-  async getIssues(data: GitGetIssuesData) {
+  async getIssues(data: RepoInformation) {
     return await this.electron.getIssues(data);
+  }
+
+  async markIssueAsResolved(issueId: number, repoInfo: RepoInformation) {
+    return await this.electron.markIssueAsResolved(issueId, repoInfo);
+  }
+
+  async editIssue(issueData: IssueData, repoInfo: RepoInformation) {
+    return await this.electron.editIssue(issueData, repoInfo);
+  }
+
+  async createIssue(issueData: IssueData, repoInfo: RepoInformation) {
+    return await this.electron.createIssue(issueData, repoInfo);
   }
 
   async gitCommand(data: GitCommandData): Promise<string> {
