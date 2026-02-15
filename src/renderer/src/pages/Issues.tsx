@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import DesktopManager from "../utils/desktop";
-import "../styles/issues.css";
 import { IssueData } from "../utils/electron";
+import "../styles/issues.css";
 
 export default function Issues() {
   const [issues, setIssues] = useState<any[]>([]);
@@ -20,11 +20,14 @@ export default function Issues() {
     const token = await desktop.getConfig("github_token");
     if (!token) return;
 
-    const data = await desktop.getIssues({
-      repoName: "juego-totem-games",
-      repoOwner: "biancaluzz",
-      token,
-    });
+    const data = await desktop.getIssues(
+      {
+        repoName: "juego-totem-games",
+        repoOwner: "biancaluzz",
+        token,
+      },
+      "bug"
+    );
 
     const formattedIssues = data
       .filter((issue: any) => !issue.pull_request)
@@ -39,12 +42,12 @@ export default function Issues() {
     setIssues(formattedIssues);
   };
 
-  const markAsResolved = async (issueId: number) => {
+  const markAsResolved = async () => {
     const desktop = DesktopManager.getInstance();
     const token = await desktop.getConfig("github_token");
     if (!token) return;
 
-    await desktop.markIssueAsResolved(issueId, {
+    await desktop.markIssueAsResolved(selectedIssue.issueId, {
       repoName: "juego-totem-games",
       repoOwner: "biancaluzz",
       token,
@@ -68,13 +71,14 @@ export default function Issues() {
         description: editedDescription,
         id: null,
         assignees: null,
+        labels: ["bug"]
       }
 
       response = await desktop.createIssue(issueData, {
-          repoName: "juego-totem-games",
-          repoOwner: "biancaluzz",
-          token
-        }
+        repoName: "juego-totem-games",
+        repoOwner: "biancaluzz",
+        token
+      }
       )
     }
     else {
@@ -84,13 +88,14 @@ export default function Issues() {
         description: editedDescription,
         id: selectedIssue.id,
         assignees: null,
+        labels: null
       }
 
       response = await desktop.editIssue(issueData, {
-          repoName: "juego-totem-games",
-          repoOwner: "biancaluzz",
-          token
-        }
+        repoName: "juego-totem-games",
+        repoOwner: "biancaluzz",
+        token
+      }
       )
     }
 
@@ -182,7 +187,7 @@ export default function Issues() {
               {selectedIssue && selectedIssue.status !== "closed" && (
                 <button
                   className="resolve"
-                  onClick={() => markAsResolved(selectedIssue.id)}
+                  onClick={() => markAsResolved()}
                 >
                   Marcar como resuelto
                 </button>

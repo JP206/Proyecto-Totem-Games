@@ -78,8 +78,8 @@ class DesktopManager {
     return await this.electron.cloneRepository(data);
   }
 
-  async getIssues(data: RepoInformation) {
-    return await this.electron.getIssues(data);
+  async getIssues(data: RepoInformation, label: string) {
+    return await this.electron.getIssues(data, label);
   }
 
   async markIssueAsResolved(issueId: number, repoInfo: RepoInformation) {

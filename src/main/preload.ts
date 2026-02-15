@@ -15,11 +15,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     token?: string;
   }) => ipcRenderer.invoke("git-clone", data),
 
-  getIssues: (data: {
-    repoName: string;
-    repoOwner: string;
-    token: string;
-  }) => ipcRenderer.invoke("git-get-issues", data),
+  getIssues: (data: RepoInformation, label: string) => ipcRenderer.invoke("git-get-issues", data, label),
 
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-mark-issue-as-resolved", issueId, repoInfo),

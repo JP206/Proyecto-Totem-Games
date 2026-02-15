@@ -16,6 +16,7 @@ export interface IssueData {
   description: string;
   id: number | null; // Null if creating an issue
   assignees: string[] | null;
+  labels: string[] | null;
 }
 
 export interface GitCommandData {
@@ -58,7 +59,7 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; output: string; path: string }>;
   gitCommand: (data: GitCommandData) => Promise<string>;
 
-  getIssues: (data: RepoInformation) => Promise<IssueData[]>;
+  getIssues: (data: RepoInformation, label: string) => Promise<IssueData[]>;
 
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) => Promise<boolean>;
 

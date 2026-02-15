@@ -6,11 +6,12 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { injectTheme } from "./theme";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
 import Issues from "./pages/Issues";
-import { injectTheme } from "./theme";
+import Notes from "./pages/Notes";
 
 function App() {
   useEffect(() => {
@@ -34,6 +35,9 @@ function App() {
 
         {/* Ruta para Issues */}
         <Route path="/issues" element={ < Issues /> } />
+
+        {/* Ruta para Notes */}
+        <Route path="/notes" element={ < Notes /> } />
       </Routes>
     </Router>
   );

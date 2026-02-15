@@ -180,9 +180,10 @@ ipcMain.handle(
       repoOwner: string;
       token: string;
     },
+    label: string
   ) => {
     try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=bug`;
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=${label}`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -290,7 +291,7 @@ ipcMain.handle(
   },
 );
 
-// CREAR ISSUE
+// CREAR ISSUE/NOTA
 ipcMain.handle(
   "git-create-issue",
   async (
@@ -312,7 +313,7 @@ ipcMain.handle(
           ...{ title: issueData.title },
           ...(issueData.description != null && { body: issueData.description }),
           ...(issueData.assignees != null && { assignees: issueData.assignees }),
-          "labels": ["bug"]
+          ...(issueData.labels != null && { labels: issueData.labels }),
         })
       });
 
@@ -322,6 +323,46 @@ ipcMain.handle(
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// OBTENER NOTAS GIT
+ipcMain.handle(
+  "git-get-notes",
+  async (
+    event: any,
+    data: {
+      repoName: string;
+      repoOwner: string;
+      token: string;
+    },
+  ) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=documentation`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      return response.json();
+            
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-clone:", errorMessage);
+
+      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
