@@ -161,12 +161,15 @@ const Login: React.FC = () => {
             <li>
               Ve a GitHub Settings → Developer settings → Personal access tokens
             </li>
-            <li>Haz clic en "Generate new token"</li>
+            <li>Haz clic en "Generate new token (classic)"</li>
             <li>
-              Selecciona los scopes:
+              Completa "Note" con lo que gustes y selecciona la expiración deseada. 
+            </li>
+            <li> Marca
               <code className="code-tag">repo</code> y
               <code className="code-tag">user</code>
             </li>
+            <li>Presiona "Generate token"</li>
             <li>Copia el token y pégalo aquí</li>
           </ol>
         </div>

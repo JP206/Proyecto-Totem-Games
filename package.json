@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "isomorphic-git": "^1.36.2",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

@@ -1,0 +1,252 @@
+/* src/renderer/src/styles/navbar.css */
+/* Navbar container */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 70px;
+  padding: 0 24px;
+  background-color: var(--color-primary-dark);
+  border-bottom: 2px solid var(--color-primary-main);
+  color: var(--color-white);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  font-family: var(--font-body);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left section */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 52px;
+}
+
+/* Right section */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+/* Base button styles */
+.nav-btn,
+.nav-btn-explorer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--color-white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.nav-btn svg,
+.nav-btn-explorer svg {
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+  width: 20px;
+  height: 20px;
+  color: var(--color-white);
+}
+
+.nav-btn-explorer svg {
+  width: 22px;
+  height: 22px;
+  color: var(--color-secondary-pink);
+}
+
+.nav-btn:hover,
+.nav-btn-explorer:hover {
+  background-color: var(--color-primary-main);
+  border-color: var(--color-primary-light);
+}
+
+.nav-btn:hover svg {
+  color: var(--color-secondary-pink);
+}
+
+.nav-btn-explorer:hover svg {
+  color: var(--color-white);
+}
+
+.nav-btn.active {
+  background-color: var(--color-primary-main);
+  border-color: var(--color-primary-light);
+}
+
+.nav-btn.active svg {
+  color: var(--color-secondary-pink);
+}
+
+/* Project info */
+.project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.project-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--color-white);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-family: var(--font-title);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.project-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.project-title svg {
+  color: var(--color-secondary-pink);
+  flex: 0 0 auto;
+}
+
+.project-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-secondary-pink);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+  width: 100%;
+}
+
+.project-path svg {
+  flex: 0 0 auto;
+}
+
+/* TOOLTIPS */
+.nav-btn[title]:hover::after,
+.nav-btn-explorer[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  top: calc(100% + 8px);
+  padding: 6px 12px;
+  background-color: var(--color-neutral-darker);
+  color: var(--color-white);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary-main);
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  max-width: calc(100vw - 48px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-btn[title]:hover::before,
+.nav-btn-explorer[title]:hover::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent var(--color-neutral-darker) transparent;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+/* Tooltip positions */
+.nav-btn[title]:hover::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-btn[title]:hover::before {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.nav-btn-explorer[title]:hover::after {
+  left: 0;
+  transform: translateX(0);
+}
+
+.nav-btn-explorer[title]:hover::before {
+  left: 22px;
+  transform: translateX(0);
+}
+
+.nav-btn[title="Contextos / Glosarios"]:hover::after,
+.navbar-right .nav-btn:last-child[title]:hover::after {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
+
+.nav-btn[title="Contextos / Glosarios"]:hover::before,
+.navbar-right .nav-btn:last-child[title]:hover::before {
+  left: auto;
+  right: 22px;
+  transform: translateX(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .project-title { font-size: var(--text-base); }
+  .project-path { font-size: 11px; }
+  .navbar-left { gap: 12px; }
+}
+
+@media (max-width: 640px) {
+  .project-info { display: none; }
+  .navbar-left { min-width: 52px; gap: 0; }
+  .navbar { padding: 0 16px; }
+  .navbar-right { gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .navbar { padding: 0 12px; }
+  .navbar-right { gap: 4px; }
+  .nav-btn, .nav-btn-explorer { padding: 8px; }
+  .nav-btn svg { width: 18px; height: 18px; }
+  .nav-btn-explorer svg { width: 20px; height: 20px; }
+}
+
+@media (max-width: 360px) {
+  .navbar { padding: 0 8px; }
+  .navbar-right { gap: 2px; }
+  .navbar-right .nav-btn:not(.active):not(:first-child) { display: none; }
+}
+
+.nav-btn.active { animation: buttonPulse 2s infinite; }
+
+@keyframes buttonPulse {
+  0% { box-shadow: 0 0 0 0 rgba(252, 209, 216, 0.3); }
+  70% { box-shadow: 0 0 0 6px rgba(252, 209, 216, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(252, 209, 216, 0); }
+}
+
+/* Print */
+@media print { .navbar { display: none; } }
