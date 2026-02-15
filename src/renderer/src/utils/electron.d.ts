@@ -58,6 +58,10 @@ export interface ElectronAPI {
 
   createIssue: (issueData: IssueData, repoInfo: RepoInformation) => Promise<boolean>;
 
+  getChanges: (repoInfo: RepoInformation) => Promise<any[]>;
+
+  getDiff: (base: string, head: string, repoInfo: RepoInformation) => Promise<any>;
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;

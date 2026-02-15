@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
+import Changes from "./pages/ChangeHistory";
 
 function App() {
   useEffect(() => {
@@ -20,7 +21,7 @@ function App() {
     <Router>
       <Routes>
         {/* Por defecto va a Login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Navigate to="/changes" />} />
 
         {/* Ruta para Login */}
         <Route path="/login" element={<Login />} />
@@ -33,6 +34,9 @@ function App() {
 
         {/* Ruta para Notes */}
         <Route path="/notes" element={ < Notes /> } />
+
+        {/* Ruta para Historial de Cambios */}
+        <Route path="/changes" element={ < Changes /> } />
       </Routes>
     </Router>
   );

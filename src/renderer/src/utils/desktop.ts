@@ -71,6 +71,14 @@ class DesktopManager {
     return await this.electron.createIssue(issueData, repoInfo);
   }
 
+  async getChanges(data: RepoInformation) {
+    return await this.electron.getChanges(data);
+  }
+
+  async getDiff(base: string, head: string, repoInfo: RepoInformation): Promise<any> {
+    return await this.electron.getDiff(base, head, repoInfo);
+  }
+
   async gitCommand(data: GitCommandData): Promise<string> {
     return await this.electron.gitCommand(data);
   }
