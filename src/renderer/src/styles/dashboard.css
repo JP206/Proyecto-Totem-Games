@@ -11,9 +11,11 @@
 
 /* Dashboard container */
 .dashboard {
+  height: 100vh;
+  width: 100vw;
+  box-sizing: border-box;
   padding: 20px;
   background-color: var(--color-primary-main);
-  min-height: 100vh;
   color: var(--color-neutral-lighter);
 }
 

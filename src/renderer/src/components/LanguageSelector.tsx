@@ -101,12 +101,12 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
   const getRegionIcon = (region: string, langs: Language[]) => {
     if (isRegionFullySelected(region, langs)) {
-      return <CheckSquare size={16} className="region-checkbox fully-selected" />;
+      return <CheckSquare size={16} className="toggle-checkbox fully-selected" />;
     }
     if (isRegionPartiallySelected(region, langs)) {
-      return <Square size={16} className="region-checkbox partially-selected" />;
+      return <Square size={16} className="toggle-checkbox partially-selected" />;
     }
-    return <Square size={16} className="region-checkbox" />;
+    return <Square size={16} className="toggle-checkbox" />;
   };
 
   const getToggleAllIcon = () => {
@@ -117,6 +117,11 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
       return <Square size={16} className="toggle-checkbox" />;
     }
     return <Square size={16} className="toggle-checkbox partially-selected" />;
+  };
+
+  const getToggleAllTitle = () => {
+    if (allSelected) return "Deseleccionar todos";
+    if (noneSelected) return "Seleccionar todos";
   };
 
   const handleRegionClick = (region: string, langs: Language[]) => {
@@ -143,28 +148,30 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
     }
   };
 
+  const getDropdownTitle = () => {
+    return showLanguages ? "Cerrar lista" : "Abrir lista";
+  };
+
   return (
     <div className="config-section">
       <div className="section-header">
         <h3>
           <Globe size={18} />
-          IDIOMAS DESTINO
-          <span className="section-count">
-            {selectedLanguages.length} seleccionados
-          </span>
+          IDIOMAS
+          <span className="section-count">{selectedLanguages.length}/{totalLanguages}</span>
         </h3>
         <div className="section-actions">
-          {/* Botón único que cambia según el estado */}
           <button 
             className="toggle-all-btn"
             onClick={handleToggleAll}
-            title={allSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+            title={getToggleAllTitle()}
           >
             {getToggleAllIcon()}
           </button>
           <button 
             className="dropdown-toggle"
             onClick={() => setShowLanguages(!showLanguages)}
+            title={getDropdownTitle()}
           >
             <ChevronDown size={16} className={showLanguages ? "open" : ""} />
           </button>
@@ -180,6 +187,11 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   <button
                     className="region-selector"
                     onClick={() => handleRegionClick(region, langs)}
+                    title={
+                      isRegionFullySelected(region, langs) 
+                        ? `Deseleccionar todos los idiomas de ${region}` 
+                        : `Seleccionar todos los idiomas de ${region}`
+                    }
                   >
                     {getRegionIcon(region, langs)}
                     <h4 className="region-title">{region}</h4>
@@ -190,16 +202,23 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   return (
                     <div 
                       key={lang.id}
-                      className={`language-option ${isSelected ? 'selected' : ''}`}
+                      className={`priority-item language-option ${isSelected ? 'selected' : ''}`}
                       onClick={() => onToggleLanguage(lang)}
                     >
-                      <div className="language-info">
+                      <button 
+                        className="select-toggle"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleLanguage(lang);
+                        }}
+                        title={isSelected ? "Deseleccionar" : "Seleccionar"}
+                      >
                         {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-                        <span className="language-name">
-                          <strong>{lang.name}</strong>
-                          <small>{lang.code} • {lang.country}</small>
-                        </span>
-                      </div>
+                      </button>
+                      <span className="priority-text">
+                        <strong>{lang.name}</strong>
+                        <small> • {lang.code} • {lang.country}</small>
+                      </span>
                     </div>
                   );
                 })}

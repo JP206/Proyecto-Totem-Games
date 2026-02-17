@@ -1,6 +1,6 @@
 // src/renderer/src/pages/Landing.tsx
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import LanguageSelector from "../components/LanguageSelector";
@@ -42,10 +42,10 @@ interface Language {
 }
 
 const Landing: React.FC = () => {
-  const { projectName } = useParams<{ projectName: string }>();
-  const location = useLocation();
-  const { repoPath, repoName } = location.state || {};
+  const navigate = useNavigate();
   
+  const [repoPath, setRepoPath] = useState<string>("");
+  const [repoName, setRepoName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [targetLanguages, setTargetLanguages] = useState<Language[]>([]);
@@ -59,54 +59,100 @@ const Landing: React.FC = () => {
   const [pendingFile, setPendingFile] = useState<{ file: File; extension: string } | null>(null);
   
   useEffect(() => {
-    if (repoPath) loadProjectStructure();
-  }, [repoPath]);
+    loadProjectFromStore();
+  }, []);
 
-  const loadProjectStructure = async () => {
+  const loadProjectFromStore = async () => {
     try {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
       
-      // Cargar archivo a localizar
-      try {
-        const files = await desktop.readFolder(`${repoPath}/Localizacion`);
-        const csvFile = files.find(f => f.isFile && f.name === `${repoName}_localizar.csv`);
-        const xlsxFile = files.find(f => f.isFile && f.name === `${repoName}_localizar.xlsx`);
-        setSelectedFile(csvFile || xlsxFile || null);
-      } catch { /* Ignorar si no existe */ }
+      // Cargar proyecto directamente del store
+      const project = await desktop.getConfig("current_project");
       
-      await Promise.all([loadContexts(), loadGlossaries()]);
+      if (!project?.repoPath || !project?.repoName) {
+        await desktop.showMessage(
+          "No hay un proyecto seleccionado",
+          "Error",
+          "error"
+        );
+        navigate('/dashboard');
+        return;
+      }
+
+      setRepoPath(project.repoPath);
+      setRepoName(project.repoName);
+
+      await loadProjectStructure(project.repoPath, project.repoName);
+      
     } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(error.message, "Error", "error");
+      const desktop = DesktopManager.getInstance();
+      await desktop.showMessage(error.message, "Error", "error");
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadContexts = async () => {
+  const loadProjectStructure = async (path: string, name: string) => {
     try {
-      const files = await DesktopManager.getInstance().readFolder(
-        `${repoPath}/Localizacion/contextos_especificos`
+      const desktop = DesktopManager.getInstance();
+      
+      // Cargar archivo a localizar
+      try {
+        const files = await desktop.readFolder(`${path}/Localizacion`);
+        const csvFile = files.find(f => f.isFile && f.name === `${name}_localizar.csv`);
+        const xlsxFile = files.find(f => f.isFile && f.name === `${name}_localizar.xlsx`);
+        setSelectedFile(csvFile || xlsxFile || null);
+      } catch {
+        console.log("Carpeta Localizacion no encontrada");
+      }
+      
+      await Promise.all([
+        loadContexts(path),
+        loadGlossaries(path)
+      ]);
+    } catch (error) {
+      console.error("Error cargando estructura:", error);
+    }
+  };
+
+  const loadContexts = async (basePath: string) => {
+    try {
+      const desktop = DesktopManager.getInstance();
+      const files = await desktop.readFolder(
+        `${basePath}/Localizacion/contextos_especificos`
       );
       setContextFiles(
         files
           .filter(f => f.isFile && f.name.endsWith('.txt'))
-          .map((f, i) => ({ name: f.name, path: f.path, priority: i + 1, selected: true }))
+          .map((f, i) => ({ 
+            name: f.name, 
+            path: f.path, 
+            priority: i + 1, 
+            selected: true 
+          }))
       );
     } catch {
       setContextFiles([]);
     }
   };
 
-  const loadGlossaries = async () => {
+  const loadGlossaries = async (basePath: string) => {
     try {
-      const files = await DesktopManager.getInstance().readFolder(
-        `${repoPath}/Localizacion/glosarios_especificos`
+      const desktop = DesktopManager.getInstance();
+      const files = await desktop.readFolder(
+        `${basePath}/Localizacion/glosarios_especificos`
       );
       setGlossaryFiles(
         files
           .filter(f => f.isFile && (f.name.endsWith('.csv') || f.name.endsWith('.xlsx')))
-          .map((f, i) => ({ name: f.name, path: f.path, priority: i + 1, selected: true }))
+          .map((f, i) => ({ 
+            name: f.name, 
+            path: f.path, 
+            priority: i + 1, 
+            selected: true 
+          }))
       );
     } catch {
       setGlossaryFiles([]);
@@ -141,7 +187,12 @@ const Landing: React.FC = () => {
     
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!['.txt', '.csv', '.xlsx'].includes(ext)) {
-      await DesktopManager.getInstance().showMessage("Formato no válido", "Error", "error");
+      const desktop = DesktopManager.getInstance();
+      await desktop.showMessage(
+        "Formato no válido. Solo se permiten archivos .txt, .csv o .xlsx",
+        "Error",
+        "error"
+      );
       return;
     }
     
@@ -166,7 +217,12 @@ const Landing: React.FC = () => {
           fileName = file.name.endsWith('.txt') ? file.name : `${file.name.split('.')[0]}.txt`;
           finalPath = `${targetFolder}/${fileName}`;
           await desktop.saveFile(file, finalPath);
-          setContextFiles(prev => [...prev, { name: fileName, path: finalPath, priority: prev.length + 1, selected: true }]);
+          setContextFiles(prev => [...prev, { 
+            name: fileName, 
+            path: finalPath, 
+            priority: prev.length + 1, 
+            selected: true 
+          }]);
           break;
           
         case 'glossary':
@@ -174,20 +230,38 @@ const Landing: React.FC = () => {
           fileName = file.name;
           finalPath = `${targetFolder}/${fileName}`;
           await desktop.saveFile(file, finalPath);
-          setGlossaryFiles(prev => [...prev, { name: fileName, path: finalPath, priority: prev.length + 1, selected: true }]);
+          setGlossaryFiles(prev => [...prev, { 
+            name: fileName, 
+            path: finalPath, 
+            priority: prev.length + 1, 
+            selected: true 
+          }]);
           break;
           
         case 'localize':
           targetFolder = `${repoPath}/Localizacion`;
           fileName = `${repoName}_localizar${ext}`;
           finalPath = `${targetFolder}/${fileName}`;
-          if (selectedFile) await desktop.deleteFile(selectedFile.path);
+          
+          if (selectedFile) {
+            await desktop.deleteFile(selectedFile.path);
+          }
+          
           await desktop.saveFile(file, finalPath);
-          setSelectedFile({ name: fileName, path: finalPath, isFile: true, isDirectory: false });
+          setSelectedFile({ 
+            name: fileName, 
+            path: finalPath, 
+            isFile: true, 
+            isDirectory: false 
+          });
           break;
       }
       
-      await desktop.showMessage(`Archivo guardado en ${targetFolder}`, "Éxito");
+      await desktop.showMessage(
+        `Archivo guardado exitosamente en ${targetFolder}`,
+        "Éxito",
+        "info"
+      );
     } catch (error: any) {
       await desktop.showMessage(error.message, "Error", "error");
     }
@@ -219,8 +293,9 @@ const Landing: React.FC = () => {
   // Action handler
   const startLocalization = async () => {
     if (!selectedFile) {
-      await DesktopManager.getInstance().showMessage(
-        "Por favor sube un archivo CSV/XLSX para localizar",
+      const desktop = DesktopManager.getInstance();
+      await desktop.showMessage(
+        "Por favor sube un archivo CSV o XLSX para localizar",
         "Archivo requerido",
         "warning"
       );
@@ -228,7 +303,8 @@ const Landing: React.FC = () => {
     }
 
     if (targetLanguages.length === 0) {
-      await DesktopManager.getInstance().showMessage(
+      const desktop = DesktopManager.getInstance();
+      await desktop.showMessage(
         "Por favor selecciona al menos un idioma destino",
         "Idioma requerido",
         "warning"
@@ -239,13 +315,15 @@ const Landing: React.FC = () => {
     const selectedContexts = contextFiles.filter(ctx => ctx.selected);
     const selectedGlossaries = glossaryFiles.filter(glos => glos.selected);
 
-    await DesktopManager.getInstance().showMessage(
+    const desktop = DesktopManager.getInstance();
+    await desktop.showMessage(
       `Iniciando localización de:\n` +
       `• Archivo: ${selectedFile.name}\n` +
       `• Idiomas destino: ${targetLanguages.map(lang => lang.name).join(", ")}\n` +
       `• Contextos: ${selectedContexts.length > 0 ? selectedContexts.map(ctx => ctx.name).join(", ") : "Ninguno"}\n` +
       `• Glosarios: ${selectedGlossaries.length > 0 ? selectedGlossaries.map(glos => glos.name).join(", ") : "Ninguno"}`,
-      "Proceso de localización iniciado"
+      "Proceso de localización iniciado",
+      "info"
     );
   };
 
@@ -260,13 +338,25 @@ const Landing: React.FC = () => {
     return <Square size={16} className="toggle-checkbox partially-selected" />;
   };
 
+  const removeSelectedFile = async () => {
+    if (selectedFile) {
+      const desktop = DesktopManager.getInstance();
+      try {
+        await desktop.deleteFile(selectedFile.path);
+        setSelectedFile(null);
+      } catch (error: any) {
+        await desktop.showMessage(error.message, "Error", "error");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <>
-        <Navbar repoName={repoName} repoPath={repoPath} />
+        <Navbar />
         <div className="landing-loading">
           <div className="spinner-large" />
-          <p>Cargando proyecto {repoName}...</p>
+          <p>Cargando proyecto...</p>
         </div>
       </>
     );
@@ -277,11 +367,11 @@ const Landing: React.FC = () => {
     icon: React.ElementType,
     files: ContextFile[],
     show: boolean,
-    setShow: Function,
-    toggleItem: Function,
-    toggleAllFn: Function,
-    moveUp: Function,
-    moveDown: Function
+    setShow: React.Dispatch<React.SetStateAction<boolean>>,
+    toggleItem: (index: number) => void,
+    toggleAllFn: () => void,
+    moveUp: (index: number) => void,
+    moveDown: (index: number) => void
   ) => (
     <div className="config-section">
       <div className="section-header">
@@ -292,11 +382,19 @@ const Landing: React.FC = () => {
         </h3>
         <div className="section-actions">
           {files.length > 0 && (
-            <button className="toggle-all-btn" onClick={() => toggleAllFn()} title="Seleccionar/Deseleccionar todos">
+            <button 
+              className="toggle-all-btn" 
+              onClick={toggleAllFn} 
+              title={
+                files.every(f => f.selected) ? "Deseleccionar todos" : 
+                files.some(f => f.selected) ? "Seleccionar todos" : 
+                "Seleccionar todos"
+              }
+            >
               {getToggleIcon(files)}
             </button>
           )}
-          <button className="dropdown-toggle" onClick={() => setShow(!show)}>
+          <button className="dropdown-toggle" onClick={() => setShow(!show)} title={show ? "Ocultar lista" : "Mostrar lista"}>
             <ChevronDown size={16} className={show ? "open" : ""} />
           </button>
         </div>
@@ -308,14 +406,32 @@ const Landing: React.FC = () => {
             <div className="priority-list">
               {files.map((file, idx) => (
                 <div key={idx} className="priority-item">
-                  <button className="select-toggle" onClick={() => toggleItem(idx)}>
+                  <button 
+                    className="select-toggle" 
+                    onClick={() => toggleItem(idx)}
+                    title={file.selected ? "Deseleccionar" : "Seleccionar"}
+                  >
                     {file.selected ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
-                  <span className="priority-badge">#{file.priority}</span>
-                  <span className="priority-text" title={file.path}>{file.name}</span>
+                  <span className="priority-badge">{file.priority}</span>
+                  <span className="priority-text">{file.name}</span>
                   <div className="priority-controls">
-                    <button className="priority-btn" onClick={() => moveUp(idx)} disabled={idx === 0}>↑</button>
-                    <button className="priority-btn" onClick={() => moveDown(idx)} disabled={idx === files.length - 1}>↓</button>
+                    <button 
+                      className="priority-btn" 
+                      onClick={() => moveUp(idx)} 
+                      disabled={idx === 0}
+                      title="Subir prioridad"
+                    >
+                      ↑
+                    </button>
+                    <button 
+                      className="priority-btn" 
+                      onClick={() => moveDown(idx)} 
+                      disabled={idx === files.length - 1}
+                      title="Bajar prioridad"
+                    >
+                      ↓
+                    </button>
                   </div>
                 </div>
               ))}
@@ -333,11 +449,14 @@ const Landing: React.FC = () => {
 
   return (
     <>
-      <Navbar repoName={repoName} repoPath={repoPath} />
+      <Navbar />
       
       <UploadPopup
         isOpen={showUploadPopup}
-        onClose={() => { setShowUploadPopup(false); setPendingFile(null); }}
+        onClose={() => { 
+          setShowUploadPopup(false); 
+          setPendingFile(null); 
+        }}
         onConfirm={processFileUpload}
         fileName={pendingFile?.file.name || ''}
         fileExtension={pendingFile?.extension || ''}
@@ -355,8 +474,11 @@ const Landing: React.FC = () => {
             </h2>
 
             {renderFileList(
-              "CONTEXTOS", BookOpen,
-              contextFiles, showContexts, setShowContexts,
+              "CONTEXTOS", 
+              BookOpen,
+              contextFiles, 
+              showContexts, 
+              setShowContexts,
               (i: number) => toggleSelection(contextFiles, setContextFiles, i),
               () => toggleAll(contextFiles, setContextFiles),
               (i: number) => moveItem(contextFiles, setContextFiles, i, 'up'),
@@ -364,8 +486,11 @@ const Landing: React.FC = () => {
             )}
 
             {renderFileList(
-              "GLOSARIOS", FileText,
-              glossaryFiles, showGlossaries, setShowGlossaries,
+              "GLOSARIOS", 
+              FileText,
+              glossaryFiles, 
+              showGlossaries, 
+              setShowGlossaries,
               (i: number) => toggleSelection(glossaryFiles, setGlossaryFiles, i),
               () => toggleAll(glossaryFiles, setGlossaryFiles),
               (i: number) => moveItem(glossaryFiles, setGlossaryFiles, i, 'up'),
@@ -395,7 +520,11 @@ const Landing: React.FC = () => {
                     <strong>Archivo a localizar:</strong>
                     <small>{selectedFile.name}</small>
                   </div>
-                  <button className="clear-btn" onClick={() => setSelectedFile(null)} title="Quitar archivo">
+                  <button 
+                    className="clear-btn" 
+                    onClick={removeSelectedFile} 
+                    title="Quitar archivo"
+                  >
                     <X size={16} />
                   </button>
                 </div>
@@ -404,8 +533,14 @@ const Landing: React.FC = () => {
 
             <div 
               className="drop-area unified"
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
-              onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); }}
+              onDragOver={(e) => { 
+                e.preventDefault(); 
+                e.currentTarget.classList.add('drag-over'); 
+              }}
+              onDragLeave={(e) => { 
+                e.preventDefault(); 
+                e.currentTarget.classList.remove('drag-over'); 
+              }}
               onDrop={async (e) => {
                 e.preventDefault();
                 e.currentTarget.classList.remove('drag-over');
@@ -423,8 +558,16 @@ const Landing: React.FC = () => {
                 <BookOpen size={48} style={{ marginLeft: -20 }} />
               </div>
               <p className="drop-title">Arrastra cualquier archivo o haz click para subir</p>
-              <p className="drop-description">.txt para contextos • .csv/.xlsx para glosarios o archivo a localizar</p>
-              <input id="file-upload" type="file" accept=".txt,.csv,.xlsx" onChange={handleFileUpload} style={{ display: 'none' }} />
+              <p className="drop-description">
+                .txt para contextos • .csv/.xlsx para glosarios o archivo a localizar
+              </p>
+              <input 
+                id="file-upload" 
+                type="file" 
+                accept=".txt,.csv,.xlsx" 
+                onChange={handleFileUpload} 
+                style={{ display: 'none' }} 
+              />
             </div>
 
             <div className="action-section">
