@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "npm run build && electron .",
-    "probar": "rmdir /s /q dist && cd src/renderer && rmdir /s /q build && npm run build && cd ../.. && npm start",
+    "probar": "(if exist dist rmdir /s /q dist) && cd src/renderer && (if exist build rmdir /s /q build) && npm run build && cd ../.. && npm start",
     "inicializar_proy": "npm install --legacy-peer-deps && cd src/renderer && npm install --legacy-peer-deps && cd ../.. && npm run probar",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

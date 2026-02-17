@@ -16,6 +16,12 @@ export interface TranslationBatchRequest {
   items: { id: string; key: string; sourceText: string }[];
 }
 
+/** Request for spell/grammar correction (same language). */
+export interface SpellCheckBatchRequest {
+  languageName: string;
+  items: { id: string; key: string; sourceText: string }[];
+}
+
 /**
  * Interface that all translation providers must implement.
  * Add new providers by creating a file under providers/ and registering them.
@@ -31,5 +37,15 @@ export interface ITranslationProvider {
     apiKey: string,
     modelId: string,
     request: TranslationBatchRequest
+  ): Promise<TranslationResultItem[]>;
+
+  /**
+   * Correct spelling and grammar of texts in the same language.
+   * Returns an array of { id, translatedText } where translatedText is the corrected text.
+   */
+  spellCorrectBatch(
+    apiKey: string,
+    modelId: string,
+    request: SpellCheckBatchRequest
   ): Promise<TranslationResultItem[]>;
 }

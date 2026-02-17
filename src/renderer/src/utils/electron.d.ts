@@ -87,10 +87,49 @@ export interface TranslateFileResult {
   };
 }
 
+export interface SpellCheckPayload {
+  filePath: string;
+  language?: string;
+  maxRows?: number;
+  /** If false, do not write to file (for preview/discard flow). */
+  applyToFile?: boolean;
+  providerOptions: {
+    mode: "openai" | "gemini" | "both";
+    openaiModel: string;
+    geminiModel: string;
+  };
+}
+
+export interface ProgressPayload {
+  percent: number;
+  current?: number;
+  total?: number;
+  stage?: string;
+}
+
+export interface SpellCheckPreviewRow {
+  rowIndex: number;
+  key: string;
+  originalSource: string;
+  correctedSource: string;
+}
+
+export interface SpellCheckResult {
+  filePath: string;
+  csvContent: string;
+  preview: SpellCheckPreviewRow[];
+  stats: { totalRows: number; correctedRows: number };
+}
+
 export interface UploadTranslationPayload {
   repoPath: string;
   filePath: string;
   commitMessage?: string;
+}
+
+export interface WriteTranslationFilePayload {
+  filePath: string;
+  content: string;
 }
 
 export interface UploadTranslationResult {
@@ -111,7 +150,11 @@ export interface ElectronAPI {
 
   // AI translation
   translateFile: (payload: TranslateFilePayload) => Promise<TranslateFileResult>;
+  spellCheckFile: (payload: SpellCheckPayload) => Promise<SpellCheckResult>;
   uploadTranslation: (payload: UploadTranslationPayload) => Promise<UploadTranslationResult>;
+  writeTranslationFile: (data: WriteTranslationFilePayload) => Promise<{ success: boolean; error?: string }>;
+  onSpellCheckProgress: (callback: (data: ProgressPayload) => void) => () => void;
+  onTranslationProgress: (callback: (data: ProgressPayload) => void) => () => void;
 
   // Git operations
   cloneRepository: (

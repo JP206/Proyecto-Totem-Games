@@ -9,6 +9,8 @@ import {
   SaveFileData,
   TranslateFilePayload,
   TranslateFileResult,
+  SpellCheckPayload,
+  SpellCheckResult,
   UploadTranslationPayload,
   UploadTranslationResult,
 } from "./electron";
@@ -133,8 +135,24 @@ class DesktopManager {
     return await this.electron.translateFile(payload);
   }
 
+  async spellCheckFile(payload: SpellCheckPayload): Promise<SpellCheckResult> {
+    return await this.electron.spellCheckFile(payload);
+  }
+
+  onSpellCheckProgress(callback: (data: { percent: number; current?: number; total?: number }) => void): () => void {
+    return this.electron.onSpellCheckProgress(callback);
+  }
+
+  onTranslationProgress(callback: (data: { percent: number; stage?: string }) => void): () => void {
+    return this.electron.onTranslationProgress(callback);
+  }
+
   async uploadTranslation(payload: UploadTranslationPayload): Promise<UploadTranslationResult> {
     return await this.electron.uploadTranslation(payload);
+  }
+
+  async writeTranslationFile(data: { filePath: string; content: string }): Promise<{ success: boolean; error?: string }> {
+    return await this.electron.writeTranslationFile(data);
   }
 }
 

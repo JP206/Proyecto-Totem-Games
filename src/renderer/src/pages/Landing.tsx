@@ -63,6 +63,8 @@ const Landing: React.FC = () => {
   const [providerMode, setProviderMode] = useState<"openai" | "gemini" | "both">("openai");
   const [openaiModel, setOpenaiModel] = useState<string>("gpt-4.1-mini");
   const [geminiModel, setGeminiModel] = useState<string>("gemini-1.5-flash");
+  const [spellCheckBeforeTranslate, setSpellCheckBeforeTranslate] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
 
   useEffect(() => {
     loadProjectFromStore();
@@ -323,28 +325,49 @@ const Landing: React.FC = () => {
 
     try {
       setTranslating(true);
+      setProgressPercent(0);
 
-      const payload = {
+      const translationPayload = {
         repoPath,
         projectName: repoName,
         filePath: selectedFile.path,
-        // Dejar que el proceso principal detecte el nombre del idioma origen desde el encabezado
-        sourceLanguageName: undefined,
-        targetLanguages: targetLanguages.map(lang => ({
-          code: lang.code,
-          name: lang.name,
-        })),
-        contexts: selectedContexts.map(ctx => ctx.path),
-        glossaries: selectedGlossaries.map(glos => glos.path),
-        providerOptions: {
-          mode: providerMode,
-          openaiModel,
-          geminiModel,
-        },
+        sourceLanguageName: undefined as string | undefined,
+        targetLanguages: targetLanguages.map((lang) => ({ code: lang.code, name: lang.name })),
+        contexts: selectedContexts.map((ctx) => ctx.path),
+        glossaries: selectedGlossaries.map((glos) => glos.path),
+        providerOptions: { mode: providerMode, openaiModel, geminiModel },
       };
 
-      const result = await desktop.translateFile(payload as any);
+      if (spellCheckBeforeTranslate) {
+        const unsub = desktop.onSpellCheckProgress((d) => setProgressPercent(d.percent));
+        const spellResult = await desktop.spellCheckFile({
+          filePath: selectedFile.path,
+          language: "Español",
+          applyToFile: false,
+          providerOptions: { mode: providerMode, openaiModel, geminiModel },
+        });
+        unsub();
+        setProgressPercent(100);
+        navigate("/translation-preview", {
+          state: {
+            spellCheckOnly: true,
+            fileInfo: { filePath: spellResult.filePath, csvContent: spellResult.csvContent },
+            spellCheckPreview: spellResult.preview,
+            spellCheckStats: spellResult.stats,
+            translationPayload,
+            repoPath,
+            providerMode,
+            targetLanguages: targetLanguages.map((l) => ({ code: l.code, name: l.name })),
+            sourceLanguageName: "Origen",
+          },
+        });
+        return;
+      }
 
+      const unsub = desktop.onTranslationProgress((d) => setProgressPercent(d.percent));
+      const result = await desktop.translateFile(translationPayload as any);
+      unsub();
+      setProgressPercent(100);
       const fileInfo = {
         filePath: result.filePath,
         csvContent: result.csvContent,
@@ -353,7 +376,7 @@ const Landing: React.FC = () => {
         preview: result.preview,
         stats: result.stats,
         providerMode,
-        targetLanguages: targetLanguages.map(l => ({ code: l.code, name: l.name })),
+        targetLanguages: targetLanguages.map((l) => ({ code: l.code, name: l.name })),
       };
       navigate("/translation-preview", {
         state: {
@@ -372,6 +395,7 @@ const Landing: React.FC = () => {
       );
     } finally {
       setTranslating(false);
+      setProgressPercent(0);
     }
   };
 
@@ -618,6 +642,20 @@ const Landing: React.FC = () => {
               />
             </div>
 
+            <div className="spellcheck-option">
+              <label className="spellcheck-label">
+                <input
+                  type="checkbox"
+                  checked={spellCheckBeforeTranslate}
+                  onChange={(e) => setSpellCheckBeforeTranslate(e.target.checked)}
+                />
+                <span>Revisar ortografía/gramática antes de traducir</span>
+              </label>
+              <small className="spellcheck-note">
+                Revisión ortográfica y gramatical con IA (mismos proveedores que la traducción).
+              </small>
+            </div>
+
             <div className="action-section">
               <button 
                 className={`localize-btn ${selectedFile && targetLanguages.length > 0 ? 'active' : 'disabled'}`}
@@ -627,7 +665,9 @@ const Landing: React.FC = () => {
                 {translating ? (
                   <>
                     <div className="spinner-small" />
-                    Procesando traducciones...
+                    {spellCheckBeforeTranslate
+                      ? `Revisando ortografía... ${progressPercent}%`
+                      : `Procesando traducciones... ${progressPercent}%`}
                   </>
                 ) : (
                   <>

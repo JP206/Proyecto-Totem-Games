@@ -2,6 +2,7 @@ import type {
   ITranslationProvider,
   TranslationBatchRequest,
   TranslationResultItem,
+  SpellCheckBatchRequest,
 } from "./types";
 
 function parseJsonResults(content: string): TranslationResultItem[] {
@@ -67,6 +68,52 @@ export const geminiProvider: ITranslationProvider = {
     const payload = {
       contents: [{ parts: [{ text }] }],
       generationConfig: { temperature: 0.2 },
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("[Gemini] API error:", response.status, body);
+      throw new Error(`Error en Gemini: ${response.status} ${body}`);
+    }
+
+    const data: any = await response.json();
+    const blockReason = data.promptFeedback?.blockReason;
+    if (blockReason) {
+      console.error("[Gemini] Blocked:", blockReason, data.promptFeedback);
+    }
+    const content =
+      data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("\n") || "[]";
+    const results = parseJsonResults(content);
+    console.log("[Gemini] Parsed", results.length, "translations for", request.items.length, "items");
+    return results;
+  },
+
+  async spellCorrectBatch(
+    apiKey: string,
+    modelId: string,
+    request: SpellCheckBatchRequest
+  ): Promise<TranslationResultItem[]> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+      modelId
+    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const text =
+      "Eres un corrector ortográfico y gramatical. Corrige únicamente errores de ortografía y gramática en el mismo idioma. " +
+      "No traduzcas ni cambies el significado. Mantén el tono y formato. Devuelve SOLO un JSON: " +
+      `[{"id": "ID_DEL_ITEM", "translatedText": "texto corregido"}].\n\n` +
+      `Idioma del texto: ${request.languageName}\n\n` +
+      "Textos a corregir:\n" +
+      JSON.stringify(request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })));
+
+    const payload = {
+      contents: [{ parts: [{ text }] }],
+      generationConfig: { temperature: 0.1 },
     };
 
     const response = await fetch(url, {

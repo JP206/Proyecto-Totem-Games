@@ -2,6 +2,7 @@ import type {
   ITranslationProvider,
   TranslationBatchRequest,
   TranslationResultItem,
+  SpellCheckBatchRequest,
 } from "./types";
 
 function parseJsonResults(content: string): TranslationResultItem[] {
@@ -69,6 +70,53 @@ export const openaiProvider: ITranslationProvider = {
         { role: "user", content: userContent },
       ],
       temperature: 0.2,
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[OpenAI] API error:", response.status, text);
+      throw new Error(`Error en OpenAI: ${response.status} ${text}`);
+    }
+
+    const data: any = await response.json();
+    const content: string = data.choices?.[0]?.message?.content || "[]";
+    const results = parseJsonResults(content);
+    console.log("[OpenAI] Parsed", results.length, "translations for", request.items.length, "items");
+    return results;
+  },
+
+  async spellCorrectBatch(
+    apiKey: string,
+    modelId: string,
+    request: SpellCheckBatchRequest
+  ): Promise<TranslationResultItem[]> {
+    const url = "https://api.openai.com/v1/chat/completions";
+    const systemPrompt =
+      "Eres un corrector ortográfico y gramatical. Corrige únicamente errores de ortografía y gramática en el mismo idioma. " +
+      "No traduzcas ni cambies el significado. Mantén el tono y formato (diálogos, mayúsculas, etc.). Devuelve SOLO un JSON válido.";
+    const userContent =
+      `Idioma del texto: ${request.languageName}\n\n` +
+      "Devuelve un JSON con el formato:\n" +
+      `[{"id": "ID_DEL_ITEM", "translatedText": "texto corregido"}]\n\n` +
+      "Textos a corregir:\n" +
+      JSON.stringify(request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })));
+
+    const payload = {
+      model: modelId,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      temperature: 0.1,
     };
 
     const response = await fetch(url, {

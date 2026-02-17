@@ -12,6 +12,11 @@ import {
   TranslateFilePayload,
   TranslateFileResult,
 } from "./ai/translation";
+import {
+  spellCheckFileInMain,
+  SpellCheckPayload,
+  SpellCheckResult,
+} from "./ai/spellcheck";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -106,7 +111,15 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
 ipcMain.handle(
   "ai-translate-file",
   async (event: any, payload: TranslateFilePayload): Promise<TranslateFileResult> => {
-    return await translateFileInMain(payload);
+    return await translateFileInMain(payload, event.sender);
+  },
+);
+
+// 2c. REVISIÓN ORTOGRÁFICA Y GRAMATICAL (IA)
+ipcMain.handle(
+  "ai-spellcheck-file",
+  async (event: any, payload: SpellCheckPayload): Promise<SpellCheckResult> => {
+    return await spellCheckFileInMain(payload, event.sender);
   },
 );
 
@@ -535,6 +548,19 @@ ipcMain.handle(
     } catch (error) {
       console.error("Error guardando archivo:", error);
       throw error;
+    }
+  },
+);
+
+// 11b. ESCRIBIR ARCHIVO DE TRADUCCIÓN (para guardar ediciones antes de subir)
+ipcMain.handle(
+  "write-translation-file",
+  async (event: any, data: { filePath: string; content: string }) => {
+    try {
+      await fs.writeFile(data.filePath, data.content, "utf8");
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || String(error) };
     }
   },
 );
