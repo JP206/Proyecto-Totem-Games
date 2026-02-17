@@ -6,6 +6,12 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import Store from "electron-store";
 import { IssueData, RepoInformation } from "../renderer/src/utils/electron";
+import "dotenv/config";
+import {
+  translateFileInMain,
+  TranslateFilePayload,
+  TranslateFileResult,
+} from "./ai/translation";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -95,6 +101,14 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
     throw new Error(`Error leyendo carpeta: ${errorMessage}`);
   }
 });
+
+// 2b. TRADUCIR ARCHIVO DE LOCALIZACIÓN
+ipcMain.handle(
+  "ai-translate-file",
+  async (event: any, payload: TranslateFilePayload): Promise<TranslateFileResult> => {
+    return await translateFileInMain(payload);
+  },
+);
 
 // 3. EJECUTAR COMANDO GENÉRICO
 ipcMain.handle(
@@ -521,6 +535,63 @@ ipcMain.handle(
     } catch (error) {
       console.error("Error guardando archivo:", error);
       throw error;
+    }
+  },
+);
+
+// 12. SUBIR TRADUCCIÓN AL REPOSITORIO (git add/commit/push)
+ipcMain.handle(
+  "ai-upload-translation",
+  async (
+    event: any,
+    data: { repoPath: string; filePath: string; commitMessage?: string },
+  ) => {
+    const { repoPath, filePath, commitMessage } = data;
+    const message = commitMessage || "Update localization translations";
+
+    const runGit = async (command: string) => {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: repoPath,
+        timeout: 60000,
+      });
+      return { stdout, stderr };
+    };
+
+    try {
+      // git add
+      await runGit(`git add "${filePath}"`);
+
+      // git commit
+      let commitOk = true;
+      try {
+        const { stderr } = await runGit(`git commit -m "${message.replace(/"/g, '\\"')}"`);
+        if (stderr && stderr.includes("nothing to commit")) {
+          commitOk = false;
+        }
+      } catch (err: any) {
+        const msg = String(err?.message || "");
+        if (msg.includes("nothing to commit")) {
+          commitOk = false;
+        } else {
+          throw err;
+        }
+      }
+
+      // git push origin main (aunque no haya commit nuevo, será un no-op)
+      const { stdout, stderr } = await runGit("git push origin main");
+
+      return {
+        success: true,
+        commitCreated: commitOk,
+        stdout,
+        stderr,
+      };
+    } catch (error: any) {
+      const messageError = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: messageError,
+      };
     }
   },
 );

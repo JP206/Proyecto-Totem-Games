@@ -69,4 +69,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 9. GUARDAR ARCHIVO
   saveFile: (data: { content: number[]; destinationPath: string; fileName: string }) =>
     ipcRenderer.invoke("save-file", data),
+
+  // 10. TRADUCCIÓN AI
+  translateFile: (payload: any) => ipcRenderer.invoke("ai-translate-file", payload),
+
+  // 11. SUBIR TRADUCCIÓN AL REPO
+  uploadTranslation: (payload: any) => ipcRenderer.invoke("ai-upload-translation", payload),
 });

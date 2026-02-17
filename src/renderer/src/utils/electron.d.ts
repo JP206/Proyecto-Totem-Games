@@ -45,6 +45,62 @@ export interface SaveFileData {
   fileName: string;
 }
 
+export interface TranslateFilePayload {
+  repoPath: string;
+  projectName: string;
+  filePath: string;
+  sourceLanguageName?: string;
+  targetLanguages: { code: string; name: string }[];
+  contexts: string[];
+  glossaries: string[];
+  providerOptions: {
+    mode: "openai" | "gemini" | "both";
+    openaiModel: string;
+    geminiModel: string;
+  };
+  maxRowsPerBatch?: number;
+  maxContextChars?: number;
+}
+
+export interface RowProviderTranslation {
+  openaiText?: string;
+  geminiText?: string;
+  mergedText: string;
+  confidence: number | null;
+}
+
+export interface PreviewRow {
+  key: string;
+  sourceText: string;
+  perLanguage: {
+    [langCode: string]: RowProviderTranslation;
+  };
+}
+
+export interface TranslateFileResult {
+  filePath: string;
+  csvContent: string;
+  preview: PreviewRow[];
+  stats: {
+    totalRows: number;
+    translatedRows: number;
+  };
+}
+
+export interface UploadTranslationPayload {
+  repoPath: string;
+  filePath: string;
+  commitMessage?: string;
+}
+
+export interface UploadTranslationResult {
+  success: boolean;
+  commitCreated?: boolean;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+}
+
 export interface ElectronAPI {
   // Sistema de archivos
   selectFolder: () => Promise<string | null>;
@@ -52,6 +108,10 @@ export interface ElectronAPI {
   fileExists: (path: string) => Promise<boolean>;
   deleteFile: (path: string) => Promise<boolean>;
   saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
+
+  // AI translation
+  translateFile: (payload: TranslateFilePayload) => Promise<TranslateFileResult>;
+  uploadTranslation: (payload: UploadTranslationPayload) => Promise<UploadTranslationResult>;
 
   // Git operations
   cloneRepository: (

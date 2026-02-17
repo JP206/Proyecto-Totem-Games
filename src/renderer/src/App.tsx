@@ -10,6 +10,7 @@ import { injectTheme } from "./theme";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
+import TranslationPreview from "./pages/TranslationPreview";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 
@@ -32,6 +33,9 @@ function App() {
         
         {/* Ruta para Landing de un proyecto */}
         <Route path="/landing" element={<Landing />} />
+
+        {/* Ruta para vista previa de traducción AI */}
+        <Route path="/translation-preview" element={<TranslationPreview />} />
 
         {/* Ruta para Issues */}
         <Route path="/issues" element={ < Issues /> } />

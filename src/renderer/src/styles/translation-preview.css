@@ -1,0 +1,280 @@
+/* src/renderer/src/styles/translation-preview.css - uses theme vars from theme/ */
+
+.translation-preview-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px;
+  background-color: var(--color-primary-main);
+  color: var(--color-neutral-lighter);
+}
+
+.translation-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background-color: var(--color-primary-subtle);
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid var(--color-neutral-medium);
+}
+
+.translation-preview-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.translation-preview-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: var(--color-neutral-dark);
+  color: var(--color-white);
+  border: 2px solid var(--color-neutral-medium);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  transition: all 0.2s;
+}
+
+.translation-preview-back-btn:hover {
+  background-color: var(--color-neutral-medium);
+  border-color: var(--color-secondary-cyan);
+}
+
+.translation-preview-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.translation-preview-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.translation-preview-subtitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
+}
+
+.translation-preview-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.translation-preview-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  transition: all 0.2s;
+}
+
+.translation-preview-btn-download {
+  background-color: var(--color-neutral-dark);
+  color: var(--color-white);
+  border: 2px solid var(--color-neutral-medium);
+}
+
+.translation-preview-btn-download:hover {
+  background-color: var(--color-neutral-medium);
+  border-color: var(--color-secondary-cyan);
+}
+
+.translation-preview-btn-upload {
+  background-color: var(--color-success);
+  color: var(--color-white);
+}
+
+.translation-preview-btn-upload:hover:not(:disabled) {
+  background-color: var(--color-success-hover);
+}
+
+.translation-preview-btn-upload:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Card (same pattern as dashboard) */
+.translation-preview-card {
+  background-color: var(--color-neutral-dark);
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid var(--color-neutral-medium);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.translation-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.translation-preview-lang-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.translation-preview-lang-tab {
+  padding: 8px 16px;
+  background-color: var(--color-neutral-darker);
+  color: var(--color-neutral-light);
+  border: 2px solid var(--color-neutral-medium);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  transition: all 0.2s;
+}
+
+.translation-preview-lang-tab:hover {
+  border-color: var(--color-secondary-cyan);
+  color: var(--color-white);
+}
+
+.translation-preview-lang-tab.active {
+  background-color: var(--color-secondary-cyan);
+  color: var(--color-white);
+  border-color: var(--color-secondary-cyan);
+}
+
+.translation-preview-provider-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.translation-preview-provider-btn {
+  padding: 6px 12px;
+  background-color: var(--color-neutral-darker);
+  color: var(--color-neutral-light);
+  border: 1px solid var(--color-neutral-medium);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  transition: all 0.2s;
+}
+
+.translation-preview-provider-btn:hover {
+  border-color: var(--color-secondary-cyan);
+  color: var(--color-white);
+}
+
+.translation-preview-provider-btn.active {
+  background-color: var(--color-primary-main);
+  color: var(--color-white);
+  border-color: var(--color-primary-main);
+}
+
+.translation-preview-table-wrap {
+  overflow-x: auto;
+  flex: 1;
+  min-height: 200px;
+}
+
+.translation-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.translation-preview-table th {
+  text-align: left;
+  padding: 12px 14px;
+  background-color: var(--color-neutral-darker);
+  color: var(--color-neutral-light);
+  border-bottom: 2px solid var(--color-neutral-medium);
+  font-weight: 600;
+}
+
+.translation-preview-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-neutral-medium);
+  color: var(--color-neutral-lighter);
+}
+
+.translation-preview-table tbody tr:hover {
+  background-color: var(--color-neutral-darker);
+}
+
+.translation-preview-table .col-key {
+  font-family: var(--font-body);
+  color: var(--color-secondary-cyan);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.translation-preview-table .col-text {
+  max-width: 400px;
+  word-break: break-word;
+}
+
+.translation-preview-confidence-high {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.translation-preview-confidence-medium {
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+.translation-preview-confidence-low {
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.translation-preview-confidence-neutral {
+  color: var(--color-neutral-light);
+}
+
+.translation-preview-footer-note {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--color-neutral-darker);
+  border-radius: 6px;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-light);
+}
+
+.translation-preview-table-wrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.translation-preview-table-wrap::-webkit-scrollbar-track {
+  background: var(--color-neutral-darker);
+  border-radius: 4px;
+}
+
+.translation-preview-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-medium);
+  border-radius: 4px;
+}
+
+.translation-preview-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-light);
+}

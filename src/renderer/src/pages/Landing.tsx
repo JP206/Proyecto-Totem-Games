@@ -57,7 +57,13 @@ const Landing: React.FC = () => {
   const [showGlossaries, setShowGlossaries] = useState(false);
   const [showUploadPopup, setShowUploadPopup] = useState(false);
   const [pendingFile, setPendingFile] = useState<{ file: File; extension: string } | null>(null);
-  
+  const [translating, setTranslating] = useState(false);
+
+  // AI translation config
+  const [providerMode, setProviderMode] = useState<"openai" | "gemini" | "both">("openai");
+  const [openaiModel, setOpenaiModel] = useState<string>("gpt-4.1-mini");
+  const [geminiModel, setGeminiModel] = useState<string>("gemini-1.5-flash");
+
   useEffect(() => {
     loadProjectFromStore();
   }, []);
@@ -292,8 +298,9 @@ const Landing: React.FC = () => {
 
   // Action handler
   const startLocalization = async () => {
+    const desktop = DesktopManager.getInstance();
+
     if (!selectedFile) {
-      const desktop = DesktopManager.getInstance();
       await desktop.showMessage(
         "Por favor sube un archivo CSV o XLSX para localizar",
         "Archivo requerido",
@@ -303,7 +310,6 @@ const Landing: React.FC = () => {
     }
 
     if (targetLanguages.length === 0) {
-      const desktop = DesktopManager.getInstance();
       await desktop.showMessage(
         "Por favor selecciona al menos un idioma destino",
         "Idioma requerido",
@@ -315,16 +321,58 @@ const Landing: React.FC = () => {
     const selectedContexts = contextFiles.filter(ctx => ctx.selected);
     const selectedGlossaries = glossaryFiles.filter(glos => glos.selected);
 
-    const desktop = DesktopManager.getInstance();
-    await desktop.showMessage(
-      `Iniciando localización de:\n` +
-      `• Archivo: ${selectedFile.name}\n` +
-      `• Idiomas destino: ${targetLanguages.map(lang => lang.name).join(", ")}\n` +
-      `• Contextos: ${selectedContexts.length > 0 ? selectedContexts.map(ctx => ctx.name).join(", ") : "Ninguno"}\n` +
-      `• Glosarios: ${selectedGlossaries.length > 0 ? selectedGlossaries.map(glos => glos.name).join(", ") : "Ninguno"}`,
-      "Proceso de localización iniciado",
-      "info"
-    );
+    try {
+      setTranslating(true);
+
+      const payload = {
+        repoPath,
+        projectName: repoName,
+        filePath: selectedFile.path,
+        // Dejar que el proceso principal detecte el nombre del idioma origen desde el encabezado
+        sourceLanguageName: undefined,
+        targetLanguages: targetLanguages.map(lang => ({
+          code: lang.code,
+          name: lang.name,
+        })),
+        contexts: selectedContexts.map(ctx => ctx.path),
+        glossaries: selectedGlossaries.map(glos => glos.path),
+        providerOptions: {
+          mode: providerMode,
+          openaiModel,
+          geminiModel,
+        },
+      };
+
+      const result = await desktop.translateFile(payload as any);
+
+      const fileInfo = {
+        filePath: result.filePath,
+        csvContent: result.csvContent,
+      };
+      const previewData = {
+        preview: result.preview,
+        stats: result.stats,
+        providerMode,
+        targetLanguages: targetLanguages.map(l => ({ code: l.code, name: l.name })),
+      };
+      navigate("/translation-preview", {
+        state: {
+          fileInfo,
+          previewData,
+          repoPath,
+          providerMode,
+          sourceLanguageName: "Origen",
+        },
+      });
+    } catch (error: any) {
+      await desktop.showMessage(
+        error?.message || String(error),
+        "Error en traducción",
+        "error"
+      );
+    } finally {
+      setTranslating(false);
+    }
   };
 
   // UI Helpers
@@ -574,18 +622,28 @@ const Landing: React.FC = () => {
               <button 
                 className={`localize-btn ${selectedFile && targetLanguages.length > 0 ? 'active' : 'disabled'}`}
                 onClick={startLocalization}
-                disabled={!selectedFile || targetLanguages.length === 0}
+                disabled={!selectedFile || targetLanguages.length === 0 || translating}
               >
-                <Download size={20} />
-                {selectedFile && targetLanguages.length > 0 
-                  ? `Iniciar Localización (${targetLanguages.length} idioma${targetLanguages.length > 1 ? 's' : ''})`
-                  : 'Selecciona archivo e idiomas para continuar'
-                }
+                {translating ? (
+                  <>
+                    <div className="spinner-small" />
+                    Procesando traducciones...
+                  </>
+                ) : (
+                  <>
+                    <Download size={20} />
+                    {selectedFile && targetLanguages.length > 0 
+                      ? `Iniciar Localización (${targetLanguages.length} idioma${targetLanguages.length > 1 ? 's' : ''})`
+                      : 'Selecciona archivo e idiomas para continuar'
+                    }
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
     </>
   );
 };

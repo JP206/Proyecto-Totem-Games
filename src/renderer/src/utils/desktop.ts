@@ -6,7 +6,11 @@ import {
   RepoInformation,
   GitCommandData,
   IssueData,
-  SaveFileData
+  SaveFileData,
+  TranslateFilePayload,
+  TranslateFileResult,
+  UploadTranslationPayload,
+  UploadTranslationResult,
 } from "./electron";
 
 class DesktopManager {
@@ -122,6 +126,15 @@ class DesktopManager {
 
   async openInBrowser(url: string): Promise<void> {
     await this.electron.openExternal(url);
+  }
+
+  // AI Translation
+  async translateFile(payload: TranslateFilePayload): Promise<TranslateFileResult> {
+    return await this.electron.translateFile(payload);
+  }
+
+  async uploadTranslation(payload: UploadTranslationPayload): Promise<UploadTranslationResult> {
+    return await this.electron.uploadTranslation(payload);
   }
 }
 
