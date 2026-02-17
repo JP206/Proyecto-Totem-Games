@@ -30,7 +30,7 @@ function App() {
 
         {/* Ruta para Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
-        
+
         {/* Ruta para Landing de un proyecto */}
         <Route path="/landing" element={<Landing />} />
 
@@ -38,10 +38,10 @@ function App() {
         <Route path="/translation-preview" element={<TranslationPreview />} />
 
         {/* Ruta para Issues */}
-        <Route path="/issues" element={ < Issues /> } />
+        <Route path="/issues" element={<Issues />} />
 
         {/* Ruta para Notes */}
-        <Route path="/notes" element={ < Notes /> } />
+        <Route path="/notes" element={<Notes />} />
       </Routes>
     </Router>
   );

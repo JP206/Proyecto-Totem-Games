@@ -4,7 +4,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import { parseCSV, stringifyCSV } from "../utils/csv";
-import { ArrowLeft, Download, UploadCloud, Globe2, Shield, RotateCcw, Undo2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  UploadCloud,
+  Globe2,
+  Shield,
+  RotateCcw,
+  Undo2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import "../styles/translation-preview.css";
 import "../styles/dashboard.css";
 
@@ -34,7 +44,12 @@ interface TranslationPreviewState {
   };
   /** Spell-check-only mode: show diff and "Confirmar traducciones" */
   spellCheckOnly?: boolean;
-  spellCheckPreview?: Array<{ rowIndex: number; key: string; originalSource: string; correctedSource: string }>;
+  spellCheckPreview?: Array<{
+    rowIndex: number;
+    key: string;
+    originalSource: string;
+    correctedSource: string;
+  }>;
   spellCheckStats?: { totalRows: number; correctedRows: number };
   translationPayload?: any;
   repoPath: string;
@@ -48,8 +63,11 @@ const TranslationPreview: React.FC = () => {
   const location = useLocation();
   const state = location.state as TranslationPreviewState | null;
 
-  const [selectedLangCode, setSelectedLangCode] = useState<string>(SOURCE_LANG_CODE);
-  const [providerView, setProviderView] = useState<"merged" | "openai" | "gemini">("merged");
+  const [selectedLangCode, setSelectedLangCode] =
+    useState<string>(SOURCE_LANG_CODE);
+  const [providerView, setProviderView] = useState<
+    "merged" | "openai" | "gemini"
+  >("merged");
   const [uploading, setUploading] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [confirmProgressPercent, setConfirmProgressPercent] = useState(0);
@@ -59,11 +77,16 @@ const TranslationPreview: React.FC = () => {
 
   const ROWS_PER_PAGE = 40;
   const spellCheckOnly = Boolean(state?.spellCheckOnly);
-  const hasTranslationData = Boolean(state?.fileInfo && state?.previewData && !spellCheckOnly);
-  const hasSpellCheckData = Boolean(state?.fileInfo && state?.spellCheckPreview && spellCheckOnly);
+  const hasTranslationData = Boolean(
+    state?.fileInfo && state?.previewData && !spellCheckOnly,
+  );
+  const hasSpellCheckData = Boolean(
+    state?.fileInfo && state?.spellCheckPreview && spellCheckOnly,
+  );
 
   const { header, keyCol, sourceCol, langCodeToColIndex } = useMemo(() => {
-    const targetLangs = state?.previewData?.targetLanguages || state?.targetLanguages || [];
+    const targetLangs =
+      state?.previewData?.targetLanguages || state?.targetLanguages || [];
     if (!state?.fileInfo?.csvContent || !targetLangs.length) {
       return {
         header: [] as string[],
@@ -81,7 +104,8 @@ const TranslationPreview: React.FC = () => {
       if (lang) langCodeToCol[lang.code] = col;
     }
     targetLangs.forEach((lang, i) => {
-      if (langCodeToCol[lang.code] === undefined) langCodeToCol[lang.code] = 2 + i;
+      if (langCodeToCol[lang.code] === undefined)
+        langCodeToCol[lang.code] = 2 + i;
     });
     return {
       header: h,
@@ -89,7 +113,11 @@ const TranslationPreview: React.FC = () => {
       sourceCol: 1,
       langCodeToColIndex: langCodeToCol,
     };
-  }, [state?.fileInfo?.csvContent, state?.previewData?.targetLanguages, state?.targetLanguages]);
+  }, [
+    state?.fileInfo?.csvContent,
+    state?.previewData?.targetLanguages,
+    state?.targetLanguages,
+  ]);
 
   useEffect(() => {
     if (!state?.fileInfo?.csvContent || editableRows.length > 0) return;
@@ -98,7 +126,8 @@ const TranslationPreview: React.FC = () => {
     const orig = rows.map((r) => r.slice());
     if (state.spellCheckOnly && state.spellCheckPreview?.length) {
       for (const p of state.spellCheckPreview) {
-        if (orig[p.rowIndex] && orig[p.rowIndex]!.length > 1) orig[p.rowIndex]![1] = p.originalSource;
+        if (orig[p.rowIndex] && orig[p.rowIndex]!.length > 1)
+          orig[p.rowIndex]![1] = p.originalSource;
       }
     }
     setOriginalRows(orig);
@@ -121,13 +150,15 @@ const TranslationPreview: React.FC = () => {
   const { fileInfo, repoPath, providerMode } = state;
   const previewData = state.previewData;
   const sourceLabel = state.sourceLanguageName || SOURCE_LANG_NAME;
-  const targetLangs = previewData?.targetLanguages || state.targetLanguages || [];
+  const targetLangs =
+    previewData?.targetLanguages || state.targetLanguages || [];
   const languageOptions: { code: string; name: string }[] = [
     { code: SOURCE_LANG_CODE, name: sourceLabel },
     ...targetLangs,
   ];
   const effectiveLangCode =
-    selectedLangCode || (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
+    selectedLangCode ||
+    (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
   const isSourceView = effectiveLangCode === SOURCE_LANG_CODE;
   const previewRows = previewData?.preview || [];
   const pageStart = currentPage * ROWS_PER_PAGE + 1;
@@ -169,10 +200,14 @@ const TranslationPreview: React.FC = () => {
   };
 
   const hasCellChanged = (rowIndex: number, colIndex: number): boolean =>
-    getCellValue(rowIndex, colIndex) !== getOriginalCellValue(rowIndex, colIndex);
+    getCellValue(rowIndex, colIndex) !==
+    getOriginalCellValue(rowIndex, colIndex);
 
   const handleDownload = () => {
-    const content = editableRows.length > 0 ? stringifyCSV(editableRows) : fileInfo.csvContent;
+    const content =
+      editableRows.length > 0
+        ? stringifyCSV(editableRows)
+        : fileInfo.csvContent;
     const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -199,14 +234,23 @@ const TranslationPreview: React.FC = () => {
         content: state.fileInfo.csvContent,
       });
       if (!writeResult.success) {
-        await desktop.showMessage(writeResult.error || "Error al guardar correcciones.", "Error", "error");
+        await desktop.showMessage(
+          writeResult.error || "Error al guardar correcciones.",
+          "Error",
+          "error",
+        );
         return;
       }
-      const unsub = desktop.onTranslationProgress((d) => setConfirmProgressPercent(d.percent));
+      const unsub = desktop.onTranslationProgress((d) =>
+        setConfirmProgressPercent(d.percent),
+      );
       const result = await desktop.translateFile(state.translationPayload);
       unsub();
       setConfirmProgressPercent(100);
-      const fileInfo = { filePath: result.filePath, csvContent: result.csvContent };
+      const fileInfo = {
+        filePath: result.filePath,
+        csvContent: result.csvContent,
+      };
       const previewData = {
         preview: result.preview,
         stats: result.stats,
@@ -227,7 +271,7 @@ const TranslationPreview: React.FC = () => {
       await desktop.showMessage(
         error?.message || String(error),
         "Error en traducción",
-        "error"
+        "error",
       );
     } finally {
       setTranslating(false);
@@ -240,7 +284,9 @@ const TranslationPreview: React.FC = () => {
     const desktop = DesktopManager.getInstance();
     try {
       setUploading(true);
-      const content = editableRows.length ? stringifyCSV(editableRows) : fileInfo.csvContent;
+      const content = editableRows.length
+        ? stringifyCSV(editableRows)
+        : fileInfo.csvContent;
       const writeResult = await desktop.writeTranslationFile({
         filePath: fileInfo.filePath,
         content,
@@ -249,7 +295,7 @@ const TranslationPreview: React.FC = () => {
         await desktop.showMessage(
           writeResult.error || "Error al guardar el archivo.",
           "Error",
-          "error"
+          "error",
         );
         return;
       }
@@ -261,20 +307,20 @@ const TranslationPreview: React.FC = () => {
         await desktop.showMessage(
           "Traducciones subidas correctamente al repositorio (git push origin main).",
           "Subida completada",
-          "info"
+          "info",
         );
       } else {
         await desktop.showMessage(
           result.error || "Error desconocido al subir las traducciones.",
           "Error al subir",
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       await desktop.showMessage(
         error?.message || String(error),
         "Error al subir traducciones",
-        "error"
+        "error",
       );
     } finally {
       setUploading(false);
@@ -290,13 +336,10 @@ const TranslationPreview: React.FC = () => {
   };
 
   const renderConfidence = (confidence: number | null | undefined) => {
-    if (confidence == null) return <span className={getConfidenceClass(null)}>-</span>;
+    if (confidence == null)
+      return <span className={getConfidenceClass(null)}>-</span>;
     const pct = Math.round(confidence * 100);
-    return (
-      <span className={getConfidenceClass(confidence)}>
-        {pct}%
-      </span>
-    );
+    return <span className={getConfidenceClass(confidence)}>{pct}%</span>;
   };
 
   return (
@@ -316,7 +359,9 @@ const TranslationPreview: React.FC = () => {
             <div className="translation-preview-title-wrap">
               <h1 className="translation-preview-title">
                 <Globe2 size={24} />
-                {spellCheckOnly ? "Revisión ortográfica y gramatical (IA)" : "Resultado de traducción AI"}
+                {spellCheckOnly
+                  ? "Revisión ortográfica y gramatical (IA)"
+                  : "Resultado de traducción AI"}
               </h1>
               <p className="translation-preview-subtitle">
                 {spellCheckOnly
@@ -488,14 +533,19 @@ const TranslationPreview: React.FC = () => {
                       : isSourceView
                         ? "Texto (origen)"
                         : `Traducción (${effectiveLangCode})`}
-                    {!spellCheckOnly && providerMode === "both" && !isSourceView && (
-                      <span style={{ marginLeft: 8, opacity: 0.9 }}>
-                        <Shield size={12} style={{ verticalAlign: "middle" }} />
-                        {currentProviderView === "merged"
-                          ? " Combinado"
-                          : ` ${currentProviderView}`}
-                      </span>
-                    )}
+                    {!spellCheckOnly &&
+                      providerMode === "both" &&
+                      !isSourceView && (
+                        <span style={{ marginLeft: 8, opacity: 0.9 }}>
+                          <Shield
+                            size={12}
+                            style={{ verticalAlign: "middle" }}
+                          />
+                          {currentProviderView === "merged"
+                            ? " Combinado"
+                            : ` ${currentProviderView}`}
+                        </span>
+                      )}
                   </th>
                   {!spellCheckOnly && !isSourceView && <th>Confianza</th>}
                 </tr>
@@ -505,8 +555,14 @@ const TranslationPreview: React.FC = () => {
                   ? pageRowIndices.map((dataRowIndex) => {
                       const row = editableRows[dataRowIndex];
                       const key = row?.[keyCol] ?? "";
-                      const originalVal = getOriginalCellValue(dataRowIndex, sourceCol);
-                      const correctedVal = getCellValue(dataRowIndex, sourceCol);
+                      const originalVal = getOriginalCellValue(
+                        dataRowIndex,
+                        sourceCol,
+                      );
+                      const correctedVal = getCellValue(
+                        dataRowIndex,
+                        sourceCol,
+                      );
                       const hasChanged = correctedVal !== originalVal;
                       return (
                         <tr key={key + String(dataRowIndex)}>
@@ -520,7 +576,13 @@ const TranslationPreview: React.FC = () => {
                                 type="text"
                                 className="translation-preview-cell-input translation-preview-diff-corrected"
                                 value={correctedVal}
-                                onChange={(e) => setCellValue(dataRowIndex, sourceCol, e.target.value)}
+                                onChange={(e) =>
+                                  setCellValue(
+                                    dataRowIndex,
+                                    sourceCol,
+                                    e.target.value,
+                                  )
+                                }
                               />
                               {hasChanged && (
                                 <button
@@ -528,7 +590,14 @@ const TranslationPreview: React.FC = () => {
                                   className="translation-preview-cell-undo"
                                   title="Restaurar texto original"
                                   onClick={() =>
-                                    setCellValue(dataRowIndex, sourceCol, getOriginalCellValue(dataRowIndex, sourceCol))
+                                    setCellValue(
+                                      dataRowIndex,
+                                      sourceCol,
+                                      getOriginalCellValue(
+                                        dataRowIndex,
+                                        sourceCol,
+                                      ),
+                                    )
                                   }
                                 >
                                   <Undo2 size={14} />
@@ -542,21 +611,31 @@ const TranslationPreview: React.FC = () => {
                   : pageRowIndices.map((dataRowIndex) => {
                       const row = editableRows[dataRowIndex];
                       const key = row?.[keyCol] ?? "";
-                      const previewRow = previewRows.find((pr: any) => pr.rowIndex === dataRowIndex);
+                      const previewRow = previewRows.find(
+                        (pr: any) => pr.rowIndex === dataRowIndex,
+                      );
                       const langData = isSourceView
                         ? null
                         : previewRow?.perLanguage?.[effectiveLangCode] || null;
-                      const editCol = isSourceView ? sourceCol : langCodeToColIndex[effectiveLangCode];
+                      const editCol = isSourceView
+                        ? sourceCol
+                        : langCodeToColIndex[effectiveLangCode];
                       let displayText = "";
                       if (isSourceView) {
-                        displayText = getCellValue(dataRowIndex, sourceCol) || previewRow?.sourceText || "";
+                        displayText =
+                          getCellValue(dataRowIndex, sourceCol) ||
+                          previewRow?.sourceText ||
+                          "";
                       } else {
-                        if (editCol !== undefined) displayText = getCellValue(dataRowIndex, editCol);
+                        if (editCol !== undefined)
+                          displayText = getCellValue(dataRowIndex, editCol);
                         if (!displayText && langData) {
                           if (currentProviderView === "openai")
-                            displayText = langData.openaiText || langData.mergedText || "";
+                            displayText =
+                              langData.openaiText || langData.mergedText || "";
                           else if (currentProviderView === "gemini")
-                            displayText = langData.geminiText || langData.mergedText || "";
+                            displayText =
+                              langData.geminiText || langData.mergedText || "";
                           else
                             displayText =
                               langData.mergedText ||
@@ -565,7 +644,10 @@ const TranslationPreview: React.FC = () => {
                               "";
                         }
                       }
-                      const sourceVal = getCellValue(dataRowIndex, sourceCol) || previewRow?.sourceText || "";
+                      const sourceVal =
+                        getCellValue(dataRowIndex, sourceCol) ||
+                        previewRow?.sourceText ||
+                        "";
                       return (
                         <tr key={key + String(dataRowIndex)}>
                           <td className="col-key">{key}</td>
@@ -575,7 +657,13 @@ const TranslationPreview: React.FC = () => {
                                 type="text"
                                 className="translation-preview-cell-input"
                                 value={sourceVal}
-                                onChange={(e) => setCellValue(dataRowIndex, sourceCol, e.target.value)}
+                                onChange={(e) =>
+                                  setCellValue(
+                                    dataRowIndex,
+                                    sourceCol,
+                                    e.target.value,
+                                  )
+                                }
                               />
                               {hasCellChanged(dataRowIndex, sourceCol) && (
                                 <button
@@ -583,7 +671,14 @@ const TranslationPreview: React.FC = () => {
                                   className="translation-preview-cell-undo"
                                   title="Revertir este campo"
                                   onClick={() =>
-                                    setCellValue(dataRowIndex, sourceCol, getOriginalCellValue(dataRowIndex, sourceCol))
+                                    setCellValue(
+                                      dataRowIndex,
+                                      sourceCol,
+                                      getOriginalCellValue(
+                                        dataRowIndex,
+                                        sourceCol,
+                                      ),
+                                    )
                                   }
                                 >
                                   <Undo2 size={14} />
@@ -598,22 +693,40 @@ const TranslationPreview: React.FC = () => {
                                 className="translation-preview-cell-input"
                                 value={displayText}
                                 onChange={(e) => {
-                                  if (isSourceView) setCellValue(dataRowIndex, sourceCol, e.target.value);
-                                  else if (editCol !== undefined) setCellValue(dataRowIndex, editCol, e.target.value);
+                                  if (isSourceView)
+                                    setCellValue(
+                                      dataRowIndex,
+                                      sourceCol,
+                                      e.target.value,
+                                    );
+                                  else if (editCol !== undefined)
+                                    setCellValue(
+                                      dataRowIndex,
+                                      editCol,
+                                      e.target.value,
+                                    );
                                 }}
                               />
-                              {editCol !== undefined && hasCellChanged(dataRowIndex, editCol) && (
-                                <button
-                                  type="button"
-                                  className="translation-preview-cell-undo"
-                                  title="Revertir este campo"
-                                  onClick={() =>
-                                    setCellValue(dataRowIndex, editCol, getOriginalCellValue(dataRowIndex, editCol))
-                                  }
-                                >
-                                  <Undo2 size={14} />
-                                </button>
-                              )}
+                              {editCol !== undefined &&
+                                hasCellChanged(dataRowIndex, editCol) && (
+                                  <button
+                                    type="button"
+                                    className="translation-preview-cell-undo"
+                                    title="Revertir este campo"
+                                    onClick={() =>
+                                      setCellValue(
+                                        dataRowIndex,
+                                        editCol,
+                                        getOriginalCellValue(
+                                          dataRowIndex,
+                                          editCol,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    <Undo2 size={14} />
+                                  </button>
+                                )}
                             </span>
                           </td>
                           {!isSourceView && (
@@ -649,7 +762,11 @@ const TranslationPreview: React.FC = () => {
                 type="button"
                 className="translation-preview-pagination-btn"
                 disabled={currentPage >= effectiveTotalPages - 1}
-                onClick={() => setCurrentPage((p) => Math.min(effectiveTotalPages - 1, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) =>
+                    Math.min(effectiveTotalPages - 1, p + 1),
+                  )
+                }
                 title="Página siguiente"
               >
                 Siguiente
@@ -661,12 +778,15 @@ const TranslationPreview: React.FC = () => {
           {!spellCheckOnly && !isSourceView && (
             <div className="translation-preview-footer-note">
               Las filas con baja confianza indican que las traducciones de los
-              modelos difieren significativamente y deberían revisarse manualmente.
+              modelos difieren significativamente y deberían revisarse
+              manualmente.
             </div>
           )}
           {spellCheckOnly && (
             <div className="translation-preview-footer-note">
-              Revisión ortográfica y gramatical con IA. Puedes restaurar el texto original por diálogo (deshacer) o confirmar para traducir con el texto corregido.
+              Revisión ortográfica y gramatical con IA. Puedes restaurar el
+              texto original por diálogo (deshacer) o confirmar para traducir
+              con el texto corregido.
             </div>
           )}
         </div>

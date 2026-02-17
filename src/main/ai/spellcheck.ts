@@ -44,7 +44,9 @@ export interface SpellCheckResult {
   stats: { totalRows: number; correctedRows: number };
 }
 
-function getProvidersToRun(payload: SpellCheckPayload): { id: string; apiKey: string; modelId: string }[] {
+function getProvidersToRun(
+  payload: SpellCheckPayload,
+): { id: string; apiKey: string; modelId: string }[] {
   const { mode, openaiModel, geminiModel } = payload.providerOptions;
   const openaiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -60,7 +62,7 @@ function getProvidersToRun(payload: SpellCheckPayload): { id: string; apiKey: st
 
 export async function spellCheckFileInMain(
   payload: SpellCheckPayload,
-  sender?: WebContents
+  sender?: WebContents,
 ): Promise<SpellCheckResult> {
   const maxRows = Math.min(payload.maxRows ?? 200, 500);
   const filePath = payload.filePath;
@@ -77,7 +79,10 @@ export async function spellCheckFileInMain(
     const workbook = XLSX.read(buf, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true }) as any[][];
+    rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      blankrows: true,
+    }) as any[][];
   } else {
     throw new Error("Solo se soporta .csv o .xlsx para revisión ortográfica.");
   }
@@ -86,7 +91,9 @@ export async function spellCheckFileInMain(
 
   const providersToRun = getProvidersToRun(payload);
   if (!providersToRun.length) {
-    throw new Error("Configura OPENAI_API_KEY o GEMINI_API_KEY en el entorno para usar la revisión con IA.");
+    throw new Error(
+      "Configura OPENAI_API_KEY o GEMINI_API_KEY en el entorno para usar la revisión con IA.",
+    );
   }
 
   const keyColIndex = 0;
@@ -94,7 +101,12 @@ export async function spellCheckFileInMain(
   const preview: SpellCheckPreviewRow[] = [];
   let correctedRowsCount = 0;
 
-  const workItems: { rowIndex: number; id: string; key: string; sourceText: string }[] = [];
+  const workItems: {
+    rowIndex: number;
+    id: string;
+    key: string;
+    sourceText: string;
+  }[] = [];
   const dataRowEnd = Math.min(rows.length, maxRows + 1);
   for (let rowIndex = 1; rowIndex < dataRowEnd; rowIndex++) {
     const row = rows[rowIndex] || [];
@@ -117,7 +129,9 @@ export async function spellCheckFileInMain(
   const totalBatches = Math.ceil(workItems.length / batchSize);
   let batchDone = 0;
 
-  console.log(`[SpellCheck AI] START file="${filePath}" items=${total} mode=${payload.providerOptions.mode}`);
+  console.log(
+    `[SpellCheck AI] START file="${filePath}" items=${total} mode=${payload.providerOptions.mode}`,
+  );
 
   for (let i = 0; i < workItems.length; i += batchSize) {
     const batchItems = workItems.slice(i, i + batchSize);
@@ -129,10 +143,18 @@ export async function spellCheckFileInMain(
       const provider = getProvider(id);
       if (!provider || !provider.spellCorrectBatch) continue;
       try {
-        resultsByProvider[id] = await provider.spellCorrectBatch(apiKey, modelId, {
-          languageName,
-          items: batchItems.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })),
-        });
+        resultsByProvider[id] = await provider.spellCorrectBatch(
+          apiKey,
+          modelId,
+          {
+            languageName,
+            items: batchItems.map((it) => ({
+              id: it.id,
+              key: it.key,
+              sourceText: it.sourceText,
+            })),
+          },
+        );
       } catch (err) {
         console.error(`[SpellCheck AI] Provider ${id} error:`, err);
         throw err;
@@ -142,9 +164,11 @@ export async function spellCheckFileInMain(
     const openaiResults = resultsByProvider["openai"] ?? [];
     const geminiResults = resultsByProvider["gemini"] ?? [];
     const openaiMap = new Map<string, string>();
-    for (const item of openaiResults) openaiMap.set(item.id, item.translatedText);
+    for (const item of openaiResults)
+      openaiMap.set(item.id, item.translatedText);
     const geminiMap = new Map<string, string>();
-    for (const item of geminiResults) geminiMap.set(item.id, item.translatedText);
+    for (const item of geminiResults)
+      geminiMap.set(item.id, item.translatedText);
 
     for (const item of batchItems) {
       const openaiText = openaiMap.get(item.id);
@@ -169,7 +193,9 @@ export async function spellCheckFileInMain(
       }
     }
 
-    const percent = totalBatches ? Math.round((batchDone / totalBatches) * 100) : 100;
+    const percent = totalBatches
+      ? Math.round((batchDone / totalBatches) * 100)
+      : 100;
     sendProgress(Math.min(i + batchSize, total));
   }
 

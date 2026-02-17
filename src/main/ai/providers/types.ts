@@ -36,7 +36,7 @@ export interface ITranslationProvider {
   translateBatch(
     apiKey: string,
     modelId: string,
-    request: TranslationBatchRequest
+    request: TranslationBatchRequest,
   ): Promise<TranslationResultItem[]>;
 
   /**
@@ -46,6 +46,6 @@ export interface ITranslationProvider {
   spellCorrectBatch(
     apiKey: string,
     modelId: string,
-    request: SpellCheckBatchRequest
+    request: SpellCheckBatchRequest,
   ): Promise<TranslationResultItem[]>;
 }

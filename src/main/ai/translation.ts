@@ -91,7 +91,10 @@ function jaccardSimilarity(a: string, b: string): number {
   return intersection / union;
 }
 
-async function readContexts(contextPaths: string[], maxChars: number): Promise<string> {
+async function readContexts(
+  contextPaths: string[],
+  maxChars: number,
+): Promise<string> {
   let result = "";
   for (const contextPath of contextPaths) {
     if (result.length >= maxChars) break;
@@ -108,7 +111,10 @@ async function readContexts(contextPaths: string[], maxChars: number): Promise<s
   return result.trim();
 }
 
-async function readGlossaries(glossaryPaths: string[], maxChars: number): Promise<string> {
+async function readGlossaries(
+  glossaryPaths: string[],
+  maxChars: number,
+): Promise<string> {
   let result = "";
   for (const glossaryPath of glossaryPaths) {
     if (result.length >= maxChars) break;
@@ -156,7 +162,9 @@ async function readGlossaries(glossaryPaths: string[], maxChars: number): Promis
 }
 
 /** Resolve which providers to run and their config (key + model) from payload. */
-function getProvidersToRun(payload: TranslateFilePayload): { id: string; apiKey: string; modelId: string }[] {
+function getProvidersToRun(
+  payload: TranslateFilePayload,
+): { id: string; apiKey: string; modelId: string }[] {
   const { mode, openaiModel, geminiModel } = payload.providerOptions;
   const openaiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -172,10 +180,11 @@ function getProvidersToRun(payload: TranslateFilePayload): { id: string; apiKey:
 
 export async function translateFileInMain(
   payload: TranslateFilePayload,
-  sender?: WebContents
+  sender?: WebContents,
 ): Promise<TranslateFileResult> {
   const sendProgress = (percent: number, stage?: string) => {
-    if (sender && !sender.isDestroyed()) sender.send(TRANSLATION_PROGRESS_CHANNEL, { percent, stage });
+    if (sender && !sender.isDestroyed())
+      sender.send(TRANSLATION_PROGRESS_CHANNEL, { percent, stage });
   };
   console.log("[AI Translate] Start", {
     filePath: payload.filePath,
@@ -185,10 +194,18 @@ export async function translateFileInMain(
   const openaiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  if (!openaiKey && (payload.providerOptions.mode === "openai" || payload.providerOptions.mode === "both")) {
+  if (
+    !openaiKey &&
+    (payload.providerOptions.mode === "openai" ||
+      payload.providerOptions.mode === "both")
+  ) {
     throw new Error("OPENAI_API_KEY no está configurada en el entorno.");
   }
-  if (!geminiKey && (payload.providerOptions.mode === "gemini" || payload.providerOptions.mode === "both")) {
+  if (
+    !geminiKey &&
+    (payload.providerOptions.mode === "gemini" ||
+      payload.providerOptions.mode === "both")
+  ) {
     throw new Error("GEMINI_API_KEY no está configurada en el entorno.");
   }
 
@@ -211,7 +228,10 @@ export async function translateFileInMain(
     const workbook = XLSX.read(buf, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true }) as any[][];
+    rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      blankrows: true,
+    }) as any[][];
   } else {
     throw new Error("Formato de archivo no soportado. Usa .csv o .xlsx");
   }
@@ -224,8 +244,11 @@ export async function translateFileInMain(
   const keyColIndex = 0;
   const sourceColIndex = 1;
 
-  const detectedSourceLanguageName = String(header[sourceColIndex] || "").trim();
-  const sourceLanguageName = payload.sourceLanguageName || detectedSourceLanguageName || "Idioma origen";
+  const detectedSourceLanguageName = String(
+    header[sourceColIndex] || "",
+  ).trim();
+  const sourceLanguageName =
+    payload.sourceLanguageName || detectedSourceLanguageName || "Idioma origen";
 
   const targetLanguageToColumn: { [name: string]: number } = {};
   for (let col = 2; col < header.length; col++) {
@@ -258,7 +281,11 @@ export async function translateFileInMain(
   // Build preview rows from first 50 data rows so every language can fill into the same rows
   const maxPreviewRows = 50;
   const previewRows: PreviewRow[] = [];
-  for (let rowIndex = 1; rowIndex < rows.length && previewRows.length < maxPreviewRows; rowIndex++) {
+  for (
+    let rowIndex = 1;
+    rowIndex < rows.length && previewRows.length < maxPreviewRows;
+    rowIndex++
+  ) {
     const row = rows[rowIndex] || [];
     const key = String(row[keyColIndex] ?? "").trim();
     const sourceText = String(row[sourceColIndex] ?? "").trim();
@@ -273,13 +300,25 @@ export async function translateFileInMain(
 
   let translatedRowsCount = 0;
 
-  type WorkItem = { rowIndex: number; id: string; key: string; sourceText: string };
-  const toBatchRequest = (batchItems: WorkItem[], targetLang: TargetLanguage) => ({
+  type WorkItem = {
+    rowIndex: number;
+    id: string;
+    key: string;
+    sourceText: string;
+  };
+  const toBatchRequest = (
+    batchItems: WorkItem[],
+    targetLang: TargetLanguage,
+  ) => ({
     contextSnippet,
     glossarySnippet,
     sourceLanguageName,
     targetLanguage: targetLang,
-    items: batchItems.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })),
+    items: batchItems.map((it) => ({
+      id: it.id,
+      key: it.key,
+      sourceText: it.sourceText,
+    })),
   });
 
   let totalBatches = 0;
@@ -301,7 +340,12 @@ export async function translateFileInMain(
     const langColIndex = targetLanguageToColumn[lang.name.toLowerCase()];
     if (typeof langColIndex !== "number") continue;
 
-    const workItems: { rowIndex: number; id: string; key: string; sourceText: string }[] = [];
+    const workItems: {
+      rowIndex: number;
+      id: string;
+      key: string;
+      sourceText: string;
+    }[] = [];
 
     for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex] || [];
@@ -328,7 +372,9 @@ export async function translateFileInMain(
     for (let i = 0; i < workItems.length; i += maxRowsPerBatch) {
       const batchItems = workItems.slice(i, i + maxRowsPerBatch);
       batchDone++;
-      const percent = totalBatches ? Math.round((batchDone / totalBatches) * 100) : 0;
+      const percent = totalBatches
+        ? Math.round((batchDone / totalBatches) * 100)
+        : 0;
       sendProgress(percent, `${lang.name}`);
 
       const textsConcat = batchItems.map((it) => it.sourceText).join("\n");
@@ -346,17 +392,27 @@ export async function translateFileInMain(
         const provider = getProvider(id);
         if (!provider) continue;
         try {
-          console.log(`[AI Translate] Provider ${id} batch lang=${lang.code} items=${batchItems.length}`);
-          resultsByProvider[id] = await provider.translateBatch(apiKey, modelId, toBatchRequest(batchItems, lang));
-          console.log(`[AI Translate] Provider ${id} returned ${resultsByProvider[id].length} results`);
+          console.log(
+            `[AI Translate] Provider ${id} batch lang=${lang.code} items=${batchItems.length}`,
+          );
+          resultsByProvider[id] = await provider.translateBatch(
+            apiKey,
+            modelId,
+            toBatchRequest(batchItems, lang),
+          );
+          console.log(
+            `[AI Translate] Provider ${id} returned ${resultsByProvider[id].length} results`,
+          );
         } catch (err) {
           console.error(`[AI Translate] Provider ${id} error:`, err);
           throw err;
         }
       }
 
-      const openaiResults: TranslationResultItem[] = resultsByProvider["openai"] ?? [];
-      const geminiResults: TranslationResultItem[] = resultsByProvider["gemini"] ?? [];
+      const openaiResults: TranslationResultItem[] =
+        resultsByProvider["openai"] ?? [];
+      const geminiResults: TranslationResultItem[] =
+        resultsByProvider["gemini"] ?? [];
 
       const openaiMap = new Map<string, string>();
       for (const item of openaiResults) {
@@ -395,7 +451,9 @@ export async function translateFileInMain(
           translatedRowsCount++;
         }
 
-        const previewRow = previewRows.find((pr) => pr.rowIndex === item.rowIndex);
+        const previewRow = previewRows.find(
+          (pr) => pr.rowIndex === item.rowIndex,
+        );
         if (previewRow) {
           previewRow.perLanguage[lang.code] = {
             openaiText,
@@ -434,4 +492,3 @@ export async function translateFileInMain(
     },
   };
 }
-

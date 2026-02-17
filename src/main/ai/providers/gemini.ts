@@ -12,7 +12,8 @@ function parseJsonResults(content: string): TranslationResultItem[] {
       return parsed
         .map((item: any) => ({
           id: String(item.id),
-          translatedText: typeof item.translatedText === "string" ? item.translatedText : "",
+          translatedText:
+            typeof item.translatedText === "string" ? item.translatedText : "",
         }))
         .filter((it: TranslationResultItem) => it.id);
     }
@@ -25,7 +26,10 @@ function parseJsonResults(content: string): TranslationResultItem[] {
           return parsed
             .map((item: any) => ({
               id: String(item.id),
-              translatedText: typeof item.translatedText === "string" ? item.translatedText : "",
+              translatedText:
+                typeof item.translatedText === "string"
+                  ? item.translatedText
+                  : "",
             }))
             .filter((it: TranslationResultItem) => it.id);
         }
@@ -43,10 +47,10 @@ export const geminiProvider: ITranslationProvider = {
   async translateBatch(
     apiKey: string,
     modelId: string,
-    request: TranslationBatchRequest
+    request: TranslationBatchRequest,
   ): Promise<TranslationResultItem[]> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      modelId
+      modelId,
     )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     let text =
@@ -62,7 +66,11 @@ export const geminiProvider: ITranslationProvider = {
     text += `Idioma destino: ${request.targetLanguage.name} (${request.targetLanguage.code})\n\n`;
     text += "Items a traducir:\n";
     text += JSON.stringify(
-      request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText }))
+      request.items.map((it) => ({
+        id: it.id,
+        key: it.key,
+        sourceText: it.sourceText,
+      })),
     );
 
     const payload = {
@@ -88,19 +96,27 @@ export const geminiProvider: ITranslationProvider = {
       console.error("[Gemini] Blocked:", blockReason, data.promptFeedback);
     }
     const content =
-      data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("\n") || "[]";
+      data.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p.text || "")
+        .join("\n") || "[]";
     const results = parseJsonResults(content);
-    console.log("[Gemini] Parsed", results.length, "translations for", request.items.length, "items");
+    console.log(
+      "[Gemini] Parsed",
+      results.length,
+      "translations for",
+      request.items.length,
+      "items",
+    );
     return results;
   },
 
   async spellCorrectBatch(
     apiKey: string,
     modelId: string,
-    request: SpellCheckBatchRequest
+    request: SpellCheckBatchRequest,
   ): Promise<TranslationResultItem[]> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      modelId
+      modelId,
     )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const text =
@@ -109,7 +125,13 @@ export const geminiProvider: ITranslationProvider = {
       `[{"id": "ID_DEL_ITEM", "translatedText": "texto corregido"}].\n\n` +
       `Idioma del texto: ${request.languageName}\n\n` +
       "Textos a corregir:\n" +
-      JSON.stringify(request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })));
+      JSON.stringify(
+        request.items.map((it) => ({
+          id: it.id,
+          key: it.key,
+          sourceText: it.sourceText,
+        })),
+      );
 
     const payload = {
       contents: [{ parts: [{ text }] }],
@@ -129,7 +151,9 @@ export const geminiProvider: ITranslationProvider = {
 
     const data: any = await response.json();
     const content =
-      data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || "").join("\n") || "[]";
+      data.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p.text || "")
+        .join("\n") || "[]";
     return parseJsonResults(content);
   },
 };

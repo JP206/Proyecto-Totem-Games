@@ -149,12 +149,22 @@ export interface ElectronAPI {
   saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
 
   // AI translation
-  translateFile: (payload: TranslateFilePayload) => Promise<TranslateFileResult>;
+  translateFile: (
+    payload: TranslateFilePayload,
+  ) => Promise<TranslateFileResult>;
   spellCheckFile: (payload: SpellCheckPayload) => Promise<SpellCheckResult>;
-  uploadTranslation: (payload: UploadTranslationPayload) => Promise<UploadTranslationResult>;
-  writeTranslationFile: (data: WriteTranslationFilePayload) => Promise<{ success: boolean; error?: string }>;
-  onSpellCheckProgress: (callback: (data: ProgressPayload) => void) => () => void;
-  onTranslationProgress: (callback: (data: ProgressPayload) => void) => () => void;
+  uploadTranslation: (
+    payload: UploadTranslationPayload,
+  ) => Promise<UploadTranslationResult>;
+  writeTranslationFile: (
+    data: WriteTranslationFilePayload,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onSpellCheckProgress: (
+    callback: (data: ProgressPayload) => void,
+  ) => () => void;
+  onTranslationProgress: (
+    callback: (data: ProgressPayload) => void,
+  ) => () => void;
 
   // Git operations
   cloneRepository: (
@@ -164,11 +174,20 @@ export interface ElectronAPI {
 
   getIssues: (data: RepoInformation, label: string) => Promise<IssueData[]>;
 
-  markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) => Promise<boolean>;
+  markIssueAsResolved: (
+    issueId: number,
+    repoInfo: RepoInformation,
+  ) => Promise<boolean>;
 
-  editIssue: (issueData: IssueData, repoInfo: RepoInformation) => Promise<boolean>;
+  editIssue: (
+    issueData: IssueData,
+    repoInfo: RepoInformation,
+  ) => Promise<boolean>;
 
-  createIssue: (issueData: IssueData, repoInfo: RepoInformation) => Promise<boolean>;
+  createIssue: (
+    issueData: IssueData,
+    repoInfo: RepoInformation,
+  ) => Promise<boolean>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

@@ -4,14 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import { IssueData } from "../utils/electron";
-import { 
-  FileText, 
-  Plus, 
-  Calendar, 
-  X,
-  Trash2,
-  AlertCircle 
-} from "lucide-react";
+import { FileText, Plus, Calendar, X, Trash2, AlertCircle } from "lucide-react";
 import "../styles/notes.css";
 
 export default function Notes() {
@@ -23,8 +16,8 @@ export default function Notes() {
   const [editedDescription, setEditedDescription] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentProject, setCurrentProject] = useState<{ 
-    repoPath: string; 
+  const [currentProject, setCurrentProject] = useState<{
+    repoPath: string;
     repoName: string;
     repoOwner: string;
   } | null>(null);
@@ -37,15 +30,15 @@ export default function Notes() {
     try {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
-      
+
       const token = await desktop.getConfig("github_token");
       if (!token) {
         await desktop.showMessage(
           "Debes iniciar sesión para acceder a esta sección",
           "Acceso denegado",
-          "warning"
+          "warning",
         );
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
@@ -54,27 +47,29 @@ export default function Notes() {
         await desktop.showMessage(
           "No hay un proyecto seleccionado",
           "Error",
-          "error"
+          "error",
         );
-        navigate('/dashboard');
+        navigate("/dashboard");
         return;
       }
 
       setCurrentProject(project);
       await loadNotes(project, token);
-      
     } catch (error: any) {
       const desktop = DesktopManager.getInstance();
       await desktop.showMessage(
         error.message || "Error al cargar el proyecto",
         "Error",
-        "error"
+        "error",
       );
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   };
 
-  const loadNotes = async (project: { repoName: string; repoOwner: string }, token: string) => {
+  const loadNotes = async (
+    project: { repoName: string; repoOwner: string },
+    token: string,
+  ) => {
     try {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
@@ -85,7 +80,7 @@ export default function Notes() {
           repoOwner: project.repoOwner,
           token,
         },
-        "documentation"
+        "documentation",
       );
 
       const formattedNotes = data
@@ -104,7 +99,7 @@ export default function Notes() {
       await desktop.showMessage(
         error.message || "Error al cargar las notas",
         "Error",
-        "error"
+        "error",
       );
     } finally {
       setLoading(false);
@@ -125,20 +120,20 @@ export default function Notes() {
           description: editedDescription,
           id: null,
           assignees: null,
-          labels: ["documentation"]
+          labels: ["documentation"],
         };
 
         response = await desktop.createIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
-          token
+          token,
         });
 
         if (response) {
           await desktop.showMessage(
             "Nota creada exitosamente",
             "Éxito",
-            "info"
+            "info",
           );
         }
       } else {
@@ -147,20 +142,20 @@ export default function Notes() {
           description: editedDescription,
           id: selectedNote.id,
           assignees: null,
-          labels: null
+          labels: null,
         };
 
         response = await desktop.editIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
-          token
+          token,
         });
 
         if (response) {
           await desktop.showMessage(
             `Nota #${selectedNote.id} actualizada`,
             "Éxito",
-            "info"
+            "info",
           );
         }
       }
@@ -177,7 +172,7 @@ export default function Notes() {
       await desktop.showMessage(
         error.message || "Error al guardar la nota",
         "Error",
-        "error"
+        "error",
       );
     }
   };
@@ -197,7 +192,7 @@ export default function Notes() {
       await desktop.showMessage(
         `Nota #${selectedNote.id} archivada`,
         "Éxito",
-        "info"
+        "info",
       );
 
       await loadNotes(currentProject, token);
@@ -209,7 +204,7 @@ export default function Notes() {
       await desktop.showMessage(
         error.message || "Error al archivar la nota",
         "Error",
-        "error"
+        "error",
       );
     }
   };
@@ -251,8 +246,8 @@ export default function Notes() {
             <FileText size={24} />
             Notas del Proyecto
           </h2>
-          <button 
-            className="add-note-btn" 
+          <button
+            className="add-note-btn"
             onClick={openNewNoteModal}
             disabled={loading}
           >
@@ -269,10 +264,10 @@ export default function Notes() {
         ) : (
           <div className="notes-grid">
             {notes.length > 0 ? (
-              notes.map(note => (
+              notes.map((note) => (
                 <div
                   key={note.id}
-                  className={`note-card ${selectedNote?.id === note.id ? 'selected' : ''}`}
+                  className={`note-card ${selectedNote?.id === note.id ? "selected" : ""}`}
                   onClick={() => openEditNoteModal(note)}
                 >
                   <h3 className="note-title">{note.title}</h3>
@@ -284,7 +279,7 @@ export default function Notes() {
                       <Calendar size={12} />
                       {note.date}
                     </span>
-                    {note.status === 'closed' && (
+                    {note.status === "closed" && (
                       <span className="note-status-badge">Archivada</span>
                     )}
                   </div>
@@ -305,13 +300,16 @@ export default function Notes() {
 
         {isModalOpen && (
           <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>
                   <FileText size={20} />
                   {selectedNote ? "Editar Nota" : "Nueva Nota"}
                 </h3>
-                <button className="modal-close" onClick={() => setIsModalOpen(false)}>
+                <button
+                  className="modal-close"
+                  onClick={() => setIsModalOpen(false)}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -322,7 +320,7 @@ export default function Notes() {
                   type="text"
                   placeholder="Título de la nota"
                   value={editedTitle}
-                  onChange={e => setEditedTitle(e.target.value)}
+                  onChange={(e) => setEditedTitle(e.target.value)}
                 />
               </div>
 
@@ -331,7 +329,7 @@ export default function Notes() {
                 <textarea
                   placeholder="Escribe el contenido de tu nota aquí..."
                   value={editedDescription}
-                  onChange={e => setEditedDescription(e.target.value)}
+                  onChange={(e) => setEditedDescription(e.target.value)}
                   rows={10}
                 />
               </div>
@@ -355,7 +353,10 @@ export default function Notes() {
                   </button>
                 )}
 
-                <button className="cancel-btn" onClick={() => setIsModalOpen(false)}>
+                <button
+                  className="cancel-btn"
+                  onClick={() => setIsModalOpen(false)}
+                >
                   Cancelar
                 </button>
               </div>
@@ -365,12 +366,11 @@ export default function Notes() {
                   <div className="confirm-box">
                     <AlertCircle size={32} color="var(--color-error)" />
                     <p>¿Archivar esta nota?</p>
-                    <p className="confirm-note">Las notas archivadas se pueden recuperar desde GitHub</p>
+                    <p className="confirm-note">
+                      Las notas archivadas se pueden recuperar desde GitHub
+                    </p>
                     <div className="confirm-actions">
-                      <button
-                        className="confirm-delete"
-                        onClick={deleteNote}
-                      >
+                      <button className="confirm-delete" onClick={deleteNote}>
                         Archivar
                       </button>
                       <button

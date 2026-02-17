@@ -20,19 +20,24 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
   providerMode,
 }) => {
   const [selectedLangCode, setSelectedLangCode] = useState<string | null>(null);
-  const [providerView, setProviderView] = useState<"merged" | "openai" | "gemini">("merged");
+  const [providerView, setProviderView] = useState<
+    "merged" | "openai" | "gemini"
+  >("merged");
   const [uploading, setUploading] = useState(false);
 
   if (!isOpen || !previewData || !fileInfo) return null;
 
-  const languages: { code: string; name: string }[] = previewData.targetLanguages || [];
+  const languages: { code: string; name: string }[] =
+    previewData.targetLanguages || [];
   const effectiveSelectedLangCode =
     selectedLangCode || (languages.length > 0 ? languages[0].code : "");
 
   const rows = previewData.preview || [];
 
   const handleDownload = () => {
-    const blob = new Blob([fileInfo.csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([fileInfo.csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -57,20 +62,20 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
         await desktop.showMessage(
           "Traducciones subidas correctamente al repositorio (git push origin main).",
           "Subida completada",
-          "info"
+          "info",
         );
       } else {
         await desktop.showMessage(
           result.error || "Error desconocido al subir las traducciones.",
           "Error al subir",
-          "error"
+          "error",
         );
       }
     } catch (error: any) {
       await desktop.showMessage(
         error?.message || String(error),
         "Error al subir traducciones",
-        "error"
+        "error",
       );
     } finally {
       setUploading(false);
@@ -78,24 +83,28 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
   };
 
   const renderConfidence = (confidence: number | null | undefined) => {
-    if (confidence == null) return <span className="confidence-badge neutral">-</span>;
+    if (confidence == null)
+      return <span className="confidence-badge neutral">-</span>;
     const pct = Math.round(confidence * 100);
     let cls = "low";
     if (pct >= 80) cls = "high";
     else if (pct >= 50) cls = "medium";
-    return (
-      <span className={`confidence-badge ${cls}`}>
-        {pct}%
-      </span>
-    );
+    return <span className={`confidence-badge ${cls}`}>{pct}%</span>;
   };
 
   const currentProviderView =
-    providerMode === "both" ? providerView : providerMode === "openai" ? "openai" : "gemini";
+    providerMode === "both"
+      ? providerView
+      : providerMode === "openai"
+        ? "openai"
+        : "gemini";
 
   return (
     <div className="translation-preview-overlay" onClick={onClose}>
-      <div className="translation-preview-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="translation-preview-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button className="preview-close-btn" onClick={onClose}>
           <X size={18} />
         </button>
@@ -106,7 +115,8 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
             <div>
               <h3>Resultado de traducción AI</h3>
               <span className="preview-subtitle">
-                {rows.length} filas en vista previa • {previewData.stats?.translatedRows ?? 0} filas traducidas
+                {rows.length} filas en vista previa •{" "}
+                {previewData.stats?.translatedRows ?? 0} filas traducidas
               </span>
             </div>
           </div>
@@ -186,7 +196,10 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
                   Traducción ({effectiveSelectedLangCode || "-"})
                   {providerMode === "both" && (
                     <span className="provider-indicator">
-                      <Shield size={12} /> {currentProviderView === "merged" ? "Combinado" : currentProviderView}
+                      <Shield size={12} />{" "}
+                      {currentProviderView === "merged"
+                        ? "Combinado"
+                        : currentProviderView}
                     </span>
                   )}
                 </th>
@@ -195,7 +208,8 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
             </thead>
             <tbody>
               {rows.map((row: any, idx: number) => {
-                const langData = row.perLanguage?.[effectiveSelectedLangCode] || null;
+                const langData =
+                  row.perLanguage?.[effectiveSelectedLangCode] || null;
                 let text = "";
                 if (langData) {
                   if (currentProviderView === "openai") {
@@ -203,7 +217,11 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
                   } else if (currentProviderView === "gemini") {
                     text = langData.geminiText || langData.mergedText || "";
                   } else {
-                    text = langData.mergedText || langData.openaiText || langData.geminiText || "";
+                    text =
+                      langData.mergedText ||
+                      langData.openaiText ||
+                      langData.geminiText ||
+                      "";
                   }
                 }
 
@@ -213,7 +231,9 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
                     <td className="preview-source">{row.sourceText}</td>
                     <td className="preview-translation">{text}</td>
                     <td className="preview-confidence">
-                      {langData ? renderConfidence(langData.confidence) : renderConfidence(null)}
+                      {langData
+                        ? renderConfidence(langData.confidence)
+                        : renderConfidence(null)}
                     </td>
                   </tr>
                 );
@@ -224,8 +244,9 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
 
         <div className="preview-footer-note">
           <span>
-            Las filas con baja confianza indican que las traducciones de los modelos difieren
-            significativamente y deberían revisarse manualmente.
+            Las filas con baja confianza indican que las traducciones de los
+            modelos difieren significativamente y deberían revisarse
+            manualmente.
           </span>
         </div>
       </div>
@@ -234,4 +255,3 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
 };
 
 export default TranslationPreviewModal;
-

@@ -110,7 +110,10 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
 // 2b. TRADUCIR ARCHIVO DE LOCALIZACIÓN
 ipcMain.handle(
   "ai-translate-file",
-  async (event: any, payload: TranslateFilePayload): Promise<TranslateFileResult> => {
+  async (
+    event: any,
+    payload: TranslateFilePayload,
+  ): Promise<TranslateFileResult> => {
     return await translateFileInMain(payload, event.sender);
   },
 );
@@ -207,22 +210,21 @@ ipcMain.handle(
       repoOwner: string;
       token: string;
     },
-    label: string
+    label: string,
   ) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=${label}`;
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -241,28 +243,23 @@ ipcMain.handle(
 // MARCAR ISSUE COMO RESUELTO
 ipcMain.handle(
   "git-mark-issue-as-resolved",
-  async (
-    event: any,
-    issueId: number,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueId: number, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueId}`;
-      
+
       const response = await fetch(url, {
         method: "PATCH",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
-          "state": "closed"
-        })
+          state: "closed",
+        }),
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -281,30 +278,27 @@ ipcMain.handle(
 // EDITAR ISSUE
 ipcMain.handle(
   "git-edit-issue",
-  async (
-    event: any,
-    issueData: IssueData,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueData: IssueData, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueData.id}`;
-      
+
       const response = await fetch(url, {
         method: "PATCH",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
           ...(issueData.title != null && { title: issueData.title }),
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && { assignees: issueData.assignees }),
-        })
+          ...(issueData.assignees != null && {
+            assignees: issueData.assignees,
+          }),
+        }),
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -321,31 +315,28 @@ ipcMain.handle(
 // CREAR ISSUE/NOTA
 ipcMain.handle(
   "git-create-issue",
-  async (
-    event: any,
-    issueData: IssueData,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueData: IssueData, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
-      
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
           ...{ title: issueData.title },
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && { assignees: issueData.assignees }),
+          ...(issueData.assignees != null && {
+            assignees: issueData.assignees,
+          }),
           ...(issueData.labels != null && { labels: issueData.labels }),
-        })
+        }),
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -372,18 +363,17 @@ ipcMain.handle(
   ) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=documentation`;
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -590,7 +580,9 @@ ipcMain.handle(
       // git commit
       let commitOk = true;
       try {
-        const { stderr } = await runGit(`git commit -m "${message.replace(/"/g, '\\"')}"`);
+        const { stderr } = await runGit(
+          `git commit -m "${message.replace(/"/g, '\\"')}"`,
+        );
         if (stderr && stderr.includes("nothing to commit")) {
           commitOk = false;
         }
@@ -613,7 +605,8 @@ ipcMain.handle(
         stderr,
       };
     } catch (error: any) {
-      const messageError = error instanceof Error ? error.message : String(error);
+      const messageError =
+        error instanceof Error ? error.message : String(error);
       return {
         success: false,
         error: messageError,

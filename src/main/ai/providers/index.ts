@@ -2,7 +2,12 @@ import type { ITranslationProvider } from "./types";
 import { openaiProvider } from "./openai";
 import { geminiProvider } from "./gemini";
 
-export type { ITranslationProvider, TranslationBatchRequest, TranslationResultItem, SpellCheckBatchRequest } from "./types";
+export type {
+  ITranslationProvider,
+  TranslationBatchRequest,
+  TranslationResultItem,
+  SpellCheckBatchRequest,
+} from "./types";
 export { openaiProvider } from "./openai";
 export { geminiProvider } from "./gemini";
 

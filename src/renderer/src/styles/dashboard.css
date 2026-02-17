@@ -420,7 +420,9 @@
   width: 90%;
   max-width: 400px;
   position: relative;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.3),
+    0 10px 10px -5px rgba(0, 0, 0, 0.2);
   border: 2px solid var(--color-neutral-medium);
   animation: popupFadeIn 0.2s ease-out;
 }
@@ -531,21 +533,21 @@
 }
 
 /* Custom scrollbar */
-.repos-list::-webkit-scrollbar{
+.repos-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.repos-list::-webkit-scrollbar-track{
+.repos-list::-webkit-scrollbar-track {
   background: var(--color-neutral-darker);
   border-radius: 3px;
 }
 
-.repos-list::-webkit-scrollbar-thumb{
+.repos-list::-webkit-scrollbar-thumb {
   background: var(--color-neutral-medium);
   border-radius: 3px;
 }
 
-.repos-list::-webkit-scrollbar-thumb:hover{
+.repos-list::-webkit-scrollbar-thumb:hover {
   background: var(--color-neutral-light);
 }
 
@@ -669,11 +671,11 @@
   .dashboard {
     padding: 10px;
   }
-  
+
   .dashboard-header {
     padding: 15px;
   }
-  
+
   .card {
     padding: 15px;
   }

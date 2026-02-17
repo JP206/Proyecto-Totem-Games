@@ -48,12 +48,17 @@ export function stringifyCSV(rows: string[][]): string {
       row
         .map((cell) => {
           const s = String(cell ?? "");
-          if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+          if (
+            s.includes(",") ||
+            s.includes('"') ||
+            s.includes("\n") ||
+            s.includes("\r")
+          ) {
             return '"' + s.replace(/"/g, '""') + '"';
           }
           return s;
         })
-        .join(",")
+        .join(","),
     )
     .join("\r\n");
 }

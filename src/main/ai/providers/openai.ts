@@ -12,7 +12,8 @@ function parseJsonResults(content: string): TranslationResultItem[] {
       return parsed
         .map((item: any) => ({
           id: String(item.id),
-          translatedText: typeof item.translatedText === "string" ? item.translatedText : "",
+          translatedText:
+            typeof item.translatedText === "string" ? item.translatedText : "",
         }))
         .filter((it: TranslationResultItem) => it.id);
     }
@@ -25,7 +26,10 @@ function parseJsonResults(content: string): TranslationResultItem[] {
           return parsed
             .map((item: any) => ({
               id: String(item.id),
-              translatedText: typeof item.translatedText === "string" ? item.translatedText : "",
+              translatedText:
+                typeof item.translatedText === "string"
+                  ? item.translatedText
+                  : "",
             }))
             .filter((it: TranslationResultItem) => it.id);
         }
@@ -43,7 +47,7 @@ export const openaiProvider: ITranslationProvider = {
   async translateBatch(
     apiKey: string,
     modelId: string,
-    request: TranslationBatchRequest
+    request: TranslationBatchRequest,
   ): Promise<TranslationResultItem[]> {
     const url = "https://api.openai.com/v1/chat/completions";
     const systemPrompt =
@@ -56,11 +60,16 @@ export const openaiProvider: ITranslationProvider = {
     }\n\n`;
     userContent += `Idioma origen: ${request.sourceLanguageName}\n`;
     userContent += `Idioma destino: ${request.targetLanguage.name} (${request.targetLanguage.code})\n\n`;
-    userContent += "Traduce los siguientes textos y devuelve un JSON con el formato:\n";
+    userContent +=
+      "Traduce los siguientes textos y devuelve un JSON con el formato:\n";
     userContent += `[{"id": "ID_DEL_ITEM", "translatedText": "texto traducido"}]\n\n`;
     userContent += "Items a traducir:\n";
     userContent += JSON.stringify(
-      request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText }))
+      request.items.map((it) => ({
+        id: it.id,
+        key: it.key,
+        sourceText: it.sourceText,
+      })),
     );
 
     const payload = {
@@ -90,14 +99,20 @@ export const openaiProvider: ITranslationProvider = {
     const data: any = await response.json();
     const content: string = data.choices?.[0]?.message?.content || "[]";
     const results = parseJsonResults(content);
-    console.log("[OpenAI] Parsed", results.length, "translations for", request.items.length, "items");
+    console.log(
+      "[OpenAI] Parsed",
+      results.length,
+      "translations for",
+      request.items.length,
+      "items",
+    );
     return results;
   },
 
   async spellCorrectBatch(
     apiKey: string,
     modelId: string,
-    request: SpellCheckBatchRequest
+    request: SpellCheckBatchRequest,
   ): Promise<TranslationResultItem[]> {
     const url = "https://api.openai.com/v1/chat/completions";
     const systemPrompt =
@@ -108,7 +123,13 @@ export const openaiProvider: ITranslationProvider = {
       "Devuelve un JSON con el formato:\n" +
       `[{"id": "ID_DEL_ITEM", "translatedText": "texto corregido"}]\n\n` +
       "Textos a corregir:\n" +
-      JSON.stringify(request.items.map((it) => ({ id: it.id, key: it.key, sourceText: it.sourceText })));
+      JSON.stringify(
+        request.items.map((it) => ({
+          id: it.id,
+          key: it.key,
+          sourceText: it.sourceText,
+        })),
+      );
 
     const payload = {
       model: modelId,

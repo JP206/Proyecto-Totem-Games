@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     token?: string;
   }) => ipcRenderer.invoke("git-clone", data),
 
-  getIssues: (data: RepoInformation, label: string) => ipcRenderer.invoke("git-get-issues", data, label),
+  getIssues: (data: RepoInformation, label: string) =>
+    ipcRenderer.invoke("git-get-issues", data, label),
 
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-mark-issue-as-resolved", issueId, repoInfo),
@@ -67,28 +68,42 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteFile: (path: string) => ipcRenderer.invoke("delete-file", path),
 
   // 9. GUARDAR ARCHIVO
-  saveFile: (data: { content: number[]; destinationPath: string; fileName: string }) =>
-    ipcRenderer.invoke("save-file", data),
+  saveFile: (data: {
+    content: number[];
+    destinationPath: string;
+    fileName: string;
+  }) => ipcRenderer.invoke("save-file", data),
 
   // 10. TRADUCCIÓN AI
-  translateFile: (payload: any) => ipcRenderer.invoke("ai-translate-file", payload),
+  translateFile: (payload: any) =>
+    ipcRenderer.invoke("ai-translate-file", payload),
 
   // 10b. REVISIÓN ORTOGRÁFICA Y GRAMATICAL (IA)
-  spellCheckFile: (payload: any) => ipcRenderer.invoke("ai-spellcheck-file", payload),
+  spellCheckFile: (payload: any) =>
+    ipcRenderer.invoke("ai-spellcheck-file", payload),
 
-  onSpellCheckProgress: (callback: (data: { percent: number; current?: number; total?: number }) => void) => {
+  onSpellCheckProgress: (
+    callback: (data: {
+      percent: number;
+      current?: number;
+      total?: number;
+    }) => void,
+  ) => {
     const handler = (_: IpcRendererEvent, data: any) => callback(data);
     ipcRenderer.on("spellcheck-progress", handler);
     return () => ipcRenderer.removeListener("spellcheck-progress", handler);
   },
-  onTranslationProgress: (callback: (data: { percent: number; stage?: string }) => void) => {
+  onTranslationProgress: (
+    callback: (data: { percent: number; stage?: string }) => void,
+  ) => {
     const handler = (_: IpcRendererEvent, data: any) => callback(data);
     ipcRenderer.on("translation-progress", handler);
     return () => ipcRenderer.removeListener("translation-progress", handler);
   },
 
   // 11. SUBIR TRADUCCIÓN AL REPO
-  uploadTranslation: (payload: any) => ipcRenderer.invoke("ai-upload-translation", payload),
+  uploadTranslation: (payload: any) =>
+    ipcRenderer.invoke("ai-upload-translation", payload),
 
   // 11b. ESCRIBIR ARCHIVO DE TRADUCCIÓN (guardar ediciones)
   writeTranslationFile: (data: { filePath: string; content: string }) =>
