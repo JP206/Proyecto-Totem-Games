@@ -424,7 +424,11 @@
 .save-btn {
   flex: 1;
   padding: 12px 24px;
-  background: linear-gradient(135deg, var(--color-secondary-cyan) 0%, #5ac6e5 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-secondary-cyan) 0%,
+    #5ac6e5 100%
+  );
   color: var(--color-white);
   border: none;
   border-radius: 8px;

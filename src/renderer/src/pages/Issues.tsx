@@ -4,14 +4,14 @@ import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import { IssueData } from "../utils/electron";
-import { 
-  Flag, 
-  Plus, 
-  Filter, 
-  X, 
+import {
+  Flag,
+  Plus,
+  Filter,
+  X,
   Calendar,
   CheckCircle,
-  AlertCircle 
+  AlertCircle,
 } from "lucide-react";
 import "../styles/issues.css";
 
@@ -24,8 +24,8 @@ export default function Issues() {
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
-  const [currentProject, setCurrentProject] = useState<{ 
-    repoPath: string; 
+  const [currentProject, setCurrentProject] = useState<{
+    repoPath: string;
     repoName: string;
     repoOwner: string;
   } | null>(null);
@@ -38,15 +38,15 @@ export default function Issues() {
     try {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
-      
+
       const token = await desktop.getConfig("github_token");
       if (!token) {
         await desktop.showMessage(
           "Debes iniciar sesión para acceder a esta sección",
           "Acceso denegado",
-          "warning"
+          "warning",
         );
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
@@ -55,27 +55,29 @@ export default function Issues() {
         await desktop.showMessage(
           "No hay un proyecto seleccionado",
           "Error",
-          "error"
+          "error",
         );
-        navigate('/dashboard');
+        navigate("/dashboard");
         return;
       }
 
       setCurrentProject(project);
       await loadIssues(project, token);
-      
     } catch (error: any) {
       const desktop = DesktopManager.getInstance();
       await desktop.showMessage(
         error.message || "Error al cargar el proyecto",
         "Error",
-        "error"
+        "error",
       );
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   };
 
-  const loadIssues = async (project: { repoName: string; repoOwner: string }, token: string) => {
+  const loadIssues = async (
+    project: { repoName: string; repoOwner: string },
+    token: string,
+  ) => {
     try {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
@@ -86,7 +88,7 @@ export default function Issues() {
           repoOwner: project.repoOwner,
           token,
         },
-        "bug"
+        "bug",
       );
 
       const formattedIssues = data
@@ -105,7 +107,7 @@ export default function Issues() {
       await desktop.showMessage(
         error.message || "Error al cargar los issues",
         "Error",
-        "error"
+        "error",
       );
     } finally {
       setLoading(false);
@@ -127,7 +129,7 @@ export default function Issues() {
       await desktop.showMessage(
         `Issue #${selectedIssue.id} marcado como resuelto`,
         "Éxito",
-        "info"
+        "info",
       );
 
       await loadIssues(currentProject, token);
@@ -138,7 +140,7 @@ export default function Issues() {
       await desktop.showMessage(
         error.message || "Error al marcar issue como resuelto",
         "Error",
-        "error"
+        "error",
       );
     }
   };
@@ -157,20 +159,20 @@ export default function Issues() {
           description: editedDescription,
           id: null,
           assignees: null,
-          labels: ["bug"]
+          labels: ["bug"],
         };
 
         response = await desktop.createIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
-          token
+          token,
         });
 
         if (response) {
           await desktop.showMessage(
             "Issue creado exitosamente",
             "Éxito",
-            "info"
+            "info",
           );
         }
       } else {
@@ -179,20 +181,20 @@ export default function Issues() {
           description: editedDescription,
           id: selectedIssue.id,
           assignees: null,
-          labels: null
+          labels: null,
         };
 
         response = await desktop.editIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
-          token
+          token,
         });
 
         if (response) {
           await desktop.showMessage(
             `Issue #${selectedIssue.id} actualizado`,
             "Éxito",
-            "info"
+            "info",
           );
         }
       }
@@ -209,7 +211,7 @@ export default function Issues() {
       await desktop.showMessage(
         error.message || "Error al guardar el issue",
         "Error",
-        "error"
+        "error",
       );
     }
   };
@@ -228,7 +230,7 @@ export default function Issues() {
     setIsModalOpen(true);
   };
 
-  const filteredIssues = issues.filter(issue => {
+  const filteredIssues = issues.filter((issue) => {
     if (filter === "all") return true;
     return issue.status === filter;
   });
@@ -257,12 +259,24 @@ export default function Issues() {
             Issues del Proyecto
           </h2>
           <div className="header-actions">
-            <button 
+            <button
               className="filter-btn"
-              onClick={() => setFilter(filter === "all" ? "open" : filter === "open" ? "closed" : "all")}
+              onClick={() =>
+                setFilter(
+                  filter === "all"
+                    ? "open"
+                    : filter === "open"
+                      ? "closed"
+                      : "all",
+                )
+              }
             >
               <Filter size={16} />
-              {filter === "all" ? "Todos" : filter === "open" ? "Abiertos" : "Cerrados"}
+              {filter === "all"
+                ? "Todos"
+                : filter === "open"
+                  ? "Abiertos"
+                  : "Cerrados"}
             </button>
             <button className="add-btn" onClick={openNewIssueModal}>
               <Plus size={16} />
@@ -287,26 +301,32 @@ export default function Issues() {
 
             <div className="table-body">
               {filteredIssues.length > 0 ? (
-                filteredIssues.map(issue => (
+                filteredIssues.map((issue) => (
                   <div
                     key={issue.id}
                     className="issue-row"
                     onClick={() => openEditIssueModal(issue)}
                   >
-                    <span className="issue-title">#{issue.id} - {issue.title}</span>
+                    <span className="issue-title">
+                      #{issue.id} - {issue.title}
+                    </span>
                     <span className="issue-description">
                       {issue.description?.substring(0, 100)}
-                      {issue.description?.length > 100 ? '...' : ''}
+                      {issue.description?.length > 100 ? "..." : ""}
                     </span>
                     <span className="issue-date">
                       <Calendar size={14} />
                       {issue.date}
                     </span>
                     <span className={`issue-status ${issue.status}`}>
-                      {issue.status === 'open' ? (
-                        <><AlertCircle size={12} /> Abierto</>
+                      {issue.status === "open" ? (
+                        <>
+                          <AlertCircle size={12} /> Abierto
+                        </>
                       ) : (
-                        <><CheckCircle size={12} /> Cerrado</>
+                        <>
+                          <CheckCircle size={12} /> Cerrado
+                        </>
                       )}
                     </span>
                   </div>
@@ -327,13 +347,18 @@ export default function Issues() {
 
         {isModalOpen && (
           <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>
                   <Flag size={20} />
-                  {selectedIssue ? `Editar Issue #${selectedIssue.id}` : "Nuevo Issue"}
+                  {selectedIssue
+                    ? `Editar Issue #${selectedIssue.id}`
+                    : "Nuevo Issue"}
                 </h3>
-                <button className="modal-close" onClick={() => setIsModalOpen(false)}>
+                <button
+                  className="modal-close"
+                  onClick={() => setIsModalOpen(false)}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -344,7 +369,7 @@ export default function Issues() {
                   type="text"
                   placeholder="Título del issue"
                   value={editedTitle}
-                  onChange={e => setEditedTitle(e.target.value)}
+                  onChange={(e) => setEditedTitle(e.target.value)}
                 />
               </div>
 
@@ -353,7 +378,7 @@ export default function Issues() {
                 <textarea
                   placeholder="Describe el issue detalladamente..."
                   value={editedDescription}
-                  onChange={e => setEditedDescription(e.target.value)}
+                  onChange={(e) => setEditedDescription(e.target.value)}
                   rows={8}
                 />
               </div>
@@ -362,10 +387,14 @@ export default function Issues() {
                 <div className="modal-field">
                   <label>Estado actual</label>
                   <div className={`status-badge ${selectedIssue.status}`}>
-                    {selectedIssue.status === 'open' ? (
-                      <><AlertCircle size={12} /> Abierto</>
+                    {selectedIssue.status === "open" ? (
+                      <>
+                        <AlertCircle size={12} /> Abierto
+                      </>
                     ) : (
-                      <><CheckCircle size={12} /> Cerrado</>
+                      <>
+                        <CheckCircle size={12} /> Cerrado
+                      </>
                     )}
                   </div>
                 </div>
@@ -381,15 +410,15 @@ export default function Issues() {
                 </button>
 
                 {selectedIssue && selectedIssue.status !== "closed" && (
-                  <button
-                    className="resolve-btn"
-                    onClick={markAsResolved}
-                  >
+                  <button className="resolve-btn" onClick={markAsResolved}>
                     Marcar como Resuelto
                   </button>
                 )}
 
-                <button className="cancel-btn" onClick={() => setIsModalOpen(false)}>
+                <button
+                  className="cancel-btn"
+                  onClick={() => setIsModalOpen(false)}
+                >
                   Cancelar
                 </button>
               </div>

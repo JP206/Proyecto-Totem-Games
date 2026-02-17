@@ -18,100 +18,255 @@ interface LanguageSelectorProps {
 
 const AVAILABLE_LANGUAGES: Language[] = [
   // ESPAÑOL
-  { id: "es_uy", name: "Español (Uruguay)", code: "ES-UY", region: "América", country: "Uruguay" },
-  { id: "es_es", name: "Español (España)", code: "ES-ES", region: "Europa", country: "España" },
-  { id: "es_mx", name: "Español (México)", code: "ES-MX", region: "América", country: "México" },
-  { id: "es_ar", name: "Español (Argentina)", code: "ES-AR", region: "América", country: "Argentina" },
-  { id: "es_co", name: "Español (Colombia)", code: "ES-CO", region: "América", country: "Colombia" },
-  { id: "es_cl", name: "Español (Chile)", code: "ES-CL", region: "América", country: "Chile" },
+  {
+    id: "es_uy",
+    name: "Español (Uruguay)",
+    code: "ES-UY",
+    region: "América",
+    country: "Uruguay",
+  },
+  {
+    id: "es_es",
+    name: "Español (España)",
+    code: "ES-ES",
+    region: "Europa",
+    country: "España",
+  },
+  {
+    id: "es_mx",
+    name: "Español (México)",
+    code: "ES-MX",
+    region: "América",
+    country: "México",
+  },
+  {
+    id: "es_ar",
+    name: "Español (Argentina)",
+    code: "ES-AR",
+    region: "América",
+    country: "Argentina",
+  },
+  {
+    id: "es_co",
+    name: "Español (Colombia)",
+    code: "ES-CO",
+    region: "América",
+    country: "Colombia",
+  },
+  {
+    id: "es_cl",
+    name: "Español (Chile)",
+    code: "ES-CL",
+    region: "América",
+    country: "Chile",
+  },
 
   // INGLÉS
-  { id: "en_us", name: "Inglés (Estados Unidos)", code: "EN-US", region: "América", country: "EE.UU." },
-  { id: "en_gb", name: "Inglés (Reino Unido)", code: "EN-GB", region: "Europa", country: "Reino Unido" },
-  { id: "en_au", name: "Inglés (Australia)", code: "EN-AU", region: "Oceanía", country: "Australia" },
+  {
+    id: "en_us",
+    name: "Inglés (Estados Unidos)",
+    code: "EN-US",
+    region: "América",
+    country: "EE.UU.",
+  },
+  {
+    id: "en_gb",
+    name: "Inglés (Reino Unido)",
+    code: "EN-GB",
+    region: "Europa",
+    country: "Reino Unido",
+  },
+  {
+    id: "en_au",
+    name: "Inglés (Australia)",
+    code: "EN-AU",
+    region: "Oceanía",
+    country: "Australia",
+  },
 
   // ALEMÁN
-  { id: "de_de", name: "Alemán (Alemania)", code: "DE-DE", region: "Europa", country: "Alemania" },
+  {
+    id: "de_de",
+    name: "Alemán (Alemania)",
+    code: "DE-DE",
+    region: "Europa",
+    country: "Alemania",
+  },
 
   // PORTUGUÉS
-  { id: "pt_br", name: "Portugués (Brasil)", code: "PT-BR", region: "América", country: "Brasil" },
-  { id: "pt_pt", name: "Portugués (Portugal)", code: "PT-PT", region: "Europa", country: "Portugal" },
+  {
+    id: "pt_br",
+    name: "Portugués (Brasil)",
+    code: "PT-BR",
+    region: "América",
+    country: "Brasil",
+  },
+  {
+    id: "pt_pt",
+    name: "Portugués (Portugal)",
+    code: "PT-PT",
+    region: "Europa",
+    country: "Portugal",
+  },
 
   // FRANCÉS
-  { id: "fr_fr", name: "Francés (Francia)", code: "FR-FR", region: "Europa", country: "Francia" },
-  { id: "fr_ca", name: "Francés (Canadá)", code: "FR-CA", region: "América", country: "Canadá" },
+  {
+    id: "fr_fr",
+    name: "Francés (Francia)",
+    code: "FR-FR",
+    region: "Europa",
+    country: "Francia",
+  },
+  {
+    id: "fr_ca",
+    name: "Francés (Canadá)",
+    code: "FR-CA",
+    region: "América",
+    country: "Canadá",
+  },
 
   // RUSO
-  { id: "ru_ru", name: "Ruso (Rusia)", code: "RU-RU", region: "Europa", country: "Rusia" },
+  {
+    id: "ru_ru",
+    name: "Ruso (Rusia)",
+    code: "RU-RU",
+    region: "Europa",
+    country: "Rusia",
+  },
 
   // CHINO TRADICIONAL
-  { id: "zh_tw", name: "Chino tradicional (Taiwán)", code: "ZH-TW", region: "Asia", country: "Taiwán" },
+  {
+    id: "zh_tw",
+    name: "Chino tradicional (Taiwán)",
+    code: "ZH-TW",
+    region: "Asia",
+    country: "Taiwán",
+  },
 
   // CHINO SIMPLIFICADO
-  { id: "zh_cn", name: "Chino simplificado (China)", code: "ZH-CN", region: "Asia", country: "China" },
+  {
+    id: "zh_cn",
+    name: "Chino simplificado (China)",
+    code: "ZH-CN",
+    region: "Asia",
+    country: "China",
+  },
 
   // JAPONÉS
-  { id: "ja_jp", name: "Japonés (Japón)", code: "JA-JP", region: "Asia", country: "Japón" },
+  {
+    id: "ja_jp",
+    name: "Japonés (Japón)",
+    code: "JA-JP",
+    region: "Asia",
+    country: "Japón",
+  },
 
   // COREANO
-  { id: "ko_kr", name: "Coreano (Corea del Sur)", code: "KO-KR", region: "Asia", country: "Corea del Sur" },
+  {
+    id: "ko_kr",
+    name: "Coreano (Corea del Sur)",
+    code: "KO-KR",
+    region: "Asia",
+    country: "Corea del Sur",
+  },
 
   // ITALIANO
-  { id: "it_it", name: "Italiano (Italia)", code: "IT-IT", region: "Europa", country: "Italia" },
+  {
+    id: "it_it",
+    name: "Italiano (Italia)",
+    code: "IT-IT",
+    region: "Europa",
+    country: "Italia",
+  },
 
   // TURCO
-  { id: "tr_tr", name: "Turco (Turquía)", code: "TR-TR", region: "Asia", country: "Turquía" },
+  {
+    id: "tr_tr",
+    name: "Turco (Turquía)",
+    code: "TR-TR",
+    region: "Asia",
+    country: "Turquía",
+  },
 
   // INDONESIO
-  { id: "id_id", name: "Indonesio (Indonesia)", code: "ID-ID", region: "Asia", country: "Indonesia" },
+  {
+    id: "id_id",
+    name: "Indonesio (Indonesia)",
+    code: "ID-ID",
+    region: "Asia",
+    country: "Indonesia",
+  },
 
   // CATALÁN
-  { id: "ca_es", name: "Catalán (España)", code: "CA-ES", region: "Europa", country: "España" },
+  {
+    id: "ca_es",
+    name: "Catalán (España)",
+    code: "CA-ES",
+    region: "Europa",
+    country: "España",
+  },
 ];
 
-const LanguageSelector: React.FC<LanguageSelectorProps> = ({ 
-  selectedLanguages, 
+const LanguageSelector: React.FC<LanguageSelectorProps> = ({
+  selectedLanguages,
   onToggleLanguage,
-  onToggleRegion
+  onToggleRegion,
 }) => {
   const [showLanguages, setShowLanguages] = useState(false);
 
-  const languagesByRegion = AVAILABLE_LANGUAGES.reduce((acc, lang) => {
-    if (!acc[lang.region!]) {
-      acc[lang.region!] = [];
-    }
-    acc[lang.region!].push(lang);
-    return acc;
-  }, {} as Record<string, Language[]>);
+  const languagesByRegion = AVAILABLE_LANGUAGES.reduce(
+    (acc, lang) => {
+      if (!acc[lang.region!]) {
+        acc[lang.region!] = [];
+      }
+      acc[lang.region!].push(lang);
+      return acc;
+    },
+    {} as Record<string, Language[]>,
+  );
 
   const totalLanguages = AVAILABLE_LANGUAGES.length;
   const allSelected = selectedLanguages.length === totalLanguages;
   const noneSelected = selectedLanguages.length === 0;
 
-  const isRegionFullySelected = (region: string, langs: Language[]): boolean => {
-    return langs.every(lang => selectedLanguages.some(l => l.id === lang.id));
+  const isRegionFullySelected = (
+    region: string,
+    langs: Language[],
+  ): boolean => {
+    return langs.every((lang) =>
+      selectedLanguages.some((l) => l.id === lang.id),
+    );
   };
 
-  const isRegionPartiallySelected = (region: string, langs: Language[]): boolean => {
-    const selectedCount = langs.filter(lang => 
-      selectedLanguages.some(l => l.id === lang.id)
+  const isRegionPartiallySelected = (
+    region: string,
+    langs: Language[],
+  ): boolean => {
+    const selectedCount = langs.filter((lang) =>
+      selectedLanguages.some((l) => l.id === lang.id),
     ).length;
     return selectedCount > 0 && selectedCount < langs.length;
   };
 
   const getRegionIcon = (region: string, langs: Language[]) => {
     if (isRegionFullySelected(region, langs)) {
-      return <CheckSquare size={16} className="toggle-checkbox fully-selected" />;
+      return (
+        <CheckSquare size={16} className="toggle-checkbox fully-selected" />
+      );
     }
     if (isRegionPartiallySelected(region, langs)) {
-      return <Square size={16} className="toggle-checkbox partially-selected" />;
+      return (
+        <Square size={16} className="toggle-checkbox partially-selected" />
+      );
     }
     return <Square size={16} className="toggle-checkbox" />;
   };
 
   const getToggleAllIcon = () => {
     if (allSelected) {
-      return <CheckSquare size={16} className="toggle-checkbox fully-selected" />;
+      return (
+        <CheckSquare size={16} className="toggle-checkbox fully-selected" />
+      );
     }
     if (noneSelected) {
       return <Square size={16} className="toggle-checkbox" />;
@@ -133,15 +288,15 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   const handleToggleAll = () => {
     if (allSelected) {
       // Si todos están seleccionados, deseleccionar todos
-      AVAILABLE_LANGUAGES.forEach(lang => {
-        if (selectedLanguages.some(l => l.id === lang.id)) {
+      AVAILABLE_LANGUAGES.forEach((lang) => {
+        if (selectedLanguages.some((l) => l.id === lang.id)) {
           onToggleLanguage(lang);
         }
       });
     } else {
       // Si no, seleccionar todos los que no están seleccionados
-      AVAILABLE_LANGUAGES.forEach(lang => {
-        if (!selectedLanguages.some(l => l.id === lang.id)) {
+      AVAILABLE_LANGUAGES.forEach((lang) => {
+        if (!selectedLanguages.some((l) => l.id === lang.id)) {
           onToggleLanguage(lang);
         }
       });
@@ -158,17 +313,19 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         <h3>
           <Globe size={18} />
           IDIOMAS
-          <span className="section-count">{selectedLanguages.length}/{totalLanguages}</span>
+          <span className="section-count">
+            {selectedLanguages.length}/{totalLanguages}
+          </span>
         </h3>
         <div className="section-actions">
-          <button 
+          <button
             className="toggle-all-btn"
             onClick={handleToggleAll}
             title={getToggleAllTitle()}
           >
             {getToggleAllIcon()}
           </button>
-          <button 
+          <button
             className="dropdown-toggle"
             onClick={() => setShowLanguages(!showLanguages)}
             title={getDropdownTitle()}
@@ -177,7 +334,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
           </button>
         </div>
       </div>
-      
+
       {showLanguages && (
         <div className="dropdown-content">
           <div className="languages-list">
@@ -188,8 +345,8 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                     className="region-selector"
                     onClick={() => handleRegionClick(region, langs)}
                     title={
-                      isRegionFullySelected(region, langs) 
-                        ? `Deseleccionar todos los idiomas de ${region}` 
+                      isRegionFullySelected(region, langs)
+                        ? `Deseleccionar todos los idiomas de ${region}`
                         : `Seleccionar todos los idiomas de ${region}`
                     }
                   >
@@ -198,14 +355,16 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   </button>
                 </div>
                 {langs.map((lang) => {
-                  const isSelected = selectedLanguages.some(l => l.id === lang.id);
+                  const isSelected = selectedLanguages.some(
+                    (l) => l.id === lang.id,
+                  );
                   return (
-                    <div 
+                    <div
                       key={lang.id}
-                      className={`priority-item language-option ${isSelected ? 'selected' : ''}`}
+                      className={`priority-item language-option ${isSelected ? "selected" : ""}`}
                       onClick={() => onToggleLanguage(lang)}
                     >
-                      <button 
+                      <button
                         className="select-toggle"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -213,11 +372,18 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                         }}
                         title={isSelected ? "Deseleccionar" : "Seleccionar"}
                       >
-                        {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                        {isSelected ? (
+                          <CheckSquare size={16} />
+                        ) : (
+                          <Square size={16} />
+                        )}
                       </button>
                       <span className="priority-text">
                         <strong>{lang.name}</strong>
-                        <small> • {lang.code} • {lang.country}</small>
+                        <small>
+                          {" "}
+                          • {lang.code} • {lang.country}
+                        </small>
                       </span>
                     </div>
                   );
@@ -227,12 +393,12 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
           </div>
         </div>
       )}
-      
+
       {selectedLanguages.length > 0 && (
         <div className="selected-language">
           <Globe size={16} />
           <strong>{selectedLanguages.length} idioma(s)</strong> seleccionado(s)
-          <small>{selectedLanguages.map(l => l.code).join(", ")}</small>
+          <small>{selectedLanguages.map((l) => l.code).join(", ")}</small>
         </div>
       )}
     </div>

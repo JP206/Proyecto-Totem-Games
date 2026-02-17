@@ -167,7 +167,7 @@
 
 .nav-btn[data-tooltip]:hover::before,
 .nav-btn-explorer[data-tooltip]:hover::before {
-  content: '';
+  content: "";
   position: absolute;
   top: calc(100% + 2px);
   border-width: 5px;
@@ -214,39 +214,85 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .project-title { font-size: var(--text-base); }
-  .project-path { font-size: 11px; }
-  .navbar-left { gap: 12px; }
+  .project-title {
+    font-size: var(--text-base);
+  }
+  .project-path {
+    font-size: 11px;
+  }
+  .navbar-left {
+    gap: 12px;
+  }
 }
 
 @media (max-width: 640px) {
-  .project-info { display: none; }
-  .navbar-left { min-width: 52px; gap: 0; }
-  .navbar { padding: 0 16px; }
-  .navbar-right { gap: 8px; }
+  .project-info {
+    display: none;
+  }
+  .navbar-left {
+    min-width: 52px;
+    gap: 0;
+  }
+  .navbar {
+    padding: 0 16px;
+  }
+  .navbar-right {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 480px) {
-  .navbar { padding: 0 12px; }
-  .navbar-right { gap: 4px; }
-  .nav-btn, .nav-btn-explorer { padding: 8px; }
-  .nav-btn svg { width: 18px; height: 18px; }
-  .nav-btn-explorer svg { width: 20px; height: 20px; }
+  .navbar {
+    padding: 0 12px;
+  }
+  .navbar-right {
+    gap: 4px;
+  }
+  .nav-btn,
+  .nav-btn-explorer {
+    padding: 8px;
+  }
+  .nav-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .nav-btn-explorer svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 @media (max-width: 360px) {
-  .navbar { padding: 0 8px; }
-  .navbar-right { gap: 2px; }
-  .navbar-right .nav-btn:not(.active):not(:first-child) { display: none; }
+  .navbar {
+    padding: 0 8px;
+  }
+  .navbar-right {
+    gap: 2px;
+  }
+  .navbar-right .nav-btn:not(.active):not(:first-child) {
+    display: none;
+  }
 }
 
-.nav-btn.active { animation: buttonPulse 2s infinite; }
+.nav-btn.active {
+  animation: buttonPulse 2s infinite;
+}
 
 @keyframes buttonPulse {
-  0% { box-shadow: 0 0 0 0 rgba(252, 209, 216, 0.3); }
-  70% { box-shadow: 0 0 0 6px rgba(252, 209, 216, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(252, 209, 216, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(252, 209, 216, 0.3);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(252, 209, 216, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(252, 209, 216, 0);
+  }
 }
 
 /* Print */
-@media print { .navbar { display: none; } }
+@media print {
+  .navbar {
+    display: none;
+  }
+}

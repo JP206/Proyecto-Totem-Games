@@ -6,7 +6,13 @@ import {
   RepoInformation,
   GitCommandData,
   IssueData,
-  SaveFileData
+  SaveFileData,
+  TranslateFilePayload,
+  TranslateFileResult,
+  SpellCheckPayload,
+  SpellCheckResult,
+  UploadTranslationPayload,
+  UploadTranslationResult,
 } from "./electron";
 
 class DesktopManager {
@@ -58,18 +64,24 @@ class DesktopManager {
     return await this.electron.deleteFile(path);
   }
 
-  async saveFile(file: File, destinationPath: string): Promise<{ success: boolean; path: string }> {
+  async saveFile(
+    file: File,
+    destinationPath: string,
+  ): Promise<{ success: boolean; path: string }> {
     const arrayBuffer = await file.arrayBuffer();
-    
+
     // Convertir a array de números para enviar por IPC
     const byteArray = Array.from(new Uint8Array(arrayBuffer));
-    
+
     const saveData: SaveFileData = {
       content: byteArray,
-      destinationPath: destinationPath.substring(0, destinationPath.lastIndexOf('/')),
-      fileName: destinationPath.substring(destinationPath.lastIndexOf('/') + 1)
+      destinationPath: destinationPath.substring(
+        0,
+        destinationPath.lastIndexOf("/"),
+      ),
+      fileName: destinationPath.substring(destinationPath.lastIndexOf("/") + 1),
     };
-    
+
     return await this.electron.saveFile(saveData);
   }
 
@@ -122,6 +134,46 @@ class DesktopManager {
 
   async openInBrowser(url: string): Promise<void> {
     await this.electron.openExternal(url);
+  }
+
+  // AI Translation
+  async translateFile(
+    payload: TranslateFilePayload,
+  ): Promise<TranslateFileResult> {
+    return await this.electron.translateFile(payload);
+  }
+
+  async spellCheckFile(payload: SpellCheckPayload): Promise<SpellCheckResult> {
+    return await this.electron.spellCheckFile(payload);
+  }
+
+  onSpellCheckProgress(
+    callback: (data: {
+      percent: number;
+      current?: number;
+      total?: number;
+    }) => void,
+  ): () => void {
+    return this.electron.onSpellCheckProgress(callback);
+  }
+
+  onTranslationProgress(
+    callback: (data: { percent: number; stage?: string }) => void,
+  ): () => void {
+    return this.electron.onTranslationProgress(callback);
+  }
+
+  async uploadTranslation(
+    payload: UploadTranslationPayload,
+  ): Promise<UploadTranslationResult> {
+    return await this.electron.uploadTranslation(payload);
+  }
+
+  async writeTranslationFile(data: {
+    filePath: string;
+    content: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return await this.electron.writeTranslationFile(data);
   }
 }
 
