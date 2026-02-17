@@ -149,7 +149,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   };
 
   const getDropdownTitle = () => {
-    return showLanguages ? "Cerrar lista" : "Abrir lista";
+    return showLanguages ? "Ocultar lista" : "Mostrar lista";
   };
 
   return (
