@@ -144,10 +144,10 @@
   flex: 0 0 auto;
 }
 
-/* TOOLTIPS */
-.nav-btn[title]:hover::after,
-.nav-btn-explorer[title]:hover::after {
-  content: attr(title);
+/* TOOLTIPS - Actualizados para usar data-tooltip */
+.nav-btn[data-tooltip]:hover::after,
+.nav-btn-explorer[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 8px);
   padding: 6px 12px;
@@ -165,8 +165,8 @@
   text-overflow: ellipsis;
 }
 
-.nav-btn[title]:hover::before,
-.nav-btn-explorer[title]:hover::before {
+.nav-btn[data-tooltip]:hover::before,
+.nav-btn-explorer[data-tooltip]:hover::before {
   content: '';
   position: absolute;
   top: calc(100% + 2px);
@@ -178,35 +178,35 @@
 }
 
 /* Tooltip positions */
-.nav-btn[title]:hover::after {
+.nav-btn[data-tooltip]:hover::after {
   left: 50%;
   transform: translateX(-50%);
 }
 
-.nav-btn[title]:hover::before {
+.nav-btn[data-tooltip]:hover::before {
   left: 50%;
   transform: translateX(-50%);
 }
 
-.nav-btn-explorer[title]:hover::after {
+.nav-btn-explorer[data-tooltip]:hover::after {
   left: 0;
   transform: translateX(0);
 }
 
-.nav-btn-explorer[title]:hover::before {
+.nav-btn-explorer[data-tooltip]:hover::before {
   left: 22px;
   transform: translateX(0);
 }
 
-.nav-btn[title="Contextos / Glosarios"]:hover::after,
-.navbar-right .nav-btn:last-child[title]:hover::after {
+.nav-btn[data-tooltip="Contextos / Glosarios"]:hover::after,
+.navbar-right .nav-btn:last-child[data-tooltip]:hover::after {
   left: auto;
   right: 0;
   transform: translateX(0);
 }
 
-.nav-btn[title="Contextos / Glosarios"]:hover::before,
-.navbar-right .nav-btn:last-child[title]:hover::before {
+.nav-btn[data-tooltip="Contextos / Glosarios"]:hover::before,
+.navbar-right .nav-btn:last-child[data-tooltip]:hover::before {
   left: auto;
   right: 22px;
   transform: translateX(0);

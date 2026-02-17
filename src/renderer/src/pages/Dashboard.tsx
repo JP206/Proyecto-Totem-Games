@@ -166,10 +166,29 @@ const Dashboard: React.FC = () => {
     (repo.description && repo.description.toLowerCase().includes(githubSearch.toLowerCase()))
   );
 
-  const navigateToProject = (repoPath: string, repoName: string) => {
-    navigate(`/project/${encodeURIComponent(repoName)}`, {
-      state: { repoPath, repoName }
-    });
+  const navigateToProject = async (repoPath: string, repoName: string) => {
+    try {
+      const desktop = DesktopManager.getInstance();
+      const token = await desktop.getConfig("github_token");
+      
+      // Obtener el owner del repo desde GitHub API
+      const githubRepo = githubRepos.find(r => r.name === repoName);
+      const repoOwner = githubRepo?.owner?.login || '';
+      
+      // Guardar TODA la información del proyecto en el store
+      await desktop.setConfig("current_project", { 
+        repoPath, 
+        repoName,
+        repoOwner 
+      });
+      
+      // Navegar a la página de landing
+      navigate('/landing');
+    } catch (error) {
+      console.error("Error guardando proyecto:", error);
+      // Fallback - intentamos navegar igual
+      navigate('/landing');
+    }
   };
 
   const fetchGithubRepos = async () => {

@@ -31,7 +31,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         
         {/* Ruta para Landing de un proyecto */}
-        <Route path="/project/:projectName" element={<Landing />} />
+        <Route path="/landing" element={<Landing />} />
 
         {/* Ruta para Issues */}
         <Route path="/issues" element={ < Issues /> } />
