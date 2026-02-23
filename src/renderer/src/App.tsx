@@ -1,3 +1,4 @@
+// src/renderer/src/App.tsx
 import React, { useEffect } from "react";
 import {
   HashRouter as Router,
@@ -8,6 +9,8 @@ import {
 import { injectTheme } from "./theme";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
+import TranslationPreview from "./pages/TranslationPreview";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
@@ -29,8 +32,14 @@ function App() {
         {/* Ruta para Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
 
+        {/* Ruta para Landing de un proyecto */}
+        <Route path="/landing" element={<Landing />} />
+
+        {/* Ruta para vista previa de traducción AI */}
+        <Route path="/translation-preview" element={<TranslationPreview />} />
+
         {/* Ruta para Issues */}
-        <Route path="/issues" element={ < Issues /> } />
+        <Route path="/issues" element={<Issues />} />
 
         {/* Ruta para Notes */}
         <Route path="/notes" element={ < Notes /> } />

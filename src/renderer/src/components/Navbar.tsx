@@ -93,10 +93,12 @@ const Navbar: React.FC = () => {
           <Layers size={20} />
         </button>
 
+        {/* ChangeHistory */}
         <button
-          className={`nav-btn ${location.pathname === "/changes" ? "active" : ""}`}
+          className="nav-btn"
           data-tooltip="Historial de cambios"
-          onClick={() => navigate("/changes")}
+          onClick={() => navigate("/history")}
+          disabled={true}
         >
           <History size={20} />
         </button>

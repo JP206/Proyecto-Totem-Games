@@ -6,6 +6,17 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import Store from "electron-store";
 import { IssueData, RepoInformation } from "../renderer/src/utils/electron";
+import "dotenv/config";
+import {
+  translateFileInMain,
+  TranslateFilePayload,
+  TranslateFileResult,
+} from "./ai/translation";
+import {
+  spellCheckFileInMain,
+  SpellCheckPayload,
+  SpellCheckResult,
+} from "./ai/spellcheck";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -97,6 +108,25 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
   }
 });
 
+// 2b. TRADUCIR ARCHIVO DE LOCALIZACIÓN
+ipcMain.handle(
+  "ai-translate-file",
+  async (
+    event: any,
+    payload: TranslateFilePayload,
+  ): Promise<TranslateFileResult> => {
+    return await translateFileInMain(payload, event.sender);
+  },
+);
+
+// 2c. REVISIÓN ORTOGRÁFICA Y GRAMATICAL (IA)
+ipcMain.handle(
+  "ai-spellcheck-file",
+  async (event: any, payload: SpellCheckPayload): Promise<SpellCheckResult> => {
+    return await spellCheckFileInMain(payload, event.sender);
+  },
+);
+
 // 3. EJECUTAR COMANDO GENÉRICO
 ipcMain.handle(
   "execute-command",
@@ -185,14 +215,14 @@ ipcMain.handle(
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
       return response.json();
-
+            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -211,28 +241,24 @@ ipcMain.handle(
 // MARCAR ISSUE COMO RESUELTO
 ipcMain.handle(
   "git-mark-issue-as-resolved",
-  async (
-    event: any,
-    issueId: number,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueId: number, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueId}`;
 
       const response = await fetch(url, {
         method: "PATCH",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
-          "state": "closed"
-        })
+          state: "closed",
+        }),
       });
 
       return response.json();
-
+            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -251,30 +277,28 @@ ipcMain.handle(
 // EDITAR ISSUE
 ipcMain.handle(
   "git-edit-issue",
-  async (
-    event: any,
-    issueData: IssueData,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueData: IssueData, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues/${issueData.id}`;
 
       const response = await fetch(url, {
         method: "PATCH",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
           ...(issueData.title != null && { title: issueData.title }),
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && { assignees: issueData.assignees }),
-        })
+          ...(issueData.assignees != null && {
+            assignees: issueData.assignees,
+          }),
+        }),
       });
 
       return response.json();
-
+            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -291,31 +315,29 @@ ipcMain.handle(
 // CREAR ISSUE/NOTA
 ipcMain.handle(
   "git-create-issue",
-  async (
-    event: any,
-    issueData: IssueData,
-    data: RepoInformation
-  ) => {
+  async (event: any, issueData: IssueData, data: RepoInformation) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
 
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({
           ...{ title: issueData.title },
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && { assignees: issueData.assignees }),
+          ...(issueData.assignees != null && {
+            assignees: issueData.assignees,
+          }),
           ...(issueData.labels != null && { labels: issueData.labels }),
-        })
+        }),
       });
 
       return response.json();
-
+            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -342,14 +364,14 @@ ipcMain.handle(
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
       return response.json();
-
+            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -519,7 +541,7 @@ ipcMain.handle(
   },
 );
 
-// 8. EVENTOS DEL MENÚ (para ser disparados desde el menú de la aplicación)
+// 8. EVENTOS DEL MENÚ
 ipcMain.on("menu:select-folder", () => {
   if (mainWindow) {
     mainWindow.webContents.send("menu:select-folder");
@@ -537,6 +559,125 @@ ipcMain.on("menu:logout", () => {
     mainWindow.webContents.send("menu:logout");
   }
 });
+
+// 9. VERIFICAR SI ARCHIVO EXISTE
+ipcMain.handle("file-exists", async (event: any, filePath: string) => {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+// 10. ELIMINAR ARCHIVO
+ipcMain.handle("delete-file", async (event: any, filePath: string) => {
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch (error) {
+    console.error("Error eliminando archivo:", error);
+    return false;
+  }
+});
+
+// 11. GUARDAR ARCHIVO (recibe array de bytes)
+ipcMain.handle(
+  "save-file",
+  async (
+    event: any,
+    data: { content: number[]; destinationPath: string; fileName: string },
+  ) => {
+    try {
+      // Asegurar que la carpeta destino existe
+      await fs.mkdir(data.destinationPath, { recursive: true });
+
+      const fullPath = path.join(data.destinationPath, data.fileName);
+
+      // Convertir array de números a Buffer y guardar
+      const buffer = Buffer.from(data.content);
+      await fs.writeFile(fullPath, buffer);
+
+      return { success: true, path: fullPath };
+    } catch (error) {
+      console.error("Error guardando archivo:", error);
+      throw error;
+    }
+  },
+);
+
+// 11b. ESCRIBIR ARCHIVO DE TRADUCCIÓN (para guardar ediciones antes de subir)
+ipcMain.handle(
+  "write-translation-file",
+  async (event: any, data: { filePath: string; content: string }) => {
+    try {
+      await fs.writeFile(data.filePath, data.content, "utf8");
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || String(error) };
+    }
+  },
+);
+
+// 12. SUBIR TRADUCCIÓN AL REPOSITORIO (git add/commit/push)
+ipcMain.handle(
+  "ai-upload-translation",
+  async (
+    event: any,
+    data: { repoPath: string; filePath: string; commitMessage?: string },
+  ) => {
+    const { repoPath, filePath, commitMessage } = data;
+    const message = commitMessage || "Update localization translations";
+
+    const runGit = async (command: string) => {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: repoPath,
+        timeout: 60000,
+      });
+      return { stdout, stderr };
+    };
+
+    try {
+      // git add
+      await runGit(`git add "${filePath}"`);
+
+      // git commit
+      let commitOk = true;
+      try {
+        const { stderr } = await runGit(
+          `git commit -m "${message.replace(/"/g, '\\"')}"`,
+        );
+        if (stderr && stderr.includes("nothing to commit")) {
+          commitOk = false;
+        }
+      } catch (err: any) {
+        const msg = String(err?.message || "");
+        if (msg.includes("nothing to commit")) {
+          commitOk = false;
+        } else {
+          throw err;
+        }
+      }
+
+      // git push origin main (aunque no haya commit nuevo, será un no-op)
+      const { stdout, stderr } = await runGit("git push origin main");
+
+      return {
+        success: true,
+        commitCreated: commitOk,
+        stdout,
+        stderr,
+      };
+    } catch (error: any) {
+      const messageError =
+        error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: messageError,
+      };
+    }
+  },
+);
 
 // ========== INICIALIZACIÓN ==========
 app.whenReady().then(() => {

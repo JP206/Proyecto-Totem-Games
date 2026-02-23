@@ -6,6 +6,13 @@ import {
   RepoInformation,
   GitCommandData,
   IssueData,
+  SaveFileData,
+  TranslateFilePayload,
+  TranslateFileResult,
+  SpellCheckPayload,
+  SpellCheckResult,
+  UploadTranslationPayload,
+  UploadTranslationResult,
 } from "./electron";
 
 class DesktopManager {
@@ -25,7 +32,6 @@ class DesktopManager {
   }
 
   private setupEventListeners(): void {
-    // Escuchar eventos del menú
     this.electron.onMenuSelectFolder(() => {
       window.dispatchEvent(new CustomEvent("desktop:select-folder"));
     });
@@ -48,6 +54,35 @@ class DesktopManager {
 
   async readFolder(path: string) {
     return await this.electron.readFolder(path);
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    return await this.electron.fileExists(path);
+  }
+
+  async deleteFile(path: string): Promise<boolean> {
+    return await this.electron.deleteFile(path);
+  }
+
+  async saveFile(
+    file: File,
+    destinationPath: string,
+  ): Promise<{ success: boolean; path: string }> {
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Convertir a array de números para enviar por IPC
+    const byteArray = Array.from(new Uint8Array(arrayBuffer));
+
+    const saveData: SaveFileData = {
+      content: byteArray,
+      destinationPath: destinationPath.substring(
+        0,
+        destinationPath.lastIndexOf("/"),
+      ),
+      fileName: destinationPath.substring(destinationPath.lastIndexOf("/") + 1),
+    };
+
+    return await this.electron.saveFile(saveData);
   }
 
   // Git operations
@@ -109,22 +144,44 @@ class DesktopManager {
     await this.electron.openExternal(url);
   }
 
-  // Información
-  getPlatform(): string {
-    return this.electron.platform;
+  // AI Translation
+  async translateFile(
+    payload: TranslateFilePayload,
+  ): Promise<TranslateFileResult> {
+    return await this.electron.translateFile(payload);
   }
 
-  getAppVersion(): string {
-    return this.electron.appVersion;
+  async spellCheckFile(payload: SpellCheckPayload): Promise<SpellCheckResult> {
+    return await this.electron.spellCheckFile(payload);
   }
 
-  isDevelopment(): boolean {
-    return this.electron.isDev;
+  onSpellCheckProgress(
+    callback: (data: {
+      percent: number;
+      current?: number;
+      total?: number;
+    }) => void,
+  ): () => void {
+    return this.electron.onSpellCheckProgress(callback);
   }
 
-  // Verificar si estamos en Electron
-  static isElectron(): boolean {
-    return !!window.electronAPI;
+  onTranslationProgress(
+    callback: (data: { percent: number; stage?: string }) => void,
+  ): () => void {
+    return this.electron.onTranslationProgress(callback);
+  }
+
+  async uploadTranslation(
+    payload: UploadTranslationPayload,
+  ): Promise<UploadTranslationResult> {
+    return await this.electron.uploadTranslation(payload);
+  }
+
+  async writeTranslationFile(data: {
+    filePath: string;
+    content: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return await this.electron.writeTranslationFile(data);
   }
 }
 
