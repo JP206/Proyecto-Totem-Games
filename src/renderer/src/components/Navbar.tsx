@@ -93,7 +93,7 @@ const Navbar: React.FC = () => {
           <Layers size={20} />
         </button>
 
-        {/* TODO: Crear página ChangeHistory */}
+        {/* ChangeHistory */}
         <button
           className="nav-btn"
           data-tooltip="Historial de cambios"
