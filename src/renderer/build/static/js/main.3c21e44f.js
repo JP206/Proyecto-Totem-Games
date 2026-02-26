@@ -1,4 +1,4 @@
-/*! For license information please see main.f1a21d2f.js.LICENSE.txt */
+/*! For license information please see main.3c21e44f.js.LICENSE.txt */
 (() => {
   "use strict";
   var e = {
@@ -18733,19 +18733,27 @@
     return (n.push(r), (n.length > 0 || "" !== r) && t.push(n), t);
   }
   function Qn(e) {
+    let t =
+      arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : ",";
     return e
       .map((e) =>
         e
           .map((e) => {
-            const t = String(null !== e && void 0 !== e ? e : "");
-            return t.includes(",") ||
-              t.includes('"') ||
-              t.includes("\n") ||
-              t.includes("\r")
-              ? '"' + t.replace(/"/g, '""') + '"'
-              : t;
+            const n = String(null !== e && void 0 !== e ? e : "");
+            return ((e) =>
+              "," === t
+                ? e.includes(",") ||
+                  e.includes('"') ||
+                  e.includes("\n") ||
+                  e.includes("\r")
+                : e.includes(t) ||
+                  e.includes('"') ||
+                  e.includes("\n") ||
+                  e.includes("\r"))(n)
+              ? '"' + n.replace(/"/g, '""') + '"'
+              : n;
           })
-          .join(","),
+          .join(t),
       )
       .join("\r\n");
   }
@@ -19275,18 +19283,110 @@
                               className:
                                 "translation-preview-btn translation-preview-btn-download",
                               onClick: () => {
-                                const e = q.length > 0 ? Qn(q) : ue.csvContent,
-                                  t = new Blob(["\ufeff" + e], {
+                                var e;
+                                let t;
+                                if (!J && he.length > 0 && ye.length > 0) {
+                                  t = [
+                                    ["Clave", pe, ...he.map((e) => e.name)],
+                                    ...oe.map((e) => {
+                                      var t;
+                                      return [
+                                        Ne(e, re),
+                                        Ne(e, ae) ||
+                                          (null ===
+                                            (t = ye.find(
+                                              (t) => t.rowIndex === e,
+                                            )) || void 0 === t
+                                            ? void 0
+                                            : t.sourceText) ||
+                                          "",
+                                        ...he.map((t) => {
+                                          var n, r, a, l, o, i, s, u, c;
+                                          const d = le[t.code],
+                                            f = void 0 !== d ? Ne(e, d) : "";
+                                          if (f) return f;
+                                          const p = ye.find(
+                                            (t) => t.rowIndex === e,
+                                          );
+                                          return null !==
+                                            (n =
+                                              null !==
+                                                (r =
+                                                  null !==
+                                                    (a =
+                                                      null === p ||
+                                                      void 0 === p ||
+                                                      null ===
+                                                        (l = p.perLanguage) ||
+                                                      void 0 === l ||
+                                                      null ===
+                                                        (o = l[t.code]) ||
+                                                      void 0 === o
+                                                        ? void 0
+                                                        : o.mergedText) &&
+                                                  void 0 !== a
+                                                    ? a
+                                                    : null === p ||
+                                                        void 0 === p ||
+                                                        null ===
+                                                          (i = p.perLanguage) ||
+                                                        void 0 === i ||
+                                                        null ===
+                                                          (s = i[t.code]) ||
+                                                        void 0 === s
+                                                      ? void 0
+                                                      : s.openaiText) &&
+                                              void 0 !== r
+                                                ? r
+                                                : null === p ||
+                                                    void 0 === p ||
+                                                    null ===
+                                                      (u = p.perLanguage) ||
+                                                    void 0 === u ||
+                                                    null === (c = u[t.code]) ||
+                                                    void 0 === c
+                                                  ? void 0
+                                                  : c.geminiText) &&
+                                            void 0 !== n
+                                            ? n
+                                            : "";
+                                        }),
+                                      ];
+                                    }),
+                                  ];
+                                } else
+                                  t =
+                                    q.length > 0
+                                      ? q.map((e) => e.slice())
+                                      : qn(ue.csvContent);
+                                if (!t.length) return;
+                                const n =
+                                    null !== (e = t[0]) && void 0 !== e
+                                      ? e
+                                      : [],
+                                  r = Math.max(
+                                    n.length,
+                                    ...t.map((e) => e.length),
+                                  ),
+                                  a = Qn(
+                                    t.map((e) => {
+                                      const t = e.slice();
+                                      for (; t.length < r; ) t.push("");
+                                      return t;
+                                    }),
+                                    ";",
+                                  ),
+                                  l = new Blob(["\ufeff" + a], {
                                     type: "text/csv;charset=utf-8;",
                                   }),
-                                  n = URL.createObjectURL(t),
-                                  r = document.createElement("a");
-                                ((r.href = n),
-                                  (r.download = "localizacion_traducido.csv"),
-                                  document.body.appendChild(r),
-                                  r.click(),
-                                  document.body.removeChild(r),
-                                  URL.revokeObjectURL(n));
+                                  o = URL.createObjectURL(l),
+                                  i = document.createElement("a");
+                                ((i.href = o),
+                                  (i.download = "localizacion_traducido.csv"),
+                                  document.body.appendChild(i),
+                                  i.click(),
+                                  document.body.removeChild(i),
+                                  URL.revokeObjectURL(o));
                               },
                               children: [
                                 (0, ln.jsx)(un, { size: 18 }),
@@ -20962,4 +21062,4 @@
     (0, ln.jsx)(r.StrictMode, { children: (0, ln.jsx)(sr, {}) }),
   );
 })();
-//# sourceMappingURL=main.f1a21d2f.js.map
+//# sourceMappingURL=main.3c21e44f.js.map

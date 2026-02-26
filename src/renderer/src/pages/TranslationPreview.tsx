@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
-import { parseCSV, stringifyCSV } from "../utils/csv";
+import { parseCSV, stringifyCSV, getDownloadDelimiter } from "../utils/csv";
 import { addTokensToday } from "../utils/tokenUsage";
 import {
   ArrowLeft,
@@ -238,10 +238,57 @@ const TranslationPreview: React.FC = () => {
     getOriginalCellValue(rowIndex, colIndex);
 
   const handleDownload = () => {
-    const content =
-      editableRows.length > 0
-        ? stringifyCSV(editableRows)
-        : fileInfo.csvContent;
+    const delimiter = getDownloadDelimiter();
+    let rowsToExport: string[][];
+
+    if (!spellCheckOnly && targetLangs.length > 0 && previewRows.length > 0) {
+      const headerRow: string[] = [
+        "Clave",
+        sourceLabel,
+        ...targetLangs.map((l) => l.name),
+      ];
+      const dataRows: string[][] = dataRowIndices.map((dataRowIndex) => {
+        const key = getCellValue(dataRowIndex, keyCol);
+        const source =
+          getCellValue(dataRowIndex, sourceCol) ||
+          previewRows.find((pr: any) => pr.rowIndex === dataRowIndex)
+            ?.sourceText ||
+          "";
+        const langCells = targetLangs.map((lang) => {
+          const col = langCodeToColIndex[lang.code];
+          const fromCell =
+            col !== undefined ? getCellValue(dataRowIndex, col) : "";
+          if (fromCell) return fromCell;
+          const pr = previewRows.find((p: any) => p.rowIndex === dataRowIndex);
+          const merged =
+            pr?.perLanguage?.[lang.code]?.mergedText ??
+            pr?.perLanguage?.[lang.code]?.openaiText ??
+            pr?.perLanguage?.[lang.code]?.geminiText ??
+            "";
+          return merged;
+        });
+        return [key, source, ...langCells];
+      });
+      rowsToExport = [headerRow, ...dataRows];
+    } else {
+      rowsToExport =
+        editableRows.length > 0
+          ? editableRows.map((r) => r.slice())
+          : parseCSV(fileInfo.csvContent);
+    }
+
+    if (!rowsToExport.length) return;
+    const header = rowsToExport[0] ?? [];
+    const numCols = Math.max(
+      header.length,
+      ...rowsToExport.map((r) => r.length),
+    );
+    const normalizedRows = rowsToExport.map((row) => {
+      const r = row.slice();
+      while (r.length < numCols) r.push("");
+      return r;
+    });
+    const content = stringifyCSV(normalizedRows, delimiter);
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + content], {
       type: "text/csv;charset=utf-8;",
