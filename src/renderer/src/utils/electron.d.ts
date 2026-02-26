@@ -84,6 +84,7 @@ export interface TranslateFileResult {
   stats: {
     totalRows: number;
     translatedRows: number;
+    tokensUsed?: number;
   };
 }
 
@@ -118,7 +119,11 @@ export interface SpellCheckResult {
   filePath: string;
   csvContent: string;
   preview: SpellCheckPreviewRow[];
-  stats: { totalRows: number; correctedRows: number };
+  stats: {
+    totalRows: number;
+    correctedRows: number;
+    tokensUsed?: number;
+  };
 }
 
 export interface UploadTranslationPayload {

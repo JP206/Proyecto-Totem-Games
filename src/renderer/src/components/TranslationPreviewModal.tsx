@@ -35,7 +35,8 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
   const rows = previewData.preview || [];
 
   const handleDownload = () => {
-    const blob = new Blob([fileInfo.csvContent], {
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + fileInfo.csvContent], {
       type: "text/csv;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);

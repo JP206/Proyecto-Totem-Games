@@ -2,6 +2,7 @@ import type {
   ITranslationProvider,
   TranslationBatchRequest,
   TranslationResultItem,
+  TranslationBatchResult,
   SpellCheckBatchRequest,
 } from "./types";
 
@@ -48,7 +49,7 @@ export const geminiProvider: ITranslationProvider = {
     apiKey: string,
     modelId: string,
     request: TranslationBatchRequest,
-  ): Promise<TranslationResultItem[]> {
+  ): Promise<TranslationBatchResult> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       modelId,
     )}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -100,21 +101,33 @@ export const geminiProvider: ITranslationProvider = {
         ?.map((p: any) => p.text || "")
         .join("\n") || "[]";
     const results = parseJsonResults(content);
+    const um = data.usageMetadata;
+    const usage =
+      um && (um.promptTokenCount != null || um.candidatesTokenCount != null)
+        ? {
+            inputTokens: um.promptTokenCount ?? 0,
+            outputTokens: um.candidatesTokenCount ?? 0,
+            totalTokens:
+              um.totalTokenCount ??
+              (um.promptTokenCount ?? 0) + (um.candidatesTokenCount ?? 0),
+          }
+        : undefined;
     console.log(
       "[Gemini] Parsed",
       results.length,
       "translations for",
       request.items.length,
       "items",
+      usage ? `| tokens: ${usage.totalTokens}` : "",
     );
-    return results;
+    return { results, usage };
   },
 
   async spellCorrectBatch(
     apiKey: string,
     modelId: string,
     request: SpellCheckBatchRequest,
-  ): Promise<TranslationResultItem[]> {
+  ): Promise<TranslationBatchResult> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       modelId,
     )}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -154,6 +167,18 @@ export const geminiProvider: ITranslationProvider = {
       data.candidates?.[0]?.content?.parts
         ?.map((p: any) => p.text || "")
         .join("\n") || "[]";
-    return parseJsonResults(content);
+    const results = parseJsonResults(content);
+    const um = data.usageMetadata;
+    const usage =
+      um && (um.promptTokenCount != null || um.candidatesTokenCount != null)
+        ? {
+            inputTokens: um.promptTokenCount ?? 0,
+            outputTokens: um.candidatesTokenCount ?? 0,
+            totalTokens:
+              um.totalTokenCount ??
+              (um.promptTokenCount ?? 0) + (um.candidatesTokenCount ?? 0),
+          }
+        : undefined;
+    return { results, usage };
   },
 };

@@ -6,6 +6,8 @@ export type {
   ITranslationProvider,
   TranslationBatchRequest,
   TranslationResultItem,
+  TranslationBatchResult,
+  ProviderUsage,
   SpellCheckBatchRequest,
 } from "./types";
 export { openaiProvider } from "./openai";

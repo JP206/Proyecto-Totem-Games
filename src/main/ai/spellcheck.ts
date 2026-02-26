@@ -10,6 +10,7 @@ import * as XLSX from "xlsx";
 import type { WebContents } from "electron";
 import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
+import { detectDelimiter } from "./csvDelimiter";
 
 const PROGRESS_CHANNEL = "spellcheck-progress";
 
@@ -41,7 +42,19 @@ export interface SpellCheckResult {
   filePath: string;
   csvContent: string;
   preview: SpellCheckPreviewRow[];
-  stats: { totalRows: number; correctedRows: number };
+  stats: {
+    totalRows: number;
+    correctedRows: number;
+    tokensUsed?: number;
+  };
+}
+
+function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
+  if (!row || row.length === 0) return true;
+  for (const cell of row) {
+    if (String(cell ?? "").trim() !== "") return false;
+  }
+  return true;
 }
 
 function getProvidersToRun(
@@ -73,7 +86,8 @@ export async function spellCheckFileInMain(
   let rows: any[][];
   if (fileExt === ".csv") {
     const raw = await fs.readFile(filePath, "utf8");
-    rows = csvParse(raw, { skip_empty_lines: false });
+    const delimiter = detectDelimiter(raw);
+    rows = csvParse(raw, { delimiter, skip_empty_lines: true });
   } else if (fileExt === ".xlsx") {
     const buf = await fs.readFile(filePath);
     const workbook = XLSX.read(buf, { type: "buffer" });
@@ -81,13 +95,18 @@ export async function spellCheckFileInMain(
     const sheet = workbook.Sheets[sheetName];
     rows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      blankrows: true,
+      blankrows: false,
     }) as any[][];
   } else {
     throw new Error("Solo se soporta .csv o .xlsx para revisión ortográfica.");
   }
 
   if (!rows.length) throw new Error("El archivo está vacío.");
+
+  // Trim trailing empty rows (common with .xlsx exports / accidental empty lines).
+  while (rows.length > 1 && isRowEffectivelyEmpty(rows[rows.length - 1])) {
+    rows.pop();
+  }
 
   const providersToRun = getProvidersToRun(payload);
   if (!providersToRun.length) {
@@ -100,6 +119,7 @@ export async function spellCheckFileInMain(
   const sourceColIndex = 1;
   const preview: SpellCheckPreviewRow[] = [];
   let correctedRowsCount = 0;
+  let totalTokensUsed = 0;
 
   const workItems: {
     rowIndex: number;
@@ -143,18 +163,18 @@ export async function spellCheckFileInMain(
       const provider = getProvider(id);
       if (!provider || !provider.spellCorrectBatch) continue;
       try {
-        resultsByProvider[id] = await provider.spellCorrectBatch(
-          apiKey,
-          modelId,
-          {
-            languageName,
-            items: batchItems.map((it) => ({
-              id: it.id,
-              key: it.key,
-              sourceText: it.sourceText,
-            })),
-          },
-        );
+        const batchResult = await provider.spellCorrectBatch(apiKey, modelId, {
+          languageName,
+          items: batchItems.map((it) => ({
+            id: it.id,
+            key: it.key,
+            sourceText: it.sourceText,
+          })),
+        });
+        resultsByProvider[id] = batchResult.results;
+        if (batchResult.usage?.totalTokens) {
+          totalTokensUsed += batchResult.usage.totalTokens;
+        }
       } catch (err) {
         console.error(`[SpellCheck AI] Provider ${id} error:`, err);
         throw err;
@@ -220,8 +240,9 @@ export async function spellCheckFileInMain(
     csvContent,
     preview,
     stats: {
-      totalRows: rows.length - 1,
+      totalRows: workItems.length,
       correctedRows: correctedRowsCount,
+      tokensUsed: totalTokensUsed || undefined,
     },
   };
 }
