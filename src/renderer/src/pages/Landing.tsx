@@ -16,7 +16,9 @@ import {
   CheckSquare,
   Square,
   ChevronDown,
+  Coins,
 } from "lucide-react";
+import { getTokensToday, addTokensToday } from "../utils/tokenUsage";
 import "../styles/landing.css";
 
 interface FileItem {
@@ -71,10 +73,24 @@ const Landing: React.FC = () => {
   const [spellCheckBeforeTranslate, setSpellCheckBeforeTranslate] =
     useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
+  const [tokensToday, setTokensToday] = useState(0);
 
   useEffect(() => {
     loadProjectFromStore();
   }, []);
+
+  useEffect(() => {
+    if (!repoPath) return;
+    setTokensToday(getTokensToday(repoPath));
+  }, [repoPath]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (repoPath) setTokensToday(getTokensToday(repoPath));
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [repoPath]);
 
   const loadProjectFromStore = async () => {
     try {
@@ -395,6 +411,9 @@ const Landing: React.FC = () => {
         });
         unsub();
         setProgressPercent(100);
+        if (repoPath && (spellResult.stats?.tokensUsed ?? 0) > 0) {
+          addTokensToday(repoPath, spellResult.stats.tokensUsed ?? 0);
+        }
         navigate("/translation-preview", {
           state: {
             spellCheckOnly: true,
@@ -423,6 +442,9 @@ const Landing: React.FC = () => {
       const result = await desktop.translateFile(translationPayload as any);
       unsub();
       setProgressPercent(100);
+      if (repoPath && (result.stats?.tokensUsed ?? 0) > 0) {
+        addTokensToday(repoPath, result.stats.tokensUsed ?? 0);
+      }
       const fileInfo = {
         filePath: result.filePath,
         csvContent: result.csvContent,
@@ -612,6 +634,17 @@ const Landing: React.FC = () => {
         <div className="landing-content">
           {/* Panel izquierdo */}
           <div className="config-panel">
+            {repoPath && (
+              <div className="landing-tokens-today">
+                <Coins size={18} />
+                <span className="landing-tokens-today-label">
+                  Tokens utilizados hoy (este proyecto)
+                </span>
+                <span className="landing-tokens-today-value">
+                  {tokensToday.toLocaleString()}
+                </span>
+              </div>
+            )}
             <h2 className="panel-title">
               <Layers size={20} />
               Localizador

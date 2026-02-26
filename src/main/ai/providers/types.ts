@@ -8,6 +8,19 @@ export interface TranslationResultItem {
   translatedText: string;
 }
 
+/** Token usage returned by a provider for one API call. */
+export interface ProviderUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+/** Result of a batch translation or spell-check with optional usage. */
+export interface TranslationBatchResult {
+  results: TranslationResultItem[];
+  usage?: ProviderUsage;
+}
+
 export interface TranslationBatchRequest {
   contextSnippet: string;
   glossarySnippet: string;
@@ -30,22 +43,21 @@ export interface ITranslationProvider {
   readonly id: string;
 
   /**
-   * Translate a batch of items. Returns an array of { id, translatedText }.
-   * The provider is responsible for prompt construction and API response parsing.
+   * Translate a batch of items. Returns results and optional token usage.
    */
   translateBatch(
     apiKey: string,
     modelId: string,
     request: TranslationBatchRequest,
-  ): Promise<TranslationResultItem[]>;
+  ): Promise<TranslationBatchResult>;
 
   /**
    * Correct spelling and grammar of texts in the same language.
-   * Returns an array of { id, translatedText } where translatedText is the corrected text.
+   * Returns results and optional token usage. translatedText is the corrected text.
    */
   spellCorrectBatch(
     apiKey: string,
     modelId: string,
     request: SpellCheckBatchRequest,
-  ): Promise<TranslationResultItem[]>;
+  ): Promise<TranslationBatchResult>;
 }

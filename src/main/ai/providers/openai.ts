@@ -2,6 +2,7 @@ import type {
   ITranslationProvider,
   TranslationBatchRequest,
   TranslationResultItem,
+  TranslationBatchResult,
   SpellCheckBatchRequest,
 } from "./types";
 
@@ -48,7 +49,7 @@ export const openaiProvider: ITranslationProvider = {
     apiKey: string,
     modelId: string,
     request: TranslationBatchRequest,
-  ): Promise<TranslationResultItem[]> {
+  ): Promise<TranslationBatchResult> {
     const url = "https://api.openai.com/v1/chat/completions";
     const systemPrompt =
       "Eres un traductor profesional de videojuegos. Respeta el contexto y los glosarios proporcionados. " +
@@ -99,21 +100,29 @@ export const openaiProvider: ITranslationProvider = {
     const data: any = await response.json();
     const content: string = data.choices?.[0]?.message?.content || "[]";
     const results = parseJsonResults(content);
+    const usage = data.usage
+      ? {
+          inputTokens: data.usage.prompt_tokens ?? 0,
+          outputTokens: data.usage.completion_tokens ?? 0,
+          totalTokens: data.usage.total_tokens ?? 0,
+        }
+      : undefined;
     console.log(
       "[OpenAI] Parsed",
       results.length,
       "translations for",
       request.items.length,
       "items",
+      usage ? `| tokens: ${usage.totalTokens}` : "",
     );
-    return results;
+    return { results, usage };
   },
 
   async spellCorrectBatch(
     apiKey: string,
     modelId: string,
     request: SpellCheckBatchRequest,
-  ): Promise<TranslationResultItem[]> {
+  ): Promise<TranslationBatchResult> {
     const url = "https://api.openai.com/v1/chat/completions";
     const systemPrompt =
       "Eres un corrector ortográfico y gramatical. Corrige únicamente errores de ortografía y gramática en el mismo idioma. " +
@@ -156,6 +165,14 @@ export const openaiProvider: ITranslationProvider = {
 
     const data: any = await response.json();
     const content: string = data.choices?.[0]?.message?.content || "[]";
-    return parseJsonResults(content);
+    const results = parseJsonResults(content);
+    const usage = data.usage
+      ? {
+          inputTokens: data.usage.prompt_tokens ?? 0,
+          outputTokens: data.usage.completion_tokens ?? 0,
+          totalTokens: data.usage.total_tokens ?? 0,
+        }
+      : undefined;
+    return { results, usage };
   },
 };
