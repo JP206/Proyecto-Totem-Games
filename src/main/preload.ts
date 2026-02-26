@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
 
+  getChanges: (data: RepoInformation) => ipcRenderer.invoke("git-get-changes", data),
+
+  getDiff: (base: string, head: string, repoInfo: RepoInformation) =>
+    ipcRenderer.invoke("git-get-diff", base, head, repoInfo),
+
   // 3. CONFIGURACIÓN (Storage)
   setConfig: (key: string, value: any) =>
     ipcRenderer.invoke("set-config", { key, value }),
