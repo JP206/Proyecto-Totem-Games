@@ -45,6 +45,11 @@ export interface SaveFileData {
   fileName: string;
 }
 
+export interface DeleteFolderResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface TranslateFilePayload {
   repoPath: string;
   projectName: string;
@@ -146,6 +151,7 @@ export interface ElectronAPI {
   readFolder: (path: string) => Promise<FileItem[]>;
   fileExists: (path: string) => Promise<boolean>;
   deleteFile: (path: string) => Promise<boolean>;
+  deleteFolder: (path: string) => Promise<boolean>;
   saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
 
   // AI translation
@@ -200,7 +206,6 @@ export interface ElectronAPI {
 
   // Utilitarios
   openExternal: (url: string) => Promise<void>;
-  showMessage: (data: MessageData) => Promise<void>;
 
   // Eventos
   onMenuSelectFolder: (callback: () => void) => void;

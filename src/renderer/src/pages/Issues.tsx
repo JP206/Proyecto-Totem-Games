@@ -24,6 +24,10 @@ export default function Issues() {
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+  const [notification, setNotification] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
   const [currentProject, setCurrentProject] = useState<{
     repoPath: string;
     repoName: string;
@@ -34,6 +38,11 @@ export default function Issues() {
     loadProjectAndIssues();
   }, []);
 
+  const showNotification = (type: "success" | "error" | "warning", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const loadProjectAndIssues = async () => {
     try {
       setLoading(true);
@@ -41,36 +50,23 @@ export default function Issues() {
 
       const token = await desktop.getConfig("github_token");
       if (!token) {
-        await desktop.showMessage(
-          "Debes iniciar sesión para acceder a esta sección",
-          "Acceso denegado",
-          "warning",
-        );
-        navigate("/login");
+        showNotification("warning", "Debes iniciar sesión para acceder a esta sección");
+        setTimeout(() => navigate("/login"), 2000);
         return;
       }
 
       const project = await desktop.getConfig("current_project");
       if (!project?.repoName || !project?.repoOwner) {
-        await desktop.showMessage(
-          "No hay un proyecto seleccionado",
-          "Error",
-          "error",
-        );
-        navigate("/dashboard");
+        showNotification("error", "No hay un proyecto seleccionado");
+        setTimeout(() => navigate("/dashboard"), 2000);
         return;
       }
 
       setCurrentProject(project);
       await loadIssues(project, token);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar el proyecto",
-        "Error",
-        "error",
-      );
-      navigate("/dashboard");
+      showNotification("error", error.message || "Error al cargar el proyecto");
+      setTimeout(() => navigate("/dashboard"), 2000);
     }
   };
 
@@ -103,12 +99,7 @@ export default function Issues() {
 
       setIssues(formattedIssues);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar los issues",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al cargar los issues");
     } finally {
       setLoading(false);
     }
@@ -126,22 +117,13 @@ export default function Issues() {
         token,
       });
 
-      await desktop.showMessage(
-        `Issue #${selectedIssue.id} marcado como resuelto`,
-        "Éxito",
-        "info",
-      );
+      showNotification("success", `Issue #${selectedIssue.id} marcado como resuelto`);
 
       await loadIssues(currentProject, token);
       setIsModalOpen(false);
       setSelectedIssue(null);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al marcar issue como resuelto",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al marcar issue como resuelto");
     }
   };
 
@@ -169,11 +151,7 @@ export default function Issues() {
         });
 
         if (response) {
-          await desktop.showMessage(
-            "Issue creado exitosamente",
-            "Éxito",
-            "info",
-          );
+          showNotification("success", "Issue creado exitosamente");
         }
       } else {
         let issueData: IssueData = {
@@ -191,11 +169,7 @@ export default function Issues() {
         });
 
         if (response) {
-          await desktop.showMessage(
-            `Issue #${selectedIssue.id} actualizado`,
-            "Éxito",
-            "info",
-          );
+          showNotification("success", `Issue #${selectedIssue.id} actualizado`);
         }
       }
 
@@ -207,12 +181,7 @@ export default function Issues() {
         setEditedDescription("");
       }
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al guardar el issue",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al guardar el issue");
     }
   };
 
@@ -253,6 +222,15 @@ export default function Issues() {
     <>
       <Navbar />
       <div className="issues-container">
+        {notification && (
+          <div className={`notification ${notification.type}`}>
+            {notification.type === "success" && <CheckCircle size={18} />}
+            {notification.type === "error" && <AlertCircle size={18} />}
+            {notification.type === "warning" && <AlertCircle size={18} />}
+            <span>{notification.message}</span>
+          </div>
+        )}
+
         <div className="issues-header">
           <h2>
             <Flag size={24} />

@@ -93,12 +93,10 @@ const Navbar: React.FC = () => {
           <Layers size={20} />
         </button>
 
-        {/* ChangeHistory */}
         <button
-          className="nav-btn"
+          className={`nav-btn ${location.pathname === "/changes" ? "active" : ""}`}
           data-tooltip="Historial de cambios"
-          onClick={() => navigate("/history")}
-          disabled={true}
+          onClick={() => navigate("/changes")}
         >
           <History size={20} />
         </button>
@@ -119,15 +117,13 @@ const Navbar: React.FC = () => {
           <Flag size={20} />
         </button>
 
-        {/* TODO: Crear página ContextsGlossaries */}
-        <button
-          className="nav-btn"
+        {/* <button
+          className={`nav-btn ${location.pathname === "/contexts-glossaries" ? "active" : ""}`}
           data-tooltip="Contextos / Glosarios"
           onClick={() => navigate("/contexts-glossaries")}
-          disabled={true}
         >
           <BookOpen size={20} />
-        </button>
+        </button>*/}
       </div>
     </nav>
   );

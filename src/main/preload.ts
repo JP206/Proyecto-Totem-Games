@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 1. SISTEMA DE ARCHIVOS
   selectFolder: () => ipcRenderer.invoke("select-folder"),
   readFolder: (path: string) => ipcRenderer.invoke("read-folder", path),
+  deleteFolder: (path: string) => ipcRenderer.invoke("delete-folder", path),
 
   // 2. COMANDOS GIT
   cloneRepository: (data: {
@@ -45,9 +46,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // 4. UTILITARIOS
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-
-  showMessage: (data: { type: string; title: string; message: string }) =>
-    ipcRenderer.invoke("show-message", data),
 
   // 5. EVENTOS DEL MENÚ
   onMenuSelectFolder: (callback: () => void) => {

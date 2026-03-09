@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import { IssueData } from "../utils/electron";
-import { FileText, Plus, Calendar, X, Trash2, AlertCircle } from "lucide-react";
+import { FileText, Plus, Calendar, X, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import "../styles/notes.css";
 
 export default function Notes() {
@@ -16,6 +16,10 @@ export default function Notes() {
   const [editedDescription, setEditedDescription] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
   const [currentProject, setCurrentProject] = useState<{
     repoPath: string;
     repoName: string;
@@ -26,6 +30,11 @@ export default function Notes() {
     loadProjectAndNotes();
   }, []);
 
+  const showNotification = (type: "success" | "error" | "warning", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const loadProjectAndNotes = async () => {
     try {
       setLoading(true);
@@ -33,36 +42,23 @@ export default function Notes() {
 
       const token = await desktop.getConfig("github_token");
       if (!token) {
-        await desktop.showMessage(
-          "Debes iniciar sesión para acceder a esta sección",
-          "Acceso denegado",
-          "warning",
-        );
-        navigate("/login");
+        showNotification("warning", "Debes iniciar sesión para acceder a esta sección");
+        setTimeout(() => navigate("/login"), 2000);
         return;
       }
 
       const project = await desktop.getConfig("current_project");
       if (!project?.repoName || !project?.repoOwner) {
-        await desktop.showMessage(
-          "No hay un proyecto seleccionado",
-          "Error",
-          "error",
-        );
-        navigate("/dashboard");
+        showNotification("error", "No hay un proyecto seleccionado");
+        setTimeout(() => navigate("/dashboard"), 2000);
         return;
       }
 
       setCurrentProject(project);
       await loadNotes(project, token);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar el proyecto",
-        "Error",
-        "error",
-      );
-      navigate("/dashboard");
+      showNotification("error", error.message || "Error al cargar el proyecto");
+      setTimeout(() => navigate("/dashboard"), 2000);
     }
   };
 
@@ -95,12 +91,7 @@ export default function Notes() {
 
       setNotes(formattedNotes);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar las notas",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al cargar las notas");
     } finally {
       setLoading(false);
     }
@@ -130,11 +121,7 @@ export default function Notes() {
         });
 
         if (response) {
-          await desktop.showMessage(
-            "Nota creada exitosamente",
-            "Éxito",
-            "info",
-          );
+          showNotification("success", "Nota creada exitosamente");
         }
       } else {
         let issueData: IssueData = {
@@ -152,11 +139,7 @@ export default function Notes() {
         });
 
         if (response) {
-          await desktop.showMessage(
-            `Nota #${selectedNote.id} actualizada`,
-            "Éxito",
-            "info",
-          );
+          showNotification("success", `Nota #${selectedNote.id} actualizada`);
         }
       }
 
@@ -168,12 +151,7 @@ export default function Notes() {
         setEditedDescription("");
       }
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al guardar la nota",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al guardar la nota");
     }
   };
 
@@ -189,23 +167,14 @@ export default function Notes() {
         token,
       });
 
-      await desktop.showMessage(
-        `Nota #${selectedNote.id} archivada`,
-        "Éxito",
-        "info",
-      );
+      showNotification("success", `Nota #${selectedNote.id} archivada`);
 
       await loadNotes(currentProject, token);
       setShowDeleteConfirm(false);
       setIsModalOpen(false);
       setSelectedNote(null);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al archivar la nota",
-        "Error",
-        "error",
-      );
+      showNotification("error", error.message || "Error al archivar la nota");
     }
   };
 
@@ -241,6 +210,15 @@ export default function Notes() {
     <>
       <Navbar />
       <div className="notes-page">
+        {notification && (
+          <div className={`notification ${notification.type}`}>
+            {notification.type === "success" && <CheckCircle size={18} />}
+            {notification.type === "error" && <AlertCircle size={18} />}
+            {notification.type === "warning" && <AlertCircle size={18} />}
+            <span>{notification.message}</span>
+          </div>
+        )}
+
         <div className="notes-header">
           <h2>
             <FileText size={24} />

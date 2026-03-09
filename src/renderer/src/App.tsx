@@ -14,6 +14,7 @@ import TranslationPreview from "./pages/TranslationPreview";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
+//import ContextsGlossaries from "./pages/ContextsGlossaries";
 
 function App() {
   useEffect(() => {
@@ -46,6 +47,9 @@ function App() {
 
         {/* Ruta para Historial de Cambios */}
         <Route path="/changes" element={ < Changes /> } />
+
+        {/* Ruta para Contextos / Glosarios */}
+        {/*<Route path="/contexts-glossaries" element={<ContextsGlossaries />} /> */}
       </Routes>
     </Router>
   );

@@ -64,6 +64,10 @@ class DesktopManager {
     return await this.electron.deleteFile(path);
   }
 
+  async deleteFolder(path: string): Promise<boolean> {
+    return await this.electron.deleteFolder(path);
+  }
+
   async saveFile(
     file: File,
     destinationPath: string,
@@ -132,14 +136,6 @@ class DesktopManager {
   }
 
   // Utilitarios
-  async showMessage(
-    message: string,
-    title: string = "GitHub Desktop",
-    type: MessageData["type"] = "info",
-  ): Promise<void> {
-    await this.electron.showMessage({ type, title, message });
-  }
-
   async openInBrowser(url: string): Promise<void> {
     await this.electron.openExternal(url);
   }

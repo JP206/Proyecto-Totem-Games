@@ -108,6 +108,32 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
   }
 });
 
+// 2a. ELIMINAR CARPETA
+ipcMain.handle("delete-folder", async (event: any, folderPath: string) => {
+  try {
+    const deleteRecursive = async (dirPath: string) => {
+      const files = await fs.readdir(dirPath, { withFileTypes: true });
+      
+      for (const file of files) {
+        const filePath = path.join(dirPath, file.name);
+        if (file.isDirectory()) {
+          await deleteRecursive(filePath);
+        } else {
+          await fs.unlink(filePath);
+        }
+      }
+      
+      await fs.rmdir(dirPath);
+    };
+
+    await deleteRecursive(folderPath);
+    return true; // Devuelve boolean directamente
+  } catch (error) {
+    console.error("Error eliminando carpeta:", error);
+    return false; // Devuelve boolean directamente
+  }
+});
+
 // 2b. TRADUCIR ARCHIVO DE LOCALIZACIÓN
 ipcMain.handle(
   "ai-translate-file",
@@ -228,7 +254,6 @@ ipcMain.handle(
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
 
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -264,7 +289,6 @@ ipcMain.handle(
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
 
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -377,7 +401,6 @@ ipcMain.handle(
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error en git-clone:", errorMessage);
 
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -413,7 +436,6 @@ ipcMain.handle(
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error obteniendo cambios:", errorMessage);
 
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -443,7 +465,6 @@ ipcMain.handle(
         error instanceof Error ? error.message : "Error desconocido";
       console.error("Error comparando diff:", errorMessage);
 
-      // Verificar si es error de autenticación
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
@@ -509,37 +530,10 @@ ipcMain.handle("delete-config", async (event: any, key: string) => {
   }
 });
 
-// 7. UTILITARIOS
+// 7. UTILITARIOS (eliminado show-message)
 ipcMain.handle("open-external", async (event: any, url: string) => {
   await shell.openExternal(url);
 });
-
-ipcMain.handle(
-  "show-message",
-  async (
-    event: any,
-    data: {
-      type: "info" | "error" | "warning" | "question";
-      title: string;
-      message: string;
-    },
-  ) => {
-    if (!mainWindow) return;
-
-    const options: any = {
-      type: data.type,
-      title: data.title,
-      message: data.message,
-      buttons: ["OK"],
-    };
-
-    if (data.type === "question") {
-      options.buttons = ["Sí", "No"];
-    }
-
-    await dialog.showMessageBox(mainWindow, options);
-  },
-);
 
 // 8. EVENTOS DEL MENÚ
 ipcMain.on("menu:select-folder", () => {

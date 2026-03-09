@@ -1,6 +1,7 @@
+// src/renderer/src/pages/TranslationPreviewModal.tsx
 import React, { useState } from "react";
 import DesktopManager from "../utils/desktop";
-import { X, Download, UploadCloud, Globe2, Shield } from "lucide-react";
+import { X, Download, UploadCloud, Globe2, Shield, CheckCircle, AlertCircle } from "lucide-react";
 
 interface TranslationPreviewModalProps {
   isOpen: boolean;
@@ -24,6 +25,10 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
     "merged" | "openai" | "gemini"
   >("merged");
   const [uploading, setUploading] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   if (!isOpen || !previewData || !fileInfo) return null;
 
@@ -59,24 +64,24 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
       });
 
       if (result.success) {
-        await desktop.showMessage(
-          "Traducciones subidas correctamente al repositorio (git push origin main).",
-          "Subida completada",
-          "info",
-        );
+        setNotification({
+          type: "success",
+          message: "Traducciones subidas correctamente al repositorio"
+        });
+        setTimeout(() => setNotification(null), 3000);
       } else {
-        await desktop.showMessage(
-          result.error || "Error desconocido al subir las traducciones.",
-          "Error al subir",
-          "error",
-        );
+        setNotification({
+          type: "error",
+          message: result.error || "Error al subir las traducciones"
+        });
+        setTimeout(() => setNotification(null), 3000);
       }
     } catch (error: any) {
-      await desktop.showMessage(
-        error?.message || String(error),
-        "Error al subir traducciones",
-        "error",
-      );
+      setNotification({
+        type: "error",
+        message: error?.message || "Error al subir traducciones"
+      });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setUploading(false);
     }
@@ -105,6 +110,13 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
         className="translation-preview-modal"
         onClick={(e) => e.stopPropagation()}
       >
+        {notification && (
+          <div className={`preview-notification ${notification.type}`}>
+            {notification.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+            <span>{notification.message}</span>
+          </div>
+        )}
+
         <button className="preview-close-btn" onClick={onClose}>
           <X size={18} />
         </button>

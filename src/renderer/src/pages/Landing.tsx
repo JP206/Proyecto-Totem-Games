@@ -16,6 +16,7 @@ import {
   CheckSquare,
   Square,
   ChevronDown,
+  CheckCircle,
 } from "lucide-react";
 import "../styles/landing.css";
 
@@ -51,6 +52,10 @@ const Landing: React.FC = () => {
   const [targetLanguages, setTargetLanguages] = useState<Language[]>([]);
   const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const [glossaryFiles, setGlossaryFiles] = useState<ContextFile[]>([]);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
 
   // UI states
   const [showContexts, setShowContexts] = useState(false);
@@ -76,6 +81,11 @@ const Landing: React.FC = () => {
     loadProjectFromStore();
   }, []);
 
+  const showNotification = (type: "success" | "error" | "warning", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const loadProjectFromStore = async () => {
     try {
       setLoading(true);
@@ -85,12 +95,8 @@ const Landing: React.FC = () => {
       const project = await desktop.getConfig("current_project");
 
       if (!project?.repoPath || !project?.repoName) {
-        await desktop.showMessage(
-          "No hay un proyecto seleccionado",
-          "Error",
-          "error",
-        );
-        navigate("/dashboard");
+        showNotification("error", "No hay un proyecto seleccionado");
+        setTimeout(() => navigate("/dashboard"), 2000);
         return;
       }
 
@@ -99,9 +105,8 @@ const Landing: React.FC = () => {
 
       await loadProjectStructure(project.repoPath, project.repoName);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(error.message, "Error", "error");
-      navigate("/dashboard");
+      showNotification("error", error.message);
+      setTimeout(() => navigate("/dashboard"), 2000);
     } finally {
       setLoading(false);
     }
@@ -220,12 +225,7 @@ const Landing: React.FC = () => {
 
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
     if (![".txt", ".csv", ".xlsx"].includes(ext)) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        "Formato no válido. Solo se permiten archivos .txt, .csv o .xlsx",
-        "Error",
-        "error",
-      );
+      showNotification("error", "Formato no válido. Solo se permiten archivos .txt, .csv o .xlsx");
       return;
     }
 
@@ -302,13 +302,9 @@ const Landing: React.FC = () => {
           break;
       }
 
-      await desktop.showMessage(
-        `Archivo guardado exitosamente en ${targetFolder}`,
-        "Éxito",
-        "info",
-      );
+      showNotification("success", `Archivo guardado exitosamente en ${targetFolder}`);
     } catch (error: any) {
-      await desktop.showMessage(error.message, "Error", "error");
+      showNotification("error", error.message);
     }
 
     setShowUploadPopup(false);
@@ -345,20 +341,12 @@ const Landing: React.FC = () => {
     const desktop = DesktopManager.getInstance();
 
     if (!selectedFile) {
-      await desktop.showMessage(
-        "Por favor sube un archivo CSV o XLSX para localizar",
-        "Archivo requerido",
-        "warning",
-      );
+      showNotification("warning", "Por favor sube un archivo CSV o XLSX para localizar");
       return;
     }
 
     if (targetLanguages.length === 0) {
-      await desktop.showMessage(
-        "Por favor selecciona al menos un idioma destino",
-        "Idioma requerido",
-        "warning",
-      );
+      showNotification("warning", "Por favor selecciona al menos un idioma destino");
       return;
     }
 
@@ -446,11 +434,7 @@ const Landing: React.FC = () => {
         },
       });
     } catch (error: any) {
-      await desktop.showMessage(
-        error?.message || String(error),
-        "Error en traducción",
-        "error",
-      );
+      showNotification("error", error?.message || "Error en traducción");
     } finally {
       setTranslating(false);
       setProgressPercent(0);
@@ -477,8 +461,9 @@ const Landing: React.FC = () => {
       try {
         await desktop.deleteFile(selectedFile.path);
         setSelectedFile(null);
+        showNotification("success", "Archivo eliminado correctamente");
       } catch (error: any) {
-        await desktop.showMessage(error.message, "Error", "error");
+        showNotification("error", error.message);
       }
     }
   };
@@ -595,6 +580,15 @@ const Landing: React.FC = () => {
   return (
     <>
       <Navbar />
+
+      {notification && (
+        <div className={`landing-notification ${notification.type}`}>
+          {notification.type === "success" && <CheckCircle size={18} />}
+          {notification.type === "error" && <AlertCircle size={18} />}
+          {notification.type === "warning" && <AlertCircle size={18} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
 
       <UploadPopup
         isOpen={showUploadPopup}
