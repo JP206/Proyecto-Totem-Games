@@ -2,48 +2,103 @@
 import { useEffect, useState } from "react";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
+import { Calendar, User, GitCommit, ExternalLink, Search } from "lucide-react";
 import "../styles/changeHistory.css";
 
 export default function ChangeHistory() {
     const [changes, setChanges] = useState<any[]>([]);
+    const [filteredChanges, setFilteredChanges] = useState<any[]>([]);
     const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
 
-    const repoOwner = "biancaluzz";
-    const repoName = "juego-totem-games";
     const desktop = DesktopManager.getInstance();
+    const [currentProject, setCurrentProject] = useState<{
+        repoName: string;
+        repoOwner: string;
+    } | null>(null);
 
     useEffect(() => {
-        loadChanges();
+        loadProjectAndChanges();
     }, []);
 
-    const loadChanges = async () => {
-        const token = await desktop.getConfig("github_token");
-        if (!token) return;
+    useEffect(() => {
+        filterChanges();
+    }, [searchTerm, changes]);
 
-        const data = await desktop.getChanges({
-            repoName,
-            repoOwner,
-            token,
+    const loadProjectAndChanges = async () => {
+        setLoading(true);
+        try {
+            const token = await desktop.getConfig("github_token");
+            if (!token) return;
+
+            const project = await desktop.getConfig("current_project");
+            if (!project?.repoName || !project?.repoOwner) return;
+
+            setCurrentProject({ repoName: project.repoName, repoOwner: project.repoOwner });
+
+            const data = await desktop.getChanges({
+                repoName: project.repoName,
+                repoOwner: project.repoOwner,
+                token,
+            });
+
+            setChanges(data);
+            setFilteredChanges(data);
+        } catch (error) {
+            console.error("Error cargando cambios:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filterChanges = () => {
+        if (!searchTerm.trim()) {
+            setFilteredChanges(changes);
+            return;
+        }
+
+        const term = searchTerm.toLowerCase();
+        const filtered = changes.filter(change => {
+            const message = change.commit.message.toLowerCase();
+            const author = change.commit.author.name.toLowerCase();
+            const date = new Date(change.commit.author.date).toLocaleDateString().toLowerCase();
+            
+            return message.includes(term) || author.includes(term) || date.includes(term);
         });
 
-        setChanges(data);
+        setFilteredChanges(filtered);
     };
 
     const openDiff = async (index: number) => {
-        const token = await desktop.getConfig("github_token");
-        if (!token) return;
+        if (!currentProject || !filteredChanges.length) return;
+        
+        try {
+            const token = await desktop.getConfig("github_token");
+            if (!token) return;
 
-        const compareUrl = await desktop.getDiff(
-            changes[0].sha,
-            changes[index].sha,
-            {
-                repoName,
-                repoOwner,
-                token,
-            }
-        );
+            const originalChange = changes.find(c => c.sha === filteredChanges[index].sha);
+            if (!originalChange) return;
 
-        setSelectedUrl(compareUrl);
+            const compareUrl = await desktop.getDiff(
+                changes[0].sha,
+                originalChange.sha,
+                {
+                    repoName: currentProject.repoName,
+                    repoOwner: currentProject.repoOwner,
+                    token,
+                }
+            );
+
+            setSelectedUrl(compareUrl);
+        } catch (error) {
+            console.error("Error al abrir la comparación:", error);
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
     };
 
     return (
@@ -52,38 +107,87 @@ export default function ChangeHistory() {
 
             <main className="content">
                 <div className="header">
-                    <button>Filtro</button>
+                    <h2>
+                        <GitCommit size={24} />
+                        Historial de Cambios
+                        {currentProject && (
+                            <span className="project-badge">{currentProject.repoName}</span>
+                        )}
+                    </h2>
+                    
+                    <div className="search-container">
+                        <Search size={16} className="search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por commit, autor o fecha..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="search-input"
+                        />
+                        {searchTerm && (
+                            <button 
+                                className="clear-search"
+                                onClick={() => setSearchTerm("")}
+                            >
+                                ×
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="table-header">
-                    <span>Commit</span>
-                    <span>Fecha</span>
-                    <span>Autor</span>
-                </div>
-
-                <div className="table-body">
-                    {changes.map((change, index) => (
-                        <div
-                            key={change.sha}
-                            className="row"
-                            onClick={() => openDiff(index)}
-                        >
-                            <span className="title">{change.commit.message}</span>
-                            <span>{change.commit.author.date}</span>
-                            <span className="author">{change.commit.author.name}</span>
+                {loading ? (
+                    <div className="loading-container">
+                        <div className="spinner-large" />
+                    </div>
+                ) : (
+                    <>
+                        <div className="table-header">
+                            <span>Commit</span>
+                            <span>Fecha</span>
+                            <span>Autor</span>
                         </div>
-                    ))}
-                </div>
+
+                        {filteredChanges.length > 0 ? (
+                            <div className="table-body">
+                                {filteredChanges.map((change, index) => (
+                                    <div
+                                        key={change.sha}
+                                        className="row"
+                                        onClick={() => openDiff(index)}
+                                    >
+                                        <span className="title" title={change.commit.message}>
+                                            {change.commit.message}
+                                        </span>
+                                        <span className="date">
+                                            <Calendar size={12} />
+                                            {formatDate(change.commit.author.date)}
+                                        </span>
+                                        <span className="author">
+                                            <User size={12} />
+                                            {change.commit.author.name}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="empty-state">
+                                <GitCommit size={48} />
+                                <p>No se encontraron resultados para "{searchTerm}"</p>
+                            </div>
+                        )}
+                    </>
+                )}
 
                 {/* MODAL WEBVIEW */}
                 {selectedUrl && (
-                    <div className="diff-modal-overlay">
-                        <div className="diff-modal">
+                    <div className="diff-modal-overlay" onClick={() => setSelectedUrl(null)}>
+                        <div className="diff-modal" onClick={(e) => e.stopPropagation()}>
                             <button
                                 className="close-btn"
                                 onClick={() => setSelectedUrl(null)}
                             >
-                                Cerrar
+                                <ExternalLink size={16} />
+                                Cerrar Vista de Cambios
                             </button>
 
                             <webview
