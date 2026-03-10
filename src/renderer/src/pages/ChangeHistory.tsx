@@ -1,3 +1,4 @@
+// src/renderer/src/pages/ChangeHistory.tsx
 import { useEffect, useState } from "react";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
