@@ -1,10 +1,14 @@
 /* src/renderer/src/styles/dashboard.css */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Layout */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Layout principal*/
 .dashboard {
   height: 100vh;
   width: 100vw;
@@ -39,11 +43,9 @@
   cursor: pointer;
   transition: background 0.2s;
 }
-
 .user-info:hover { background: var(--color-primary-main); }
 .user-avatar {
-  width: 48px;
-  height: 48px;
+  width: 48px; height: 48px;
   border: 2px solid var(--color-success);
   border-radius: 50%;
   object-fit: cover;
@@ -57,7 +59,7 @@
   align-items: center;
 }
 
-/* Botones */
+/* Botones principales */
 .btn-refresh-all, .btn-folder {
   padding: 10px 20px;
   border: none;
@@ -116,7 +118,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   flex-shrink: 0;
 }
 
-/* Badges */
 .badge {
   padding: 2px 8px;
   border-radius: 10px;
@@ -127,7 +128,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .badge.blue { background: var(--color-secondary-cyan); color: white; }
 .badge.green { background: var(--color-success); color: white; }
 
-/* Folder path */
+/* Ruta de carpeta */
 .folder-path {
   margin-bottom: 12px;
   padding: 8px 12px;
@@ -141,21 +142,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   gap: 6px;
   flex-shrink: 0;
   width: 100%;
-  box-sizing: border-box;
   overflow: hidden;
 }
-
-.folder-icon {
-  flex-shrink: 0;
-}
-
+.folder-icon { flex-shrink: 0; }
 .folder-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Search */
+/* Buscador */
 .search-box {
   position: relative;
   width: 100%;
@@ -164,8 +160,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .search-icon {
   position: absolute;
-  left: 12px;
-  top: 50%;
+  left: 12px; top: 50%;
   transform: translateY(-50%);
   color: var(--color-neutral-light);
 }
@@ -177,12 +172,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   border-radius: 6px;
   color: white;
   font-size: var(--text-sm);
-  box-sizing: border-box;
 }
 .search-box input:focus {
   outline: none;
   border-color: var(--color-secondary-cyan);
-  box-shadow: 0 0 0 2px rgba(0,200,255,0.1);
+  box-shadow: 0 0 0 2px rgba(90,206,229,0.2);
 }
 
 /* Lista de repos */
@@ -200,7 +194,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .repo-list::-webkit-scrollbar-thumb { background: var(--color-neutral-medium); border-radius: 3px; }
 .repo-list::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-light); }
 
-/* Repo cards */
+/* Cards de repos */
 .repo-card-local, .repo-card-github {
   padding: 12px;
   background: var(--color-neutral-darker);
@@ -211,7 +205,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   align-items: center;
   gap: 10px;
   transition: all 0.2s;
-  flex-shrink: 0;
 }
 .repo-card-local:hover {
   border-color: var(--color-secondary-cyan);
@@ -258,7 +251,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   white-space: nowrap;
 }
 
-/* Status badges */
+/* Status Badges */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -271,8 +264,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   white-space: nowrap;
 }
 .status-badge-up-to-date { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
-.status-badge-behind { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
 .status-badge-ahead,
+.status-badge-behind,
 .status-badge-modified { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
 .status-badge-unknown { background: rgba(156,163,175,0.15); color: #9ca3af; border: 1px solid rgba(156,163,175,0.3); }
 
@@ -295,16 +288,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-pull { background: var(--color-secondary-cyan); }
-.btn-pull:hover:not(:disabled) { background: var(--color-secondary-cyan-hover); }
+.btn-pull { background: #f59e0b; }
+.btn-pull:hover:not(:disabled) { background: #d97706; }
 .btn-delete { background: var(--color-error); }
 .btn-delete:hover:not(:disabled) { background: #dc2626; }
 .btn-clone { background: var(--color-success); }
 .btn-clone:hover:not(.disabled):not(.cloned) { background: var(--color-success-hover); }
-.btn-clone.disabled { background: var(--color-neutral-medium); cursor: not-allowed; opacity: 0.5; }
+.btn-clone.disabled,
 .btn-clone.cloned { background: var(--color-neutral-medium); cursor: not-allowed; opacity: 0.5; }
 
-/* Estados vacíos y carga */
+/* Estados Vacío y Carga */
 .empty, .loading {
   flex: 1;
   display: flex;
@@ -315,18 +308,22 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   color: var(--color-neutral-light);
   text-align: center;
 }
-.empty { background: var(--color-neutral-darker); border: 2px dashed var(--color-neutral-medium); border-radius: 8px; margin: 10px 0; }
+.empty { 
+  background: var(--color-neutral-darker); 
+  border: 2px dashed var(--color-neutral-medium); 
+  border-radius: 8px; 
+  margin: 10px 0; 
+}
+
 .spinner-small {
-  width: 14px;
-  height: 14px;
+  width: 14px; height: 14px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 .spinner-large {
-  width: 40px;
-  height: 40px;
+  width: 40px; height: 40px;
   margin-bottom: 15px;
   border: 3px solid var(--color-primary-subtle);
   border-top-color: var(--color-secondary-cyan);
@@ -337,7 +334,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Modales */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
@@ -356,16 +353,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
   animation: fadeIn 0.2s;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
 .modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 12px; right: 12px;
+  width: 32px; height: 32px;
   border: none;
   background: none;
   color: var(--color-neutral-light);
@@ -379,7 +370,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .modal-close:hover { background: var(--color-neutral-medium); color: white; }
 
-/* Profile modal */
+/* Modal Perfil */
 .profile-header {
   display: flex;
   align-items: center;
@@ -387,8 +378,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   margin-bottom: 24px;
 }
 .profile-avatar {
-  width: 64px;
-  height: 64px;
+  width: 64px; height: 64px;
   border: 2px solid var(--color-success);
   border-radius: 50%;
   object-fit: cover;
@@ -421,7 +411,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .btn-logout:hover { background: #dc2626; }
 
-/* Delete modal */
+/* Modal Eliminar */
 .delete-header {
   display: flex;
   align-items: center;
@@ -432,8 +422,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 64px; height: 64px;
   background: rgba(239,68,68,0.1);
   border: 2px solid var(--color-error);
   border-radius: 50%;
@@ -485,22 +474,117 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .btn-cancel:hover { background: var(--color-neutral-light); transform: translateY(-1px); }
 
-/* Global Loading Overlay */
+/* Modal Pull */
+.pull-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.pull-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 2px solid #f59e0b;
+  border-radius: 50%;
+  color: #f59e0b;
+}
+
+.pull-content {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.pull-content p {
+  margin: 8px 0;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
+}
+
+.pull-warning {
+  color: #f59e0b !important;
+  font-weight: 500;
+  margin: 12px 0 !important;
+  padding: 0 10px;
+}
+
+.repo-name-pull {
+  padding: 12px;
+  margin: 12px 0;
+  background: var(--color-neutral-darker);
+  border: 1px solid var(--color-neutral-medium);
+  border-radius: 6px;
+  word-break: break-all;
+  color: white !important;
+  font-weight: 600;
+}
+
+.pull-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn-pull-confirm {
+  flex: 2;
+  padding: 12px;
+  background: #f59e0b;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-pull-confirm:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.btn-pull-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive para modal pull */
+@media (max-width: 480px) {
+  .pull-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .pull-actions {
+    flex-direction: column;
+  }
+  
+  .btn-pull-confirm {
+    width: 100%;
+  }
+}
+
+/* Overlay de Carga Global */
 .global-loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background: rgba(0,0,0,0.7);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 0.2s;
 }
-
 .global-loading-content {
   background: var(--color-neutral-dark);
   padding: 40px;
@@ -510,9 +594,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
 }
-
 .global-loading-content p {
   color: white;
   font-size: var(--text-base);

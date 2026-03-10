@@ -1,4 +1,4 @@
-// src/renderer/src/themes/index.ts
+// src/renderer/src/theme/index.ts
 import { colors } from "./colors";
 import { typography } from "./typography";
 

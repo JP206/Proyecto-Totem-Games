@@ -55,7 +55,6 @@ const Login: React.FC = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Proyecto-Totem-Games",
         },
       });
 

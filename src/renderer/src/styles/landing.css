@@ -229,6 +229,16 @@
   border: 1px solid var(--color-primary-main);
 }
 
+/* Archivos globales */
+.priority-item.global {
+  background-color: rgba(90, 206, 229, 0.05);
+  border-left: 4px solid var(--color-secondary-cyan);
+}
+
+.priority-item.global:hover {
+  background-color: rgba(90, 206, 229, 0.1);
+}
+
 .priority-badge {
   background-color: var(--color-secondary-cyan);
   color: var(--color-white);
@@ -243,6 +253,11 @@
   flex-shrink: 0;
 }
 
+/* Badge para archivos globales */
+.priority-item.global .priority-badge {
+  background-color: var(--color-secondary-pink);
+}
+
 .priority-text {
   flex: 1;
   font-size: var(--text-sm);
@@ -250,6 +265,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Texto para archivos globales */
+.priority-text.global {
+  color: var(--color-secondary-cyan);
+  font-weight: 500;
+}
+
+.global-icon {
+  color: var(--color-secondary-cyan);
+  flex-shrink: 0;
 }
 
 .priority-text strong {
@@ -293,6 +322,29 @@
 .priority-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* Botón de eliminar */
+.priority-delete-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--color-neutral-medium);
+  background-color: transparent;
+  color: var(--color-neutral-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.priority-delete-btn:hover {
+  background-color: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
 }
 
 /* Select toggle */
@@ -811,6 +863,98 @@
   border: 1px solid var(--color-warning);
 }
 
+/* Modal de error para archivos duplicados */
+.error-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.error-modal {
+  background-color: var(--color-neutral-darker);
+  border-radius: 12px;
+  padding: 28px;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--color-error);
+  animation: popupFadeIn 0.2s ease-out;
+  text-align: center;
+}
+
+.error-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid var(--color-error);
+  border-radius: 50%;
+  color: var(--color-error);
+  margin: 0 auto 20px;
+}
+
+.error-modal h3 {
+  color: var(--color-white);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  font-family: var(--font-title);
+}
+
+.error-modal p {
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.error-modal .error-filename {
+  background-color: var(--color-neutral-dark);
+  padding: 12px;
+  border-radius: 6px;
+  margin: 16px 0;
+  border: 1px solid var(--color-neutral-medium);
+  color: var(--color-white);
+  font-family: monospace;
+  font-size: var(--text-sm);
+  word-break: break-all;
+}
+
+.error-modal button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary-main) 100%
+  );
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.error-modal button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(180, 90, 211, 0.4);
+}
+
 /* Spinner */
 .spinner-large {
   width: 60px;
@@ -960,7 +1104,7 @@ body {
   }
 }
 
-/* Móviles grandes */
+/* Celulares grandes */
 @media screen and (max-width: 768px) {
   .landing-container {
     padding: 12px;
@@ -1040,7 +1184,7 @@ body {
   }
 }
 
-/* Móviles pequeños */
+/* Celulares pequeños */
 @media screen and (max-width: 480px) {
   .landing-container {
     padding: 8px;
@@ -1262,6 +1406,20 @@ body {
   .upload-popup-note {
     padding: 8px 10px;
     font-size: var(--text-2xs);
+  }
+
+  .error-modal {
+    padding: 20px;
+    width: 95%;
+  }
+
+  .error-modal-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .error-modal h3 {
+    font-size: var(--text-base);
   }
 }
 
