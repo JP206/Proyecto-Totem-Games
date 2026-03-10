@@ -326,12 +326,12 @@
 
 /* Botón de eliminar */
 .priority-delete-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  border: 1px solid var(--color-neutral-medium);
-  background-color: transparent;
-  color: var(--color-neutral-light);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--color-error);
+  background-color: rgba(248, 81, 73, 0.1);
+  color: var(--color-error);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -345,6 +345,39 @@
   background-color: var(--color-error);
   border-color: var(--color-error);
   color: white;
+  transform: scale(1.05);
+}
+
+/* Icono global - MÁS LLAMATIVO */
+.global-icon {
+  color: var(--color-secondary-cyan);
+  filter: drop-shadow(0 0 2px rgba(90, 206, 229, 0.5));
+  flex-shrink: 0;
+}
+
+/* Texto de archivos globales */
+.priority-text.global {
+  color: var(--color-secondary-cyan);
+  font-weight: 600;
+  text-shadow: 0 0 5px rgba(90, 206, 229, 0.2);
+}
+
+/* Badge para archivos globales */
+.priority-item.global .priority-badge {
+  background: linear-gradient(135deg, var(--color-secondary-pink), var(--color-secondary-cyan));
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(90, 206, 229, 0.3);
+}
+
+/* Archivos nuevos (subidos en esta sesión) */
+.priority-item.new {
+  border-left: 4px solid var(--color-success);
+  background-color: rgba(46, 164, 79, 0.05);
+}
+
+.priority-item.new:hover {
+  background-color: rgba(46, 164, 79, 0.1);
 }
 
 /* Select toggle */
@@ -629,35 +662,57 @@
   font-size: var(--text-sm);
 }
 
-/* Action section */
+/* Opción de corrección ortográfica */
 .spellcheck-option {
   margin-top: 16px;
-  padding: 12px 16px;
-  background-color: var(--color-neutral-darker);
-  border-radius: 6px;
-  border: 1px solid var(--color-neutral-medium);
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--color-primary-subtle), var(--color-neutral-darker));
+  border-radius: 12px;
+  border: 1px solid var(--color-secondary-cyan);
+  box-shadow: 0 4px 12px rgba(90, 206, 229, 0.15);
 }
+
 .spellcheck-label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   font-size: var(--text-sm);
-  color: var(--color-neutral-lighter);
+  color: var(--color-white);
+  font-weight: 500;
 }
+
 .spellcheck-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-secondary-cyan);
 }
+
+.spellcheck-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spellcheck-icon {
+  color: var(--color-secondary-cyan);
+  animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+  0% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.7; transform: scale(1); }
+}
+
 .spellcheck-note {
   display: block;
-  margin-top: 6px;
-  margin-left: 28px;
+  margin-top: 8px;
+  margin-left: 32px;
   font-size: var(--text-xs);
   color: var(--color-neutral-light);
-}
-.spellcheck-note a {
-  color: var(--color-secondary-cyan);
+  font-style: italic;
 }
 
 .action-section {

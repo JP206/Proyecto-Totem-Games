@@ -8,7 +8,7 @@ import UploadPopup from "../components/UploadPopup";
 import {
   FileText, BookOpen, Layers, AlertCircle, Download,
   FileSpreadsheet, X, CheckSquare, Square, ChevronDown,
-  CheckCircle, Globe, Trash2
+  CheckCircle, Globe, Trash2, Sparkles
 } from "lucide-react";
 import "../styles/landing.css";
 
@@ -108,11 +108,26 @@ const Landing: React.FC = () => {
         ]);
       }
 
+      // Unificar y ordenar: primero globales, luego específicos
+      const allContexts = [...generalContexts, ...specificContexts];
+      const allGlossaries = [...generalGlossaries, ...specificGlossaries];
+
+      // Reasignar prioridades en orden (globales tienen prioridad más alta)
+      const reindexedContexts = allContexts.map((file, index) => ({
+        ...file,
+        priority: index + 1
+      }));
+
+      const reindexedGlossaries = allGlossaries.map((file, index) => ({
+        ...file,
+        priority: index + 1
+      }));
+
       setState(prev => ({
         ...prev,
         selectedFile: csvFile || xlsxFile || null,
-        contextFiles: [...specificContexts, ...generalContexts],
-        glossaryFiles: [...specificGlossaries, ...generalGlossaries]
+        contextFiles: reindexedContexts,
+        glossaryFiles: reindexedGlossaries
       }));
     } catch (error) {
       console.error("Error cargando estructura:", error);
@@ -125,8 +140,8 @@ const Landing: React.FC = () => {
       const desktop = DesktopManager.getInstance();
       const files = await desktop.readFolder(`${basePath}/Localizacion/contextos_especificos`);
       return files.filter((f: any) => f.isFile && f.name.endsWith(".txt"))
-        .map((f: any, i: number) => ({ 
-          name: f.name, path: f.path, priority: i + 1, 
+        .map((f: any) => ({ 
+          name: f.name, path: f.path, priority: 0, 
           selected: true, isGlobal: false, isNew: false
         }));
     } catch { return []; }
@@ -138,8 +153,8 @@ const Landing: React.FC = () => {
       const desktop = DesktopManager.getInstance();
       const files = await desktop.readFolder(`${basePath}/Localizacion/glosarios_especificos`);
       return files.filter((f: any) => f.isFile && (f.name.endsWith(".csv") || f.name.endsWith(".xlsx")))
-        .map((f: any, i: number) => ({ 
-          name: f.name, path: f.path, priority: i + 1, 
+        .map((f: any) => ({ 
+          name: f.name, path: f.path, priority: 0, 
           selected: true, isGlobal: false, isNew: false
         }));
     } catch { return []; }
@@ -152,8 +167,8 @@ const Landing: React.FC = () => {
       const desktop = DesktopManager.getInstance();
       const files = await desktop.readFolder(`${generalPath}/contextos_generales`);
       return files.filter((f: any) => f.isFile && f.name.endsWith(".txt"))
-        .map((f: any, i: number) => ({ 
-          name: `${f.name}`, path: f.path, priority: i + 1, 
+        .map((f: any) => ({ 
+          name: f.name, path: f.path, priority: 0, 
           selected: true, isGlobal: true, isNew: false
         }));
     } catch { return []; }
@@ -166,8 +181,8 @@ const Landing: React.FC = () => {
       const desktop = DesktopManager.getInstance();
       const files = await desktop.readFolder(`${generalPath}/glosarios_generales`);
       return files.filter((f: any) => f.isFile && (f.name.endsWith(".csv") || f.name.endsWith(".xlsx")))
-        .map((f: any, i: number) => ({ 
-          name: `${f.name}`, path: f.path, priority: i + 1, 
+        .map((f: any) => ({ 
+          name: f.name, path: f.path, priority: 0, 
           selected: true, isGlobal: true, isNew: false
         }));
     } catch { return []; }
@@ -181,15 +196,19 @@ const Landing: React.FC = () => {
       await DesktopManager.getInstance().deleteFile(file.path);
       
       if (type === "context") {
-        setState(prev => ({
-          ...prev,
-          contextFiles: prev.contextFiles.filter(f => f.path !== file.path)
-        }));
+        setState(prev => {
+          const filtered = prev.contextFiles.filter(f => f.path !== file.path);
+          // Reindexar prioridades
+          const reindexed = filtered.map((f, idx) => ({ ...f, priority: idx + 1 }));
+          return { ...prev, contextFiles: reindexed };
+        });
       } else {
-        setState(prev => ({
-          ...prev,
-          glossaryFiles: prev.glossaryFiles.filter(f => f.path !== file.path)
-        }));
+        setState(prev => {
+          const filtered = prev.glossaryFiles.filter(f => f.path !== file.path);
+          // Reindexar prioridades
+          const reindexed = filtered.map((f, idx) => ({ ...f, priority: idx + 1 }));
+          return { ...prev, glossaryFiles: reindexed };
+        });
       }
     } catch (error) {
       console.error("Error eliminando archivo:", error);
@@ -213,6 +232,7 @@ const Landing: React.FC = () => {
     const newFiles = [...files];
     const swap = dir === "up" ? index - 1 : index + 1;
     [newFiles[index], newFiles[swap]] = [newFiles[swap], newFiles[index]];
+    // Reasignar prioridades después del movimiento
     newFiles.forEach((f, i) => (f.priority = i + 1));
     setFiles(newFiles);
   };
@@ -241,11 +261,11 @@ const Landing: React.FC = () => {
           targetFolder = `${state.repoPath}/Localizacion/contextos_especificos`;
           fileName = file.name.endsWith(".txt") ? file.name : `${file.name.split(".")[0]}.txt`;
           
-          // Verificar duplicados en TODA la lista (nuevos y existentes)
+          // Verificar duplicados
           if (state.contextFiles.some(f => f.name === fileName)) {
             setErrorModal({
               show: true,
-              message: `El archivo ya existe en contextos. No se puede sobrescribir.`,
+              message: `El archivo ya existe en contextos.`,
               filename: fileName
             });
             setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }));
@@ -254,24 +274,27 @@ const Landing: React.FC = () => {
           
           finalPath = `${targetFolder}/${fileName}`;
           await desktop.saveFile(file, finalPath);
-          setState(prev => ({ 
-            ...prev, 
-            contextFiles: [...prev.contextFiles, { 
+          
+          setState(prev => {
+            const newFile = { 
               name: fileName, path: finalPath, priority: prev.contextFiles.length + 1, 
               selected: true, isGlobal: false, isNew: true
-            }] 
-          }));
+            };
+            // Los nuevos archivos van al final (prioridad más baja)
+            const newList = [...prev.contextFiles, newFile];
+            return { ...prev, contextFiles: newList };
+          });
           break;
           
         case "glossary":
           targetFolder = `${state.repoPath}/Localizacion/glosarios_especificos`;
           fileName = file.name;
           
-          // Verificar duplicados en TODA la lista (nuevos y existentes)
+          // Verificar duplicados
           if (state.glossaryFiles.some(f => f.name === fileName)) {
             setErrorModal({
               show: true,
-              message: `El archivo ya existe en glosarios. No se puede sobrescribir.`,
+              message: `El archivo ya existe en glosarios.`,
               filename: fileName
             });
             setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }));
@@ -280,13 +303,15 @@ const Landing: React.FC = () => {
           
           finalPath = `${targetFolder}/${fileName}`;
           await desktop.saveFile(file, finalPath);
-          setState(prev => ({ 
-            ...prev, 
-            glossaryFiles: [...prev.glossaryFiles, { 
+          
+          setState(prev => {
+            const newFile = { 
               name: fileName, path: finalPath, priority: prev.glossaryFiles.length + 1, 
               selected: true, isGlobal: false, isNew: true
-            }] 
-          }));
+            };
+            const newList = [...prev.glossaryFiles, newFile];
+            return { ...prev, glossaryFiles: newList };
+          });
           break;
           
         case "localize":
@@ -411,7 +436,7 @@ const Landing: React.FC = () => {
     return <Square size={16} className="toggle-checkbox partially-selected" />;
   };
 
-  // Componente de lista de archivos con botón de eliminar
+  // Componente de lista de archivos
   const FileList = ({ title, icon: Icon, files, show, setShow, type }: any) => (
     <div className="config-section">
       <div className="section-header">
@@ -432,13 +457,14 @@ const Landing: React.FC = () => {
           {files.length > 0 ? (
             <div className="priority-list">
               {files.map((file: ContextFile, idx: number) => (
-                <div key={idx} className={`priority-item ${file.isGlobal ? "global" : ""}`}>
+                <div key={idx} className={`priority-item ${file.isGlobal ? "global" : ""} ${file.isNew ? "new" : ""}`}>
                   <button className="select-toggle" onClick={() => toggleSelection(files, (newFiles: any) => setState(prev => ({ ...prev, [type]: newFiles })), idx)}>
                     {file.selected ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
                   <span className="priority-badge">{file.priority}</span>
                   <span className={`priority-text ${file.isGlobal ? "global" : ""}`}>
-                    {file.isGlobal && <Globe size={12} className="global-icon" />}{file.name}
+                    {file.isGlobal && <Globe size={14} className="global-icon" />}
+                    {file.name}
                   </span>
                   {file.isNew && (
                     <button 
@@ -524,8 +550,14 @@ const Landing: React.FC = () => {
             <div className="spellcheck-option">
               <label className="spellcheck-label">
                 <input type="checkbox" checked={state.spellCheck} onChange={(e) => setState(prev => ({ ...prev, spellCheck: e.target.checked }))} />
-                <span>Revisar ortografía</span>
+                <span className="spellcheck-text">
+                  <Sparkles size={16} className="spellcheck-icon" />
+                  Revisar ortografía con IA
+                </span>
               </label>
+              <small className="spellcheck-note">
+                Corrige automáticamente errores ortográficos y gramaticales antes de traducir
+              </small>
             </div>
             <div className="action-section">
               <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || state.translating}>
