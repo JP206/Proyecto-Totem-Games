@@ -42,10 +42,10 @@ function App() {
         <Route path="/issues" element={<Issues />} />
 
         {/* Ruta para Notes */}
-        <Route path="/notes" element={ < Notes /> } />
+        <Route path="/notes" element={<Notes />} />
 
         {/* Ruta para Historial de Cambios */}
-        <Route path="/changes" element={ < Changes /> } />
+        <Route path="/changes" element={<Changes />} />
       </Routes>
     </Router>
   );

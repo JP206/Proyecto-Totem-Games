@@ -204,11 +204,7 @@ ipcMain.handle(
 // OBTENER ISSUES GIT
 ipcMain.handle(
   "git-get-issues",
-  async (
-    event: any,
-    data: RepoInformation,
-    label: string
-  ) => {
+  async (event: any, data: RepoInformation, label: string) => {
     try {
       const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=${label}`;
 
@@ -222,7 +218,6 @@ ipcMain.handle(
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -258,7 +253,6 @@ ipcMain.handle(
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -298,7 +292,6 @@ ipcMain.handle(
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -337,7 +330,6 @@ ipcMain.handle(
       });
 
       return response.json();
-            
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
@@ -352,92 +344,72 @@ ipcMain.handle(
 );
 
 // OBTENER NOTAS GIT
-ipcMain.handle(
-  "git-get-notes",
-  async (
-    event: any,
-    data: RepoInformation
-  ) => {
-    try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=documentation`;
+ipcMain.handle("git-get-notes", async (event: any, data: RepoInformation) => {
+  try {
+    const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues?labels=documentation`;
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${data.token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${data.token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
 
-      return response.json();
-            
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error en git-clone:", errorMessage);
+    return response.json();
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+    console.error("Error en git-clone:", errorMessage);
 
-      // Verificar si es error de autenticación
-      if (errorMessage.includes("Authentication")) {
-        throw new Error("Token de GitHub inválido o expirado");
-      }
-
-      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    // Verificar si es error de autenticación
+    if (errorMessage.includes("Authentication")) {
+      throw new Error("Token de GitHub inválido o expirado");
     }
-  },
-);
+
+    throw new Error(`Error clonando repositorio: ${errorMessage}`);
+  }
+});
 
 // OBTENER CAMBIOS EN REPOSITORIO
-ipcMain.handle(
-  "git-get-changes",
-  async (
-    event: any,
-    data: RepoInformation
-  ) => {
-    try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/commits`;
+ipcMain.handle("git-get-changes", async (event: any, data: RepoInformation) => {
+  try {
+    const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/commits`;
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": `Bearer ${data.token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${data.token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
 
-      return response.json();
+    return response.json();
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+    console.error("Error obteniendo cambios:", errorMessage);
 
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error obteniendo cambios:", errorMessage);
-
-      // Verificar si es error de autenticación
-      if (errorMessage.includes("Authentication")) {
-        throw new Error("Token de GitHub inválido o expirado");
-      }
-
-      throw new Error(`Error obteniendo cambios: ${errorMessage}`);
+    // Verificar si es error de autenticación
+    if (errorMessage.includes("Authentication")) {
+      throw new Error("Token de GitHub inválido o expirado");
     }
-  },
-);
+
+    throw new Error(`Error obteniendo cambios: ${errorMessage}`);
+  }
+});
 
 // OBTENER DIFF ENTRE DOS COMMITS
 ipcMain.handle(
   "git-get-diff",
-  (
-    event: any,
-    base: string,
-    head: string,
-    data: RepoInformation
-  ) => {
+  (event: any, base: string, head: string, data: RepoInformation) => {
     try {
-      console.log(data)
-      const url: string = `https://github.com/${data.repoOwner}/${data.repoName}/compare/${base}..${head}`
-     
-      return url;
+      console.log(data);
+      const url: string = `https://github.com/${data.repoOwner}/${data.repoName}/compare/${base}..${head}`;
 
+      return url;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";

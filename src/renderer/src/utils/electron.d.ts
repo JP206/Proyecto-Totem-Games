@@ -191,7 +191,11 @@ export interface ElectronAPI {
 
   getChanges: (repoInfo: RepoInformation) => Promise<any[]>;
 
-  getDiff: (base: string, head: string, repoInfo: RepoInformation) => Promise<any>;
+  getDiff: (
+    base: string,
+    head: string,
+    repoInfo: RepoInformation,
+  ) => Promise<any>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
