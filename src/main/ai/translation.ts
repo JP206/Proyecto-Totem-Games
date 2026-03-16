@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import type { WebContents } from "electron";
 import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
+import { detectDelimiter } from "./csvDelimiter";
 
 const TRANSLATION_PROGRESS_CHANNEL = "translation-progress";
 
@@ -60,6 +61,7 @@ export interface TranslateFileResult {
   stats: {
     totalRows: number;
     translatedRows: number;
+    tokensUsed?: number;
   };
 }
 
@@ -89,6 +91,14 @@ function jaccardSimilarity(a: string, b: string): number {
   const union = tokensA.size + tokensB.size - intersection;
   if (union === 0) return 0;
   return intersection / union;
+}
+
+function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
+  if (!row || row.length === 0) return true;
+  for (const cell of row) {
+    if (String(cell ?? "").trim() !== "") return false;
+  }
+  return true;
 }
 
 async function readContexts(
@@ -124,7 +134,11 @@ async function readGlossaries(
 
       if (ext === ".csv") {
         const raw = await fs.readFile(glossaryPath, "utf8");
-        const rows: string[][] = csvParse(raw, { skip_empty_lines: true });
+        const delimiter = detectDelimiter(raw);
+        const rows: string[][] = csvParse(raw, {
+          delimiter,
+          skip_empty_lines: true,
+        });
         for (let i = 1; i < rows.length; i++) {
           const [term, translation] = rows[i];
           if (term && translation) {
@@ -222,7 +236,8 @@ export async function translateFileInMain(
 
   if (fileExt === ".csv") {
     const raw = await fs.readFile(payload.filePath, "utf8");
-    rows = csvParse(raw, { skip_empty_lines: false });
+    const delimiter = detectDelimiter(raw);
+    rows = csvParse(raw, { delimiter, skip_empty_lines: true });
   } else if (fileExt === ".xlsx") {
     const buf = await fs.readFile(payload.filePath);
     const workbook = XLSX.read(buf, { type: "buffer" });
@@ -230,7 +245,7 @@ export async function translateFileInMain(
     const sheet = workbook.Sheets[sheetName];
     rows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      blankrows: true,
+      blankrows: false,
     }) as any[][];
   } else {
     throw new Error("Formato de archivo no soportado. Usa .csv o .xlsx");
@@ -238,6 +253,11 @@ export async function translateFileInMain(
 
   if (!rows.length) {
     throw new Error("El archivo de localización está vacío.");
+  }
+
+  // Trim trailing empty rows (common with .xlsx exports / accidental empty lines).
+  while (rows.length > 1 && isRowEffectivelyEmpty(rows[rows.length - 1])) {
+    rows.pop();
   }
 
   const header = rows[0] || [];
@@ -278,8 +298,9 @@ export async function translateFileInMain(
     }
   }
 
-  // Build preview rows from first 50 data rows so every language can fill into the same rows
-  const maxPreviewRows = 50;
+  // Build preview for all data rows so the UI can show translations (and provider/confidence) for every row.
+  // Cap at 10_000 to avoid huge payloads; typical files are hundreds of rows.
+  const maxPreviewRows = 10_000;
   const previewRows: PreviewRow[] = [];
   for (
     let rowIndex = 1;
@@ -299,6 +320,7 @@ export async function translateFileInMain(
   }
 
   let translatedRowsCount = 0;
+  let totalTokensUsed = 0;
 
   type WorkItem = {
     rowIndex: number;
@@ -395,11 +417,15 @@ export async function translateFileInMain(
           console.log(
             `[AI Translate] Provider ${id} batch lang=${lang.code} items=${batchItems.length}`,
           );
-          resultsByProvider[id] = await provider.translateBatch(
+          const batchResult = await provider.translateBatch(
             apiKey,
             modelId,
             toBatchRequest(batchItems, lang),
           );
+          resultsByProvider[id] = batchResult.results;
+          if (batchResult.usage?.totalTokens) {
+            totalTokensUsed += batchResult.usage.totalTokens;
+          }
           console.log(
             `[AI Translate] Provider ${id} returned ${resultsByProvider[id].length} results`,
           );
@@ -487,8 +513,18 @@ export async function translateFileInMain(
     csvContent: updatedContent,
     preview: previewRows,
     stats: {
-      totalRows: rows.length - 1,
+      totalRows: (() => {
+        let count = 0;
+        for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+          const row = rows[rowIndex] || [];
+          const key = String(row[0] ?? "").trim();
+          const sourceText = String(row[1] ?? "").trim();
+          if (key || sourceText) count++;
+        }
+        return count;
+      })(),
       translatedRows: translatedRowsCount,
+      tokensUsed: totalTokensUsed || undefined,
     },
   };
 }

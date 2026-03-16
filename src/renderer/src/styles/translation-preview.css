@@ -68,6 +68,65 @@
   color: var(--color-neutral-light);
 }
 
+.translation-preview-tokens-card {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-subtle) 0%,
+    rgba(0, 120, 140, 0.15) 100%
+  );
+  border: 2px solid var(--color-secondary-cyan);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.translation-preview-tokens-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-white);
+}
+
+.translation-preview-tokens-header svg {
+  flex-shrink: 0;
+  color: var(--color-secondary-cyan);
+}
+
+.translation-preview-tokens-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: baseline;
+}
+
+.translation-preview-tokens-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.translation-preview-tokens-label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
+}
+
+.translation-preview-tokens-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-secondary-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.translation-preview-tokens-row.translation-preview-tokens-total
+  .translation-preview-tokens-value {
+  font-size: var(--text-xl);
+  color: var(--color-white);
+}
+
 .translation-preview-actions {
   display: flex;
   gap: 12px;
