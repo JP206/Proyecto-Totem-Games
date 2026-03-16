@@ -1,6 +1,7 @@
 // src/renderer/src/pages/TranslationPreviewModal.tsx
 import React, { useState } from "react";
 import DesktopManager from "../utils/desktop";
+import { parseCSV, stringifyCSV, getDownloadDelimiter } from "../utils/csv";
 import { X, Download, UploadCloud, Globe2, Shield, CheckCircle, AlertCircle } from "lucide-react";
 
 interface TranslationPreviewModalProps {
@@ -40,7 +41,21 @@ const TranslationPreviewModal: React.FC<TranslationPreviewModalProps> = ({
   const rows = previewData.preview || [];
 
   const handleDownload = () => {
-    const blob = new Blob([fileInfo.csvContent], {
+    const rowsToExport = parseCSV(fileInfo.csvContent);
+    if (!rowsToExport.length) return;
+    const delimiter = getDownloadDelimiter();
+    const numCols = Math.max(
+      ...rowsToExport.map((r) => r.length),
+      rowsToExport[0]?.length ?? 0,
+    );
+    const normalizedRows = rowsToExport.map((row) => {
+      const r = row.slice();
+      while (r.length < numCols) r.push("");
+      return r;
+    });
+    const content = stringifyCSV(normalizedRows, delimiter);
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + content], {
       type: "text/csv;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);

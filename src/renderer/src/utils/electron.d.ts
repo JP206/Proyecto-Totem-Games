@@ -89,6 +89,7 @@ export interface TranslateFileResult {
   stats: {
     totalRows: number;
     translatedRows: number;
+    tokensUsed?: number;
   };
 }
 
@@ -123,7 +124,11 @@ export interface SpellCheckResult {
   filePath: string;
   csvContent: string;
   preview: SpellCheckPreviewRow[];
-  stats: { totalRows: number; correctedRows: number };
+  stats: {
+    totalRows: number;
+    correctedRows: number;
+    tokensUsed?: number;
+  };
 }
 
 export interface UploadTranslationPayload {
@@ -198,7 +203,11 @@ export interface ElectronAPI {
 
   getChanges: (repoInfo: RepoInformation) => Promise<any[]>;
 
-  getDiff: (base: string, head: string, repoInfo: RepoInformation) => Promise<any>;
+  getDiff: (
+    base: string,
+    head: string,
+    repoInfo: RepoInformation,
+  ) => Promise<any>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

@@ -169,7 +169,11 @@ class DesktopManager {
     return await this.electron.getChanges(data);
   }
 
-  async getDiff(base: string, head: string, repoInfo: RepoInformation): Promise<any> {
+  async getDiff(
+    base: string,
+    head: string,
+    repoInfo: RepoInformation,
+  ): Promise<any> {
     return await this.electron.getDiff(base, head, repoInfo);
   }
 

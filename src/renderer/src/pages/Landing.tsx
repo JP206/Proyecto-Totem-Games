@@ -8,8 +8,9 @@ import UploadPopup from "../components/UploadPopup";
 import {
   FileText, BookOpen, Layers, AlertCircle, Download,
   FileSpreadsheet, X, CheckSquare, Square, ChevronDown,
-  CheckCircle, Globe, Trash2, Sparkles
+  CheckCircle, Globe, Trash2, Sparkles, Coins
 } from "lucide-react";
+import { getTokensToday, addTokensToday } from "../utils/tokenUsage";
 import "../styles/landing.css";
 
 interface FileItem { name: string; path: string; isDirectory: boolean; isFile: boolean; }
@@ -27,12 +28,26 @@ const Landing: React.FC = () => {
     showContexts: false, showGlossaries: false, showUploadPopup: false,
     pendingFile: null as { file: File; extension: string } | null,
     translating: false, progressPercent: 0, providerMode: "openai" as "openai" | "gemini" | "both",
-    spellCheck: false,
+    spellCheck: false, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash",
+    spellCheckBeforeTranslate: false, tokensToday: 0
   });
 
   const [errorModal, setErrorModal] = useState({ show: false, message: "", filename: "" });
 
   useEffect(() => { loadProject(); }, []);
+
+  useEffect(() => {
+    if (!state.repoPath) return;
+    setState(prev => ({ ...prev, tokensToday: getTokensToday(state.repoPath) }));
+  }, [state.repoPath]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (state.repoPath) setState(prev => ({ ...prev, tokensToday: getTokensToday(state.repoPath) }));
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [state.repoPath]);
 
   // Cargar proyecto desde el store  
   const loadProject = async () => {
@@ -93,9 +108,15 @@ const Landing: React.FC = () => {
     try {
       const desktop = DesktopManager.getInstance();
       
-      const files = await desktop.readFolder(`${path}/Localizacion`).catch(() => []);
-      const csvFile = files.find((f: any) => f.isFile && f.name === `${name}_localizar.csv`);
-      const xlsxFile = files.find((f: any) => f.isFile && f.name === `${name}_localizar.xlsx`);
+      // Cargar archivo a localizar
+      try {
+        const files = await desktop.readFolder(`${path}/Localizacion`);
+        const csvFile = files.find((f: any) => f.isFile && f.name === `${name}_localizar.csv`);
+        const xlsxFile = files.find((f: any) => f.isFile && f.name === `${name}_localizar.xlsx`);
+        setState(prev => ({ ...prev, selectedFile: csvFile || xlsxFile || null }));
+      } catch {
+        console.log("Carpeta Localizacion no encontrada");
+      }
       
       const [specificContexts, specificGlossaries] = await Promise.all([
         loadContexts(path), loadGlossaries(path)
@@ -125,7 +146,6 @@ const Landing: React.FC = () => {
 
       setState(prev => ({
         ...prev,
-        selectedFile: csvFile || xlsxFile || null,
         contextFiles: reindexedContexts,
         glossaryFiles: reindexedGlossaries
       }));
@@ -242,7 +262,10 @@ const Landing: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-    if (![".txt", ".csv", ".xlsx"].includes(ext)) return;
+    if (![".txt", ".csv", ".xlsx"].includes(ext)) {
+      console.error("Formato no válido. Solo se permiten archivos .txt, .csv o .xlsx");
+      return;
+    }
     setState(prev => ({ ...prev, pendingFile: { file, extension: ext }, showUploadPopup: true }));
     e.target.value = "";
   };
@@ -366,39 +389,98 @@ const Landing: React.FC = () => {
   // Localización
   const startLocalization = async () => {
     const desktop = DesktopManager.getInstance();
-    if (!state.selectedFile || !state.targetLanguages.length) return;
+    if (!state.selectedFile) {
+      console.warn("Por favor sube un archivo CSV o XLSX para localizar");
+      return;
+    }
+    if (!state.targetLanguages.length) {
+      console.warn("Por favor selecciona al menos un idioma destino");
+      return;
+    }
 
     setState(prev => ({ ...prev, translating: true, progressPercent: 0 }));
     
     try {
       const payload = {
         repoPath: state.repoPath, projectName: state.repoName, filePath: state.selectedFile.path,
+        sourceLanguageName: undefined as string | undefined,
         targetLanguages: state.targetLanguages.map(l => ({ code: l.code, name: l.name })),
         contexts: state.contextFiles.filter(c => c.selected).map(c => c.path),
         glossaries: state.glossaryFiles.filter(g => g.selected).map(g => g.path),
-        providerOptions: { mode: state.providerMode, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash" },
+        providerOptions: { mode: state.providerMode, openaiModel: state.openaiModel, geminiModel: state.geminiModel },
       };
 
-      if (state.spellCheck) {
+      const spellCheckActive = state.spellCheck || state.spellCheckBeforeTranslate;
+
+      if (spellCheckActive) {
         const unsub = desktop.onSpellCheckProgress(d => setState(prev => ({ ...prev, progressPercent: d.percent })));
         const result = await desktop.spellCheckFile({ 
           filePath: state.selectedFile.path, language: "Español", 
           applyToFile: false, providerOptions: payload.providerOptions 
         });
         unsub();
-        navigate("/translation-preview", { 
-          state: { spellCheckOnly: true, fileInfo: { filePath: result.filePath, csvContent: result.csvContent }, 
-          spellCheckPreview: result.preview, translationPayload: payload, repoPath: state.repoPath, 
-          providerMode: state.providerMode, targetLanguages: state.targetLanguages } 
-        });
+        setState(prev => ({ ...prev, progressPercent: 100 }));
+        
+        if (state.repoPath && (result.stats?.tokensUsed ?? 0) > 0) {
+          addTokensToday(state.repoPath, result.stats.tokensUsed ?? 0);
+        }
+
+        if (state.spellCheckBeforeTranslate) {
+          // Si es solo corrección, navegar a preview
+          navigate("/translation-preview", { 
+            state: { 
+              spellCheckOnly: true, 
+              fileInfo: { filePath: result.filePath, csvContent: result.csvContent }, 
+              spellCheckPreview: result.preview,
+              spellCheckStats: result.stats,
+              translationPayload: payload, 
+              repoPath: state.repoPath, 
+              providerMode: state.providerMode, 
+              targetLanguages: state.targetLanguages,
+              sourceLanguageName: "Origen"
+            } 
+          });
+        } else {
+          // Si es corrección + traducción, continuar con traducción
+          const transUnsub = desktop.onTranslationProgress(d => setState(prev => ({ ...prev, progressPercent: d.percent })));
+          const transResult = await desktop.translateFile(payload);
+          transUnsub();
+          setState(prev => ({ ...prev, progressPercent: 100 }));
+          
+          if (state.repoPath && (transResult.stats?.tokensUsed ?? 0) > 0) {
+            addTokensToday(state.repoPath, transResult.stats.tokensUsed ?? 0);
+          }
+          
+          navigate("/translation-preview", { 
+            state: { 
+              fileInfo: { filePath: transResult.filePath, csvContent: transResult.csvContent }, 
+              previewData: { preview: transResult.preview, stats: transResult.stats, providerMode: state.providerMode, 
+              targetLanguages: state.targetLanguages }, 
+              repoPath: state.repoPath, 
+              providerMode: state.providerMode,
+              sourceLanguageName: "Origen"
+            } 
+          });
+        }
       } else {
         const unsub = desktop.onTranslationProgress(d => setState(prev => ({ ...prev, progressPercent: d.percent })));
         const result = await desktop.translateFile(payload);
         unsub();
+        setState(prev => ({ ...prev, progressPercent: 100 }));
+        
+        if (state.repoPath && (result.stats?.tokensUsed ?? 0) > 0) {
+          addTokensToday(state.repoPath, result.stats.tokensUsed ?? 0);
+        }
+        
         navigate("/translation-preview", { 
-          state: { fileInfo: { filePath: result.filePath, csvContent: result.csvContent }, 
-          previewData: { preview: result.preview, stats: result.stats, providerMode: state.providerMode, 
-          targetLanguages: state.targetLanguages }, repoPath: state.repoPath, providerMode: state.providerMode } 
+          state: { 
+            fileInfo: { filePath: result.filePath, csvContent: result.csvContent }, 
+            previewData: { preview: result.preview, stats: result.stats, providerMode: state.providerMode, 
+            targetLanguages: state.targetLanguages }, 
+            repoPath: state.repoPath, 
+            providerMode: state.providerMode,
+            sourceLanguageName: "Origen"
+          } 
         });
       }
     } catch (error: any) {
@@ -524,11 +606,22 @@ const Landing: React.FC = () => {
       <div className="landing-container">
         <div className="landing-content">
           <div className="config-panel">
+            {state.repoPath && (
+              <div className="landing-tokens-today">
+                <Coins size={18} />
+                <span className="landing-tokens-today-label">
+                  Tokens utilizados hoy (este proyecto)
+                </span>
+                <span className="landing-tokens-today-value">
+                  {state.tokensToday.toLocaleString()}
+                </span>
+              </div>
+            )}
             <h2 className="panel-title"><Layers size={20} /> Localizador <span className="panel-subtitle">Complete los campos</span></h2>
             <FileList title="CONTEXTOS" icon={BookOpen} files={state.contextFiles} show={state.showContexts} setShow={(v: boolean) => setState(prev => ({ ...prev, showContexts: v }))} type="contextFiles" />
             <FileList title="GLOSARIOS" icon={FileText} files={state.glossaryFiles} show={state.showGlossaries} setShow={(v: boolean) => setState(prev => ({ ...prev, showGlossaries: v }))} type="glossaryFiles" />
             <LanguageSelector selectedLanguages={state.targetLanguages} onToggleLanguage={toggleLanguage} onToggleRegion={toggleRegion} />
-            <div className="info-note"><AlertCircle size={16} /><span>Archivos con <Globe size={12} /> son globales</span></div>
+            <div className="info-note"><AlertCircle size={16} /><span>Archivos con <Globe size={12} /> son globales. Los archivos se usarán en el orden de prioridad indicado</span></div>
           </div>
           <div className="work-panel">
             <div className="work-header">
@@ -544,12 +637,23 @@ const Landing: React.FC = () => {
             <div className="drop-area unified" onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }} onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); }} onDrop={async (e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); const file = e.dataTransfer.files[0]; if (file) await handleFileUpload({ target: { files: [file] } } as any); }} onClick={() => document.getElementById("file-upload")?.click()}>
               <div className="drop-icon"><FileSpreadsheet size={48} /><FileText size={48} style={{ marginLeft: -20 }} /><BookOpen size={48} style={{ marginLeft: -20 }} /></div>
               <p className="drop-title">Arrastra o haz click</p>
-              <p className="drop-description">.txt • .csv • .xlsx</p>
+              <p className="drop-description">.txt para contextos • .csv/.xlsx para glosarios o archivo a localizar</p>
               <input id="file-upload" type="file" accept=".txt,.csv,.xlsx" onChange={handleFileUpload} style={{ display: "none" }} />
             </div>
             <div className="spellcheck-option">
               <label className="spellcheck-label">
-                <input type="checkbox" checked={state.spellCheck} onChange={(e) => setState(prev => ({ ...prev, spellCheck: e.target.checked }))} />
+                <input 
+                  type="checkbox" 
+                  checked={state.spellCheck || state.spellCheckBeforeTranslate} 
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setState(prev => ({ 
+                      ...prev, 
+                      spellCheck: checked,
+                      spellCheckBeforeTranslate: checked 
+                    }));
+                  }} 
+                />
                 <span className="spellcheck-text">
                   <Sparkles size={16} className="spellcheck-icon" />
                   Revisar ortografía con IA
@@ -561,7 +665,21 @@ const Landing: React.FC = () => {
             </div>
             <div className="action-section">
               <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || state.translating}>
-                {state.translating ? <><div className="spinner-small" /> {state.spellCheck ? `Revisando... ${state.progressPercent}%` : `Procesando... ${state.progressPercent}%`}</> : <><Download size={20} /> Iniciar Localización</>}
+                {state.translating ? (
+                  <>
+                    <div className="spinner-small" /> 
+                    {state.spellCheck || state.spellCheckBeforeTranslate 
+                      ? `Revisando... ${state.progressPercent}%` 
+                      : `Procesando... ${state.progressPercent}%`}
+                  </>
+                ) : (
+                  <>
+                    <Download size={20} /> 
+                    {state.selectedFile && state.targetLanguages.length > 0
+                      ? `Iniciar Localización (${state.targetLanguages.length} idioma${state.targetLanguages.length > 1 ? "s" : ""})`
+                      : "Iniciar Localización"}
+                  </>
+                )}
               </button>
             </div>
           </div>

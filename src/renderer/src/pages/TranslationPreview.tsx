@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
-import { parseCSV, stringifyCSV } from "../utils/csv";
+import { parseCSV, stringifyCSV, getDownloadDelimiter } from "../utils/csv";
+import { addTokensToday } from "../utils/tokenUsage";
 import {
   ArrowLeft,
   Download,
@@ -16,6 +17,7 @@ import {
   ChevronRight,
   CheckCircle,
   AlertCircle,
+  Coins,
 } from "lucide-react";
 import "../styles/translation-preview.css";
 import "../styles/dashboard.css";
@@ -40,7 +42,7 @@ interface TranslationPreviewState {
         }
       >;
     }>;
-    stats?: { translatedRows?: number };
+    stats?: { translatedRows?: number; tokensUsed?: number };
     targetLanguages: Array<{ code: string; name: string }>;
     providerMode?: "openai" | "gemini" | "both";
   };
@@ -52,7 +54,11 @@ interface TranslationPreviewState {
     originalSource: string;
     correctedSource: string;
   }>;
-  spellCheckStats?: { totalRows: number; correctedRows: number };
+  spellCheckStats?: {
+    totalRows: number;
+    correctedRows: number;
+    tokensUsed?: number;
+  };
   translationPayload?: any;
   repoPath: string;
   providerMode: "openai" | "gemini" | "both";
@@ -83,6 +89,10 @@ const TranslationPreview: React.FC = () => {
 
   const ROWS_PER_PAGE = 40;
   const spellCheckOnly = Boolean(state?.spellCheckOnly);
+  const originSpellCheckDiff =
+    !spellCheckOnly &&
+    (state?.spellCheckPreview?.length ?? 0) > 0 &&
+    selectedLangCode === SOURCE_LANG_CODE;
   const hasTranslationData = Boolean(
     state?.fileInfo && state?.previewData && !spellCheckOnly,
   );
@@ -144,7 +154,26 @@ const TranslationPreview: React.FC = () => {
     setOriginalRows(orig);
   }, [state?.fileInfo?.csvContent]);
 
-  const totalDataRows = editableRows.length <= 1 ? 0 : editableRows.length - 1;
+  const dataRowIndices = useMemo(() => {
+    // Only show rows that actually have content (key or source text).
+    // This avoids paginating hundreds of empty rows from .xlsx exports or trailing blank lines.
+    const indices: number[] = [];
+    for (let i = 1; i < editableRows.length; i++) {
+      const row = editableRows[i];
+      if (!row) continue;
+      const key = String(row[keyCol] ?? "").trim();
+      const source = String(row[sourceCol] ?? "").trim();
+      if (spellCheckOnly) {
+        // Spellcheck only runs on rows with non-empty source text.
+        if (source) indices.push(i);
+      } else {
+        if (key || source) indices.push(i);
+      }
+    }
+    return indices;
+  }, [editableRows, keyCol, sourceCol, spellCheckOnly]);
+
+  const totalDataRows = dataRowIndices.length;
   const totalPages = Math.max(1, Math.ceil(totalDataRows / ROWS_PER_PAGE));
   const effectiveTotalPages = totalPages;
 
@@ -172,10 +201,15 @@ const TranslationPreview: React.FC = () => {
     (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
   const isSourceView = effectiveLangCode === SOURCE_LANG_CODE;
   const previewRows = previewData?.preview || [];
-  const pageStart = currentPage * ROWS_PER_PAGE + 1;
-  const pageEnd = Math.min(editableRows.length, pageStart + ROWS_PER_PAGE);
-  const pageRowIndices: number[] = [];
-  for (let i = pageStart; i < pageEnd; i++) pageRowIndices.push(i);
+  const pageRowIndices = dataRowIndices.slice(
+    currentPage * ROWS_PER_PAGE,
+    (currentPage + 1) * ROWS_PER_PAGE,
+  );
+  const rangeStart = totalDataRows ? currentPage * ROWS_PER_PAGE + 1 : 0;
+  const rangeEnd = Math.min(
+    totalDataRows,
+    currentPage * ROWS_PER_PAGE + pageRowIndices.length,
+  );
 
   const currentProviderView =
     providerMode === "both"
@@ -215,11 +249,61 @@ const TranslationPreview: React.FC = () => {
     getOriginalCellValue(rowIndex, colIndex);
 
   const handleDownload = () => {
-    const content =
-      editableRows.length > 0
-        ? stringifyCSV(editableRows)
-        : fileInfo.csvContent;
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const delimiter = getDownloadDelimiter();
+    let rowsToExport: string[][];
+
+    if (!spellCheckOnly && targetLangs.length > 0 && previewRows.length > 0) {
+      const headerRow: string[] = [
+        "Clave",
+        sourceLabel,
+        ...targetLangs.map((l) => l.name),
+      ];
+      const dataRows: string[][] = dataRowIndices.map((dataRowIndex) => {
+        const key = getCellValue(dataRowIndex, keyCol);
+        const source =
+          getCellValue(dataRowIndex, sourceCol) ||
+          previewRows.find((pr: any) => pr.rowIndex === dataRowIndex)
+            ?.sourceText ||
+          "";
+        const langCells = targetLangs.map((lang) => {
+          const col = langCodeToColIndex[lang.code];
+          const fromCell =
+            col !== undefined ? getCellValue(dataRowIndex, col) : "";
+          if (fromCell) return fromCell;
+          const pr = previewRows.find((p: any) => p.rowIndex === dataRowIndex);
+          const merged =
+            pr?.perLanguage?.[lang.code]?.mergedText ??
+            pr?.perLanguage?.[lang.code]?.openaiText ??
+            pr?.perLanguage?.[lang.code]?.geminiText ??
+            "";
+          return merged;
+        });
+        return [key, source, ...langCells];
+      });
+      rowsToExport = [headerRow, ...dataRows];
+    } else {
+      rowsToExport =
+        editableRows.length > 0
+          ? editableRows.map((r) => r.slice())
+          : parseCSV(fileInfo.csvContent);
+    }
+
+    if (!rowsToExport.length) return;
+    const header = rowsToExport[0] ?? [];
+    const numCols = Math.max(
+      header.length,
+      ...rowsToExport.map((r) => r.length),
+    );
+    const normalizedRows = rowsToExport.map((row) => {
+      const r = row.slice();
+      while (r.length < numCols) r.push("");
+      return r;
+    });
+    const content = stringifyCSV(normalizedRows, delimiter);
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + content], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -240,9 +324,13 @@ const TranslationPreview: React.FC = () => {
     try {
       setTranslating(true);
       setConfirmProgressPercent(0);
+      const contentToWrite =
+        editableRows.length > 0
+          ? stringifyCSV(editableRows)
+          : state.fileInfo.csvContent;
       const writeResult = await desktop.writeTranslationFile({
         filePath: state.fileInfo.filePath,
-        content: state.fileInfo.csvContent,
+        content: contentToWrite,
       });
       if (!writeResult.success) {
         showNotification("error", writeResult.error || "Error al guardar correcciones.");
@@ -264,19 +352,22 @@ const TranslationPreview: React.FC = () => {
         providerMode: state.providerMode,
         targetLanguages: state.targetLanguages || [],
       };
-      showNotification("success", "Traducciones confirmadas correctamente");
-      setTimeout(() => {
-        navigate("/translation-preview", {
-          replace: true,
-          state: {
-            fileInfo,
-            previewData,
-            repoPath: state.repoPath,
-            providerMode: state.providerMode,
-            sourceLanguageName: state.sourceLanguageName || "Origen",
-          },
-        });
-      }, 1000);
+      if (state.repoPath && (result.stats?.tokensUsed ?? 0) > 0) {
+        addTokensToday(state.repoPath, result.stats.tokensUsed ?? 0);
+      }
+      navigate("/translation-preview", {
+        replace: true,
+        state: {
+          fileInfo,
+          previewData,
+          repoPath: state.repoPath,
+          providerMode: state.providerMode,
+          sourceLanguageName: state.sourceLanguageName || "Origen",
+          targetLanguages: state.targetLanguages || [],
+          spellCheckPreview: state.spellCheckPreview,
+          spellCheckStats: state.spellCheckStats,
+        },
+      });
     } catch (error: any) {
       showNotification("error", error?.message || "Error en traducción");
     } finally {
@@ -365,7 +456,7 @@ const TranslationPreview: React.FC = () => {
                   ? `${totalDataRows} filas revisadas • ${state.spellCheckStats?.correctedRows ?? 0} corregidas. Confirma para traducir.`
                   : `${totalDataRows} filas en vista previa • ${previewData?.stats?.translatedRows ?? 0} filas traducidas`}
                 {effectiveTotalPages > 1 &&
-                  ` • Mostrando ${pageStart}–${Math.min(pageEnd - 1, totalDataRows)} de ${totalDataRows}`}
+                  ` • Mostrando ${rangeStart}–${rangeEnd} de ${totalDataRows}`}
               </p>
             </div>
           </div>
@@ -442,6 +533,69 @@ const TranslationPreview: React.FC = () => {
             )}
           </div>
         </header>
+
+        {((spellCheckOnly && (state.spellCheckStats?.tokensUsed ?? 0) > 0) ||
+          (!spellCheckOnly &&
+            ((previewData?.stats?.tokensUsed ?? 0) > 0 ||
+              (state?.spellCheckStats?.tokensUsed ?? 0) > 0))) && (
+          <div className="translation-preview-tokens-card">
+            <div className="translation-preview-tokens-header">
+              <Coins size={20} />
+              <span>Tokens utilizados (traducción + revisión ortográfica)</span>
+            </div>
+            <div className="translation-preview-tokens-body">
+              {spellCheckOnly ? (
+                <div className="translation-preview-tokens-row">
+                  <span className="translation-preview-tokens-label">
+                    Revisión ortográfica
+                  </span>
+                  <span className="translation-preview-tokens-value">
+                    {(state.spellCheckStats?.tokensUsed ?? 0).toLocaleString()}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {(state?.spellCheckStats?.tokensUsed ?? 0) > 0 && (
+                    <div className="translation-preview-tokens-row">
+                      <span className="translation-preview-tokens-label">
+                        Revisión ortográfica
+                      </span>
+                      <span className="translation-preview-tokens-value">
+                        {(
+                          state.spellCheckStats?.tokensUsed ?? 0
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {(previewData?.stats?.tokensUsed ?? 0) > 0 && (
+                    <div className="translation-preview-tokens-row">
+                      <span className="translation-preview-tokens-label">
+                        Traducción
+                      </span>
+                      <span className="translation-preview-tokens-value">
+                        {(previewData?.stats?.tokensUsed ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {(state?.spellCheckStats?.tokensUsed ?? 0) > 0 &&
+                    (previewData?.stats?.tokensUsed ?? 0) > 0 && (
+                      <div className="translation-preview-tokens-row translation-preview-tokens-total">
+                        <span className="translation-preview-tokens-label">
+                          Total
+                        </span>
+                        <span className="translation-preview-tokens-value">
+                          {(
+                            (state?.spellCheckStats?.tokensUsed ?? 0) +
+                            (previewData?.stats?.tokensUsed ?? 0)
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="translation-preview-card">
           {!spellCheckOnly && (
@@ -523,13 +677,21 @@ const TranslationPreview: React.FC = () => {
               <thead>
                 <tr>
                   <th>Clave</th>
-                  <th>{spellCheckOnly ? "Texto original" : "Texto origen"}</th>
+                  <th>
+                    {spellCheckOnly
+                      ? "Texto original"
+                      : originSpellCheckDiff
+                        ? "Texto original (antes de corrección)"
+                        : "Texto origen"}
+                  </th>
                   <th>
                     {spellCheckOnly
                       ? "Texto corregido"
-                      : isSourceView
-                        ? "Texto (origen)"
-                        : `Traducción (${effectiveLangCode})`}
+                      : originSpellCheckDiff
+                        ? "Texto corregido (origen)"
+                        : isSourceView
+                          ? "Texto (origen)"
+                          : `Traducción (${effectiveLangCode})`}
                     {!spellCheckOnly &&
                       providerMode === "both" &&
                       !isSourceView && (
@@ -611,6 +773,9 @@ const TranslationPreview: React.FC = () => {
                       const previewRow = previewRows.find(
                         (pr: any) => pr.rowIndex === dataRowIndex,
                       );
+                      const spellRow = state?.spellCheckPreview?.find(
+                        (p) => p.rowIndex === dataRowIndex,
+                      );
                       const langData = isSourceView
                         ? null
                         : previewRow?.perLanguage?.[effectiveLangCode] || null;
@@ -645,6 +810,23 @@ const TranslationPreview: React.FC = () => {
                         getCellValue(dataRowIndex, sourceCol) ||
                         previewRow?.sourceText ||
                         "";
+                      if (originSpellCheckDiff) {
+                        const originalVal =
+                          spellRow?.originalSource ?? sourceVal;
+                        const correctedVal =
+                          spellRow?.correctedSource ?? sourceVal;
+                        return (
+                          <tr key={key + String(dataRowIndex)}>
+                            <td className="col-key">{key}</td>
+                            <td className="col-text translation-preview-diff-original">
+                              {originalVal}
+                            </td>
+                            <td className="col-text translation-preview-diff-corrected">
+                              {correctedVal}
+                            </td>
+                          </tr>
+                        );
+                      }
                       return (
                         <tr key={key + String(dataRowIndex)}>
                           <td className="col-key">{key}</td>
