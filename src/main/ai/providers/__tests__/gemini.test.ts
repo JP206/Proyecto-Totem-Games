@@ -48,9 +48,9 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ id: "1", translatedText: "Hola" });
-      expect(result[1]).toEqual({ id: "2", translatedText: "Mundo" });
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0]).toEqual({ id: "1", translatedText: "Hola" });
+      expect(result.results[1]).toEqual({ id: "2", translatedText: "Mundo" });
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("generateContent"),
         expect.objectContaining({
