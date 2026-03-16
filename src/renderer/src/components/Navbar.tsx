@@ -10,6 +10,7 @@ import {
   MapPin,
   FolderOpen,
   Layers,
+  User,
 } from "lucide-react";
 import DesktopManager from "../utils/desktop";
 import "../styles/navbar.css";
@@ -127,6 +128,14 @@ const Navbar: React.FC = () => {
           disabled={true}
         >
           <BookOpen size={20} />
+        </button>
+
+        <button
+          className={`nav-btn ${location.pathname === "/profile" ? "active" : ""}`}
+          data-tooltip="Perfil"
+          onClick={() => navigate("/profile", { state: { from: location.pathname } })}
+        >
+          <User size={20} />
         </button>
       </div>
     </nav>

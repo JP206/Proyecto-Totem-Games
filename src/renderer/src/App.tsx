@@ -14,6 +14,7 @@ import TranslationPreview from "./pages/TranslationPreview";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
+import Profile from "./pages/Profile";
 
 function App() {
   useEffect(() => {
@@ -46,6 +47,9 @@ function App() {
 
         {/* Ruta para Historial de Cambios */}
         <Route path="/changes" element={<Changes />} />
+
+        {/* Ruta para Perfil */}
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );

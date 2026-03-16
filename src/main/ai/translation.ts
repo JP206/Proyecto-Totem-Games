@@ -21,6 +21,10 @@ export interface ProviderOptions {
   mode: ProviderMode;
   openaiModel: string;
   geminiModel: string;
+  usePersonalOpenAI?: boolean;
+  usePersonalGemini?: boolean;
+  personalOpenAIModel?: string;
+  personalGeminiModel?: string;
 }
 
 export interface TranslateFilePayload {
@@ -179,16 +183,69 @@ async function readGlossaries(
 function getProvidersToRun(
   payload: TranslateFilePayload,
 ): { id: string; apiKey: string; modelId: string }[] {
-  const { mode, openaiModel, geminiModel } = payload.providerOptions;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const {
+    mode,
+    openaiModel,
+    geminiModel,
+    usePersonalOpenAI,
+    usePersonalGemini,
+    personalOpenAIModel,
+    personalGeminiModel,
+  } = payload.providerOptions;
+
   const list: { id: string; apiKey: string; modelId: string }[] = [];
-  if ((mode === "openai" || mode === "both") && openaiKey) {
-    list.push({ id: "openai", apiKey: openaiKey, modelId: openaiModel });
+
+  const personalConfig =
+    (global as any).__aiPersonalConfig ??
+    (typeof (global as any).getAiPersonalConfig === "function"
+      ? (global as any).getAiPersonalConfig()
+      : null);
+
+  const openaiEnvKey = process.env.OPENAI_API_KEY;
+  const geminiEnvKey = process.env.GEMINI_API_KEY;
+
+  if (mode === "openai" || mode === "both") {
+    let apiKey: string | undefined;
+    let modelId = openaiModel;
+
+    const personal = personalConfig?.openai as
+      | { apiKey?: string; defaultModel?: string | null }
+      | undefined;
+
+    if (usePersonalOpenAI && personal?.apiKey) {
+      apiKey = personal.apiKey;
+      modelId =
+        personalOpenAIModel || personal.defaultModel || openaiModel;
+    } else if (openaiEnvKey) {
+      apiKey = openaiEnvKey;
+    }
+
+    if (apiKey) {
+      list.push({ id: "openai", apiKey, modelId });
+    }
   }
-  if ((mode === "gemini" || mode === "both") && geminiKey) {
-    list.push({ id: "gemini", apiKey: geminiKey, modelId: geminiModel });
+
+  if (mode === "gemini" || mode === "both") {
+    let apiKey: string | undefined;
+    let modelId = geminiModel;
+
+    const personal = personalConfig?.gemini as
+      | { apiKey?: string; defaultModel?: string | null }
+      | undefined;
+
+    if (usePersonalGemini && personal?.apiKey) {
+      apiKey = personal.apiKey;
+      modelId =
+        personalGeminiModel || personal.defaultModel || geminiModel;
+    } else if (geminiEnvKey) {
+      apiKey = geminiEnvKey;
+    }
+
+    if (apiKey) {
+      list.push({ id: "gemini", apiKey, modelId });
+    }
   }
+
   return list;
 }
 
@@ -205,23 +262,6 @@ export async function translateFileInMain(
     targetLanguages: payload.targetLanguages.map((l) => l.code),
     mode: payload.providerOptions.mode,
   });
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
-
-  if (
-    !openaiKey &&
-    (payload.providerOptions.mode === "openai" ||
-      payload.providerOptions.mode === "both")
-  ) {
-    throw new Error("OPENAI_API_KEY no está configurada en el entorno.");
-  }
-  if (
-    !geminiKey &&
-    (payload.providerOptions.mode === "gemini" ||
-      payload.providerOptions.mode === "both")
-  ) {
-    throw new Error("GEMINI_API_KEY no está configurada en el entorno.");
-  }
 
   const maxRowsPerBatch = payload.maxRowsPerBatch ?? 40;
   const maxContextChars = payload.maxContextChars ?? 8000;
@@ -291,10 +331,14 @@ export async function translateFileInMain(
   const providersToRun = getProvidersToRun(payload);
   if (!providersToRun.length) {
     if (providerMode === "openai" || providerMode === "both") {
-      throw new Error("OPENAI_API_KEY no está configurada en el entorno.");
+      throw new Error(
+        "No hay una API key disponible para OpenAI. Configura OPENAI_API_KEY en el entorno o una key personal en tu perfil.",
+      );
     }
     if (providerMode === "gemini" || providerMode === "both") {
-      throw new Error("GEMINI_API_KEY no está configurada en el entorno.");
+      throw new Error(
+        "No hay una API key disponible para Gemini. Configura GEMINI_API_KEY en el entorno o una key personal en tu perfil.",
+      );
     }
   }
 
@@ -422,9 +466,13 @@ export async function translateFileInMain(
             modelId,
             toBatchRequest(batchItems, lang),
           );
-          resultsByProvider[id] = batchResult.results;
-          if (batchResult.usage?.totalTokens) {
-            totalTokensUsed += batchResult.usage.totalTokens;
+          const asAny: any = batchResult as any;
+          const batchResultsArray: TranslationResultItem[] = Array.isArray(asAny)
+            ? (asAny as TranslationResultItem[])
+            : asAny.results ?? [];
+          resultsByProvider[id] = batchResultsArray;
+          if (asAny.usage?.totalTokens) {
+            totalTokensUsed += asAny.usage.totalTokens;
           }
           console.log(
             `[AI Translate] Provider ${id} returned ${resultsByProvider[id].length} results`,

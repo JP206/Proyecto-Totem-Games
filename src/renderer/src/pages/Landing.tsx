@@ -70,10 +70,19 @@ const Landing: React.FC = () => {
   >("openai");
   const [openaiModel, setOpenaiModel] = useState<string>("gpt-4.1-mini");
   const [geminiModel, setGeminiModel] = useState<string>("gemini-1.5-flash");
+  const [usePersonalOpenAI, setUsePersonalOpenAI] = useState(false);
+  const [usePersonalGemini, setUsePersonalGemini] = useState(false);
+  const [personalOpenaiModel, setPersonalOpenaiModel] = useState<string>("");
+  const [personalGeminiModel, setPersonalGeminiModel] = useState<string>("");
   const [spellCheckBeforeTranslate, setSpellCheckBeforeTranslate] =
     useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
   const [tokensToday, setTokensToday] = useState(0);
+  const [hasPersonalOpenAI, setHasPersonalOpenAI] = useState(false);
+  const [hasPersonalGemini, setHasPersonalGemini] = useState(false);
+  const [openaiModels, setOpenaiModels] = useState<string[]>([]);
+  const [geminiModels, setGeminiModels] = useState<string[]>([]);
+  const [showProviderConfig, setShowProviderConfig] = useState(false);
 
   useEffect(() => {
     loadProjectFromStore();
@@ -114,6 +123,25 @@ const Landing: React.FC = () => {
       setRepoName(project.repoName);
 
       await loadProjectStructure(project.repoPath, project.repoName);
+
+      try {
+        const aiConfig = await window.electronAPI.getPersonalAIConfig();
+        if (aiConfig?.openai) {
+          setHasPersonalOpenAI(aiConfig.openai.hasKey);
+          setOpenaiModels(aiConfig.openai.models?.map((m: any) => m.id) || []);
+          if (aiConfig.openai.defaultModel) {
+            setPersonalOpenaiModel(aiConfig.openai.defaultModel);
+          }
+        }
+        if (aiConfig?.gemini) {
+          setHasPersonalGemini(aiConfig.gemini.hasKey);
+          setGeminiModels(aiConfig.gemini.models?.map((m: any) => m.id) || []);
+          if (aiConfig.gemini.defaultModel) {
+            setPersonalGeminiModel(aiConfig.gemini.defaultModel);
+          }
+        }
+      } catch {
+      }
     } catch (error: any) {
       const desktop = DesktopManager.getInstance();
       await desktop.showMessage(error.message, "Error", "error");
@@ -385,6 +413,26 @@ const Landing: React.FC = () => {
       setTranslating(true);
       setProgressPercent(0);
 
+      if (usePersonalOpenAI && !hasPersonalOpenAI) {
+        await desktop.showMessage(
+          "No hay una API key personal configurada para OpenAI.",
+          "Configuración requerida",
+          "warning",
+        );
+        setTranslating(false);
+        return;
+      }
+
+      if (usePersonalGemini && !hasPersonalGemini) {
+        await desktop.showMessage(
+          "No hay una API key personal configurada para Gemini.",
+          "Configuración requerida",
+          "warning",
+        );
+        setTranslating(false);
+        return;
+      }
+
       const translationPayload = {
         repoPath,
         projectName: repoName,
@@ -396,7 +444,17 @@ const Landing: React.FC = () => {
         })),
         contexts: selectedContexts.map((ctx) => ctx.path),
         glossaries: selectedGlossaries.map((glos) => glos.path),
-        providerOptions: { mode: providerMode, openaiModel, geminiModel },
+        providerOptions: {
+          mode: providerMode,
+          openaiModel,
+          geminiModel,
+          usePersonalOpenAI,
+          usePersonalGemini,
+          personalOpenAIModel:
+            personalOpenaiModel || undefined,
+          personalGeminiModel:
+            personalGeminiModel || undefined,
+        },
       };
 
       if (spellCheckBeforeTranslate) {
@@ -684,6 +742,134 @@ const Landing: React.FC = () => {
               onToggleLanguage={toggleLanguage}
               onToggleRegion={toggleRegion}
             />
+
+            <div className="config-section">
+              <div
+                className="section-header"
+                onClick={() => setShowProviderConfig(!showProviderConfig)}
+              >
+                <h3>
+                  Proveedor de IA
+                  <span className="section-count">OpenAI / Gemini</span>
+                </h3>
+                <div className="section-actions">
+                  <button
+                    className="dropdown-toggle"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowProviderConfig(!showProviderConfig);
+                    }}
+                    title={showProviderConfig ? "Ocultar configuración" : "Mostrar configuración"}
+                  >
+                    <ChevronDown size={16} className={showProviderConfig ? "open" : ""} />
+                  </button>
+                </div>
+              </div>
+              {showProviderConfig && (
+                <div className="dropdown-content">
+                  <div className="spellcheck-option">
+                    <small className="spellcheck-note">
+                      Por defecto se usa la API key compartida de la aplicación.
+                      Activá estas opciones solo si querés usar tus propias keys personales.
+                    </small>
+                  </div>
+                  <div className="spellcheck-option">
+                    <label className="spellcheck-label">
+                      <input
+                        type="checkbox"
+                        checked={usePersonalOpenAI}
+                        onChange={(e) => setUsePersonalOpenAI(e.target.checked)}
+                        disabled={!hasPersonalOpenAI}
+                      />
+                      <span>Usar API key personal de OpenAI</span>
+                    </label>
+                    {!hasPersonalOpenAI && (
+                      <small className="spellcheck-note">
+                        No hay una key personal de OpenAI configurada.
+                      </small>
+                    )}
+                    {hasPersonalOpenAI && (
+                      <div className="profile-model-section">
+                        <label className="profile-input-label">
+                          Modelo personal de OpenAI
+                        </label>
+                        <select
+                          className="profile-select"
+                          value={personalOpenaiModel}
+                          onChange={(e) =>
+                            setPersonalOpenaiModel(e.target.value)
+                          }
+                        >
+                          <option value="">
+                            Usar modelo configurado en el perfil
+                          </option>
+                          {openaiModels.map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="spellcheck-option" style={{ marginTop: 8 }}>
+                    <label className="spellcheck-label">
+                      <input
+                        type="checkbox"
+                        checked={usePersonalGemini}
+                        onChange={(e) => setUsePersonalGemini(e.target.checked)}
+                        disabled={!hasPersonalGemini}
+                      />
+                      <span>Usar API key personal de Gemini</span>
+                    </label>
+                    {!hasPersonalGemini && (
+                      <small className="spellcheck-note">
+                        No hay una key personal de Gemini configurada.
+                      </small>
+                    )}
+                    {hasPersonalGemini && (
+                      <div className="profile-model-section">
+                        <label className="profile-input-label">
+                          Modelo personal de Gemini
+                        </label>
+                        <select
+                          className="profile-select"
+                          value={personalGeminiModel}
+                          onChange={(e) =>
+                            setPersonalGeminiModel(e.target.value)
+                          }
+                        >
+                          <option value="">
+                            Usar modelo configurado en el perfil
+                          </option>
+                          {geminiModels.map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="info-note" style={{ marginTop: 12 }}>
+                    <AlertCircle size={16} />
+                    <span>
+                      ¿Querés usar tu propia API key? Configurala en tu perfil o{" "}
+                      <button
+                        type="button"
+                        className="landing-link-button"
+                        onClick={() =>
+                          navigate("/profile", { state: { from: "/landing" } })
+                        }
+                      >
+                        clickeando aquí
+                      </button>
+                      .
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="info-note">
               <AlertCircle size={16} />

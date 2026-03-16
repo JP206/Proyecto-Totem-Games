@@ -28,6 +28,10 @@ export interface SpellCheckPayload {
     mode: ProviderMode;
     openaiModel: string;
     geminiModel: string;
+    usePersonalOpenAI?: boolean;
+    usePersonalGemini?: boolean;
+    personalOpenAIModel?: string;
+    personalGeminiModel?: string;
   };
 }
 
@@ -60,15 +64,67 @@ function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
 function getProvidersToRun(
   payload: SpellCheckPayload,
 ): { id: string; apiKey: string; modelId: string }[] {
-  const { mode, openaiModel, geminiModel } = payload.providerOptions;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const {
+    mode,
+    openaiModel,
+    geminiModel,
+    usePersonalOpenAI,
+    usePersonalGemini,
+    personalOpenAIModel,
+    personalGeminiModel,
+  } = payload.providerOptions;
+
   const list: { id: string; apiKey: string; modelId: string }[] = [];
-  if ((mode === "openai" || mode === "both") && openaiKey) {
-    list.push({ id: "openai", apiKey: openaiKey, modelId: openaiModel });
+
+  const personalConfig =
+    (global as any).__aiPersonalConfig ??
+    (typeof (global as any).getAiPersonalConfig === "function"
+      ? (global as any).getAiPersonalConfig()
+      : null);
+
+  const openaiEnvKey = process.env.OPENAI_API_KEY;
+  const geminiEnvKey = process.env.GEMINI_API_KEY;
+
+  if (mode === "openai" || mode === "both") {
+    let apiKey: string | undefined;
+    let modelId = openaiModel;
+
+    const personal = personalConfig?.openai as
+      | { apiKey?: string; defaultModel?: string | null }
+      | undefined;
+
+    if (usePersonalOpenAI && personal?.apiKey) {
+      apiKey = personal.apiKey;
+      modelId =
+        personalOpenAIModel || personal.defaultModel || openaiModel;
+    } else if (openaiEnvKey) {
+      apiKey = openaiEnvKey;
+    }
+
+    if (apiKey) {
+      list.push({ id: "openai", apiKey, modelId });
+    }
   }
-  if ((mode === "gemini" || mode === "both") && geminiKey) {
-    list.push({ id: "gemini", apiKey: geminiKey, modelId: geminiModel });
+
+  if (mode === "gemini" || mode === "both") {
+    let apiKey: string | undefined;
+    let modelId = geminiModel;
+
+    const personal = personalConfig?.gemini as
+      | { apiKey?: string; defaultModel?: string | null }
+      | undefined;
+
+    if (usePersonalGemini && personal?.apiKey) {
+      apiKey = personal.apiKey;
+      modelId =
+        personalGeminiModel || personal.defaultModel || geminiModel;
+    } else if (geminiEnvKey) {
+      apiKey = geminiEnvKey;
+    }
+
+    if (apiKey) {
+      list.push({ id: "gemini", apiKey, modelId });
+    }
   }
   return list;
 }
@@ -111,7 +167,7 @@ export async function spellCheckFileInMain(
   const providersToRun = getProvidersToRun(payload);
   if (!providersToRun.length) {
     throw new Error(
-      "Configura OPENAI_API_KEY o GEMINI_API_KEY en el entorno para usar la revisión con IA.",
+      "No hay una API key disponible para revisión con IA. Configura OPENAI_API_KEY o GEMINI_API_KEY en el entorno o una key personal en tu perfil.",
     );
   }
 

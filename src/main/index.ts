@@ -1,5 +1,5 @@
 // src/main/index.ts
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } from "electron";
 import path from "path";
 import fs from "fs/promises";
 import { exec } from "child_process";
@@ -20,6 +20,125 @@ import {
 
 const execAsync = promisify(exec);
 const store = new Store();
+
+type ProviderId = "openai" | "gemini";
+
+interface AiPersonalProviderConfig {
+  encryptedKey?: string;
+  defaultModel?: string | null;
+}
+
+interface AiPersonalConfig {
+  openai?: AiPersonalProviderConfig;
+  gemini?: AiPersonalProviderConfig;
+}
+
+interface ProviderModelInfo {
+  id: string;
+  displayName: string;
+}
+
+interface PersonalProviderConfigSummary {
+  hasKey: boolean;
+  defaultModel: string | null;
+  models: ProviderModelInfo[];
+}
+
+interface PersonalAIConfigSummary {
+  openai: PersonalProviderConfigSummary;
+  gemini: PersonalProviderConfigSummary;
+}
+
+interface SavePersonalAIConfigRequest {
+  provider: ProviderId;
+  apiKey: string | null;
+  preferredModelId: string | null;
+}
+
+interface SavePersonalAIConfigResult {
+  success: boolean;
+  error?: string;
+  models?: ProviderModelInfo[];
+  defaultModelId?: string | null;
+}
+
+function encryptString(value: string): string {
+  if (!safeStorage.isEncryptionAvailable()) {
+    return value;
+  }
+  const buf = safeStorage.encryptString(value);
+  return buf.toString("base64");
+}
+
+function decryptString(value: string | undefined | null): string | null {
+  if (!value) {
+    return null;
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return value;
+  }
+  try {
+    const buf = Buffer.from(value, "base64");
+    return safeStorage.decryptString(buf);
+  } catch {
+    return null;
+  }
+}
+
+function getAiPersonalConfig(): AiPersonalConfig {
+  const raw = store.get("ai_personal_config");
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  return raw as AiPersonalConfig;
+}
+
+function setAiPersonalConfig(cfg: AiPersonalConfig) {
+  store.set("ai_personal_config", cfg);
+}
+
+function mapOpenAIModels(raw: any): ProviderModelInfo[] {
+  const data = Array.isArray(raw?.data) ? raw.data : [];
+  return data
+    .map((m: any): string => String(m.id || ""))
+    .filter((id: string) => id)
+    .filter((id: string) => id.includes("gpt") || id.startsWith("o"))
+    // Excluir modelos puramente de audio/voz
+    .filter((id: string) => {
+      const lower = id.toLowerCase();
+      return (
+        !lower.includes("whisper") &&
+        !lower.includes("tts") &&
+        !lower.includes("audio") &&
+        !lower.includes("speech")
+      );
+    })
+    .map((id: string) => ({ id, displayName: id }));
+}
+
+function mapGeminiModels(raw: any): ProviderModelInfo[] {
+  const models = Array.isArray(raw?.models) ? raw.models : [];
+  return models
+    .map((m: any): string => String(m.name || ""))
+    .filter((name: string) => name)
+    .map((name: string) => {
+      const id = name.split("/").pop() || name;
+      return { id, displayName: id };
+    })
+    .filter((m: ProviderModelInfo) => {
+      const lower = m.id.toLowerCase();
+      if (!lower.startsWith("gemini")) return false;
+      // Excluir modelos puramente de audio/voz si aparecieran
+      if (
+        lower.includes("audio") ||
+        lower.includes("speech") ||
+        lower.includes("tts")
+      ) {
+        return false;
+      }
+      return true;
+    });
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -459,6 +578,158 @@ ipcMain.handle(
       console.error("Error guardando configuración:", error);
       return false;
     }
+  },
+);
+
+ipcMain.handle("ai-get-personal-config", async (): Promise<PersonalAIConfigSummary> => {
+  const cfg = getAiPersonalConfig();
+
+  const summary: PersonalAIConfigSummary = {
+    openai: {
+      hasKey: !!cfg.openai?.encryptedKey,
+      defaultModel: cfg.openai?.defaultModel ?? null,
+      models: [],
+    },
+    gemini: {
+      hasKey: !!cfg.gemini?.encryptedKey,
+      defaultModel: cfg.gemini?.defaultModel ?? null,
+      models: [],
+    },
+  };
+
+  const openaiKey = decryptString(cfg.openai?.encryptedKey);
+  if (openaiKey) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/models", {
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        summary.openai.models = mapOpenAIModels(data);
+      }
+    } catch {
+    }
+  }
+
+  const geminiKey = decryptString(cfg.gemini?.encryptedKey);
+  if (geminiKey) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+          geminiKey,
+        )}`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        summary.gemini.models = mapGeminiModels(data);
+      }
+    } catch {
+    }
+  }
+
+  return summary;
+});
+
+ipcMain.handle(
+  "ai-save-personal-config",
+  async (
+    _event: any,
+    data: SavePersonalAIConfigRequest,
+  ): Promise<SavePersonalAIConfigResult> => {
+    const cfg = getAiPersonalConfig();
+    const current = cfg[data.provider] || {};
+    const next: AiPersonalProviderConfig = { ...current };
+
+    if (data.apiKey !== null && !data.apiKey.trim()) {
+      delete cfg[data.provider];
+      setAiPersonalConfig(cfg);
+      return { success: true, models: [], defaultModelId: null };
+    }
+
+    if (data.apiKey === null && data.preferredModelId) {
+      if (!current.encryptedKey) {
+        return {
+          success: false,
+          error: "No hay una API key guardada para este proveedor.",
+        };
+      }
+      next.defaultModel = data.preferredModelId;
+      cfg[data.provider] = next;
+      setAiPersonalConfig(cfg);
+      return {
+        success: true,
+        models: [],
+        defaultModelId: data.preferredModelId,
+      };
+    }
+
+    if (data.apiKey && data.apiKey.trim()) {
+      const apiKey = data.apiKey.trim();
+      try {
+        let models: ProviderModelInfo[] = [];
+        if (data.provider === "openai") {
+          const response = await fetch("https://api.openai.com/v1/models", {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
+          });
+          if (!response.ok) {
+            const body = await response.text();
+            return {
+              success: false,
+              error: `Error validando API key de OpenAI: ${response.status} ${body}`,
+            };
+          }
+          const json = await response.json();
+          models = mapOpenAIModels(json);
+        } else {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+              apiKey,
+            )}`,
+          );
+          if (!response.ok) {
+            const body = await response.text();
+            return {
+              success: false,
+              error: `Error validando API key de Gemini: ${response.status} ${body}`,
+            };
+          }
+          const json = await response.json();
+          models = mapGeminiModels(json);
+        }
+
+        const chosenModel =
+          data.preferredModelId && models.some((m) => m.id === data.preferredModelId)
+            ? data.preferredModelId
+            : models[0]?.id ?? null;
+
+        next.encryptedKey = encryptString(apiKey);
+        next.defaultModel = chosenModel;
+        cfg[data.provider] = next;
+        setAiPersonalConfig(cfg);
+
+        return {
+          success: true,
+          models,
+          defaultModelId: chosenModel,
+        };
+      } catch (error: any) {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        return {
+          success: false,
+          error: `No se pudo validar la API key: ${message}`,
+        };
+      }
+    }
+
+    return {
+      success: false,
+      error: "Solicitud inválida para guardar configuración de IA personal.",
+    };
   },
 );
 

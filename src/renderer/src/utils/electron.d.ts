@@ -57,6 +57,10 @@ export interface TranslateFilePayload {
     mode: "openai" | "gemini" | "both";
     openaiModel: string;
     geminiModel: string;
+    usePersonalOpenAI?: boolean;
+    usePersonalGemini?: boolean;
+    personalOpenAIModel?: string;
+    personalGeminiModel?: string;
   };
   maxRowsPerBatch?: number;
   maxContextChars?: number;
@@ -98,6 +102,10 @@ export interface SpellCheckPayload {
     mode: "openai" | "gemini" | "both";
     openaiModel: string;
     geminiModel: string;
+    usePersonalOpenAI?: boolean;
+    usePersonalGemini?: boolean;
+    personalOpenAIModel?: string;
+    personalGeminiModel?: string;
   };
 }
 
@@ -143,6 +151,29 @@ export interface UploadTranslationResult {
   stdout?: string;
   stderr?: string;
   error?: string;
+}
+
+export interface ProviderModelInfo {
+  id: string;
+  displayName: string;
+}
+
+export interface PersonalProviderConfigSummary {
+  hasKey: boolean;
+  defaultModel: string | null;
+  models: ProviderModelInfo[];
+}
+
+export interface PersonalAIConfigSummary {
+  openai: PersonalProviderConfigSummary;
+  gemini: PersonalProviderConfigSummary;
+}
+
+export interface SavePersonalAIConfigResult {
+  success: boolean;
+  error?: string;
+  models?: ProviderModelInfo[];
+  defaultModelId?: string | null;
 }
 
 export interface ElectronAPI {
@@ -206,6 +237,13 @@ export interface ElectronAPI {
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;
   deleteConfig: (key: string) => Promise<boolean>;
+
+  getPersonalAIConfig: () => Promise<PersonalAIConfigSummary>;
+  savePersonalAIConfig: (
+    provider: "openai" | "gemini",
+    apiKey: string | null,
+    preferredModelId: string | null,
+  ) => Promise<SavePersonalAIConfigResult>;
 
   // Utilitarios
   openExternal: (url: string) => Promise<void>;

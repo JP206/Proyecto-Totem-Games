@@ -405,6 +405,15 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="profile-popup-actions">
+            <button
+              onClick={() => {
+                setShowProfilePopup(false);
+                navigate("/profile", { state: { from: "/dashboard" } });
+              }}
+              className="profile-popup-logout profile-popup-secondary"
+            >
+              Ver perfil completo
+            </button>
             <button onClick={handleLogout} className="profile-popup-logout">
               <LogOut size={16} />
               Cerrar Sesión

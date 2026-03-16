@@ -91,7 +91,7 @@ describe("translateFileInMain", () => {
 
     await expect(
       translateFileInMain(defaultTranslationPayload),
-    ).rejects.toThrow(/OPENAI_API_KEY/);
+    ).rejects.toThrow(/API key disponible para OpenAI/);
   });
 
   it("calls provider translateBatch with batch request shape", async () => {
@@ -302,7 +302,32 @@ describe("translateFileInMain", () => {
           mode: "gemini",
         },
       }),
-    ).rejects.toThrow(/GEMINI_API_KEY/);
+    ).rejects.toThrow(/API key disponible para Gemini/);
+  });
+
+  it("uses personal OpenAI key when configured", async () => {
+    (global as any).__aiPersonalConfig = {
+      openai: { apiKey: "personal-key", defaultModel: "gpt-personal" },
+    };
+    const provider = {
+      translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
+    };
+    getProviderMock.mockReturnValue(provider);
+
+    await translateFileInMain({
+      ...defaultTranslationPayload,
+      providerOptions: {
+        ...defaultTranslationPayload.providerOptions,
+        usePersonalOpenAI: true,
+        personalOpenAIModel: "gpt-personal",
+      },
+    });
+
+    expect(provider.translateBatch).toHaveBeenCalledWith(
+      "personal-key",
+      "gpt-personal",
+      expect.any(Object),
+    );
   });
 
   it("handles sender that is destroyed without sending progress", async () => {
@@ -409,5 +434,19 @@ describe("translateFileInMain", () => {
         glossarySnippet: "",
       }),
     );
+  });
+
+  it("accumulates tokensUsed from provider usage", async () => {
+    const provider = {
+      translateBatch: jest.fn().mockResolvedValue({
+        results: mockTranslateResults,
+        usage: { totalTokens: 42 },
+      }),
+    };
+    getProviderMock.mockReturnValue(provider);
+
+    const result = await translateFileInMain(defaultTranslationPayload);
+
+    expect(result.stats.tokensUsed).toBe(42);
   });
 });

@@ -509,6 +509,9 @@
 .profile-popup-actions {
   border-top: 1px solid var(--color-neutral-medium);
   padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .profile-popup-logout {

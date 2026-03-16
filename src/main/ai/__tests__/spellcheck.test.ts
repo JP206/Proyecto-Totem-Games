@@ -187,7 +187,7 @@ describe("spellCheckFileInMain", () => {
       applyToFile: true,
     });
 
-    expect(result.csvContent).toContain("Hello world");
+    expect(result.csvContent).toContain("Clave,Origen");
     expect(writeFileMock).toHaveBeenCalledWith(
       "/repo/localizar.xlsx",
       expect.any(Buffer),
@@ -238,5 +238,19 @@ describe("spellCheckFileInMain", () => {
     );
     const lastCall = sender.send.mock.calls[sender.send.mock.calls.length - 1];
     expect(lastCall[1].percent).toBe(100);
+  });
+
+  it("accumulates tokensUsed from provider usage", async () => {
+    const provider = {
+      spellCorrectBatch: jest.fn().mockResolvedValue({
+        results: mockSpellResults,
+        usage: { totalTokens: 17 },
+      }),
+    };
+    getProviderMock.mockReturnValue(provider);
+
+    const result = await spellCheckFileInMain(defaultSpellCheckPayload);
+
+    expect(result.stats.tokensUsed).toBe(17);
   });
 });
