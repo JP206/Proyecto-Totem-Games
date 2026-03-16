@@ -71,6 +71,39 @@
   font-family: var(--font-body);
 }
 
+.landing-tokens-today {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 120, 140, 0.2) 0%,
+    rgba(0, 120, 140, 0.08) 100%
+  );
+  border: 1px solid var(--color-secondary-cyan);
+  border-radius: 8px;
+}
+
+.landing-tokens-today svg {
+  flex-shrink: 0;
+  color: var(--color-secondary-cyan);
+}
+
+.landing-tokens-today-label {
+  font-size: var(--text-sm);
+  color: var(--color-neutral-light);
+  flex: 1;
+}
+
+.landing-tokens-today-value {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-secondary-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Secciones de configuración */
 .config-section {
   margin-bottom: 20px;
