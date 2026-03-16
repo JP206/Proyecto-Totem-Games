@@ -47,7 +47,9 @@
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid #ddd;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 
 .row:hover {
@@ -132,4 +134,3 @@
   overflow: auto;
   background-color: var(--color-neutral-darker);
 }
-
