@@ -4,550 +4,289 @@ import DesktopManager from "../utils/desktop";
 import "../styles/dashboard.css";
 import { useNavigate } from "react-router-dom";
 import {
-  Folder,
-  Monitor,
-  MapPin,
-  Download,
-  RefreshCw,
-  Calendar,
-  DownloadCloud,
-  Github,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Search,
-  LogOut,
-  Shield,
+  Folder, Monitor, MapPin, Download, RefreshCw, Calendar,
+  DownloadCloud, Github, CheckCircle, AlertCircle, Clock,
+  Search, LogOut, Shield, Trash2, AlertTriangle, RefreshCwOff
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
   const [localRepos, setLocalRepos] = useState<any[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
-  const [loading, setLoading] = useState({
-    github: true,
-    local: false,
-  });
+  const [selectedFolder, setSelectedFolder] = useState("");
+  const [loading, setLoading] = useState({ github: false, local: false, deleting: false });
+  const [loadingLocal, setLoadingLocal] = useState(false);
+  const [globalLoading, setGlobalLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [showProfilePopup, setShowProfilePopup] = useState(false);
-  const [localSearch, setLocalSearch] = useState("");
-  const [githubSearch, setGithubSearch] = useState("");
+  const [showProfile, setShowProfile] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPullModal, setShowPullModal] = useState(false);
+  const [repoToPull, setRepoToPull] = useState<{ path: string; name: string } | null>(null);
+  const [repoToDelete, setRepoToDelete] = useState<{ path: string; name: string } | null>(null);
+  const [search, setSearch] = useState({ local: "", github: "" });
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadUserData();
-    fetchGithubRepos();
-    loadSavedFolder();
+    loadUser();
+    fetchGithub();
+    loadFolder();
   }, []);
 
-  const loadUserData = async () => {
-    try {
-      const desktop = DesktopManager.getInstance();
-      const userData = await desktop.getConfig("github_user");
-      setUser(userData);
-    } catch (error) {
-      console.error("Error cargando usuario:", error);
+  const loadUser = async () => {
+    setUser(await DesktopManager.getInstance().getConfig("github_user"));
+  };
+
+  const loadFolder = async () => {
+    const saved = await DesktopManager.getInstance().getConfig("selected_folder");
+    if (saved) {
+      setSelectedFolder(saved);
+      loadLocalRepos(saved);
     }
   };
 
-  const loadSavedFolder = async () => {
+  const loadLocalRepos = async (folder: string) => {
+    setLoadingLocal(true);
     try {
       const desktop = DesktopManager.getInstance();
-      const savedFolder = await desktop.getConfig("selected_folder");
-
-      if (savedFolder) {
-        setSelectedFolder(savedFolder);
-        // Cargar repositorios de la carpeta guardada
-        const files = await desktop.readFolder(savedFolder);
-        const repos = await Promise.all(
-          files
-            .filter((f: any) => f.isGitRepo)
-            .map(async (repo: any) => {
-              const status = await getRepoStatus(repo.path);
-              return { ...repo, status };
-            }),
-        );
-        setLocalRepos(repos);
-      }
-    } catch (error) {
-      console.error("Error cargando carpeta guardada:", error);
-    }
-  };
-
-  const getRepoStatus = async (repoPath: string) => {
-    try {
-      const desktop = DesktopManager.getInstance();
-
-      // Obtener fecha del último pull
-      const logResult = await desktop
-        .gitCommand({
-          command: "git log -1 --format=%cd --date=iso",
-          cwd: repoPath,
-        })
-        .catch(() => null);
-
-      // Verificar si está actualizado con el remoto
-      const fetchResult = await desktop
-        .gitCommand({
-          command: "git fetch origin",
-          cwd: repoPath,
-        })
-        .catch(() => null);
-
-      const statusResult = await desktop
-        .gitCommand({
-          command: "git status -uno",
-          cwd: repoPath,
-        })
-        .catch(() => null);
-
-      let status = "unknown";
-      if (statusResult) {
-        if (statusResult.includes("Your branch is up to date")) {
-          status = "up-to-date";
-        } else if (statusResult.includes("Your branch is behind")) {
-          status = "behind";
-        } else if (statusResult.includes("Your branch is ahead")) {
-          status = "ahead";
-        } else if (statusResult.includes("Changes not staged")) {
-          status = "modified";
-        }
-      }
-
-      return {
-        lastPullDate: logResult ? new Date(logResult.trim()) : null,
-        status: status,
-      };
-    } catch (error) {
-      console.error("Error obteniendo estado del repositorio:", error);
-      return {
-        lastPullDate: null,
-        status: "unknown",
-      };
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "up-to-date":
-        return {
-          text: "Al día",
-          icon: <CheckCircle size={12} />,
-          className: "status-badge-up-to-date",
-        };
-      case "behind":
-        return {
-          text: "Cambios pendientes",
-          icon: <Download size={12} />,
-          className: "status-badge-behind",
-        };
-      case "ahead":
-        return {
-          text: "Adelantado",
-          icon: <AlertCircle size={12} />,
-          className: "status-badge-ahead",
-        };
-      case "modified":
-        return {
-          text: "Modificado",
-          icon: <AlertCircle size={12} />,
-          className: "status-badge-modified",
-        };
-      default:
-        return {
-          text: "Desconocido",
-          icon: <Clock size={12} />,
-          className: "status-badge-unknown",
-        };
-    }
-  };
-
-  const filteredLocalRepos = localRepos.filter(
-    (repo) =>
-      repo.name.toLowerCase().includes(localSearch.toLowerCase()) ||
-      (repo.description &&
-        repo.description.toLowerCase().includes(localSearch.toLowerCase())),
-  );
-
-  const filteredGithubRepos = githubRepos.filter(
-    (repo) =>
-      repo.name.toLowerCase().includes(githubSearch.toLowerCase()) ||
-      (repo.description &&
-        repo.description.toLowerCase().includes(githubSearch.toLowerCase())),
-  );
-
-  const navigateToProject = async (repoPath: string, repoName: string) => {
-    try {
-      const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig("github_token");
-
-      // Obtener el owner del repo desde GitHub API
-      const githubRepo = githubRepos.find((r) => r.name === repoName);
-      const repoOwner = githubRepo?.owner?.login || "";
-
-      // Guardar TODA la información del proyecto en el store
-      await desktop.setConfig("current_project", {
-        repoPath,
-        repoName,
-        repoOwner,
-      });
-
-      // Navegar a la página de landing
-      navigate("/landing");
-    } catch (error) {
-      console.error("Error guardando proyecto:", error);
-      // Fallback - intentamos navegar igual
-      navigate("/landing");
-    }
-  };
-
-  const fetchGithubRepos = async () => {
-    setLoading((prev) => ({ ...prev, github: true }));
-
-    try {
-      const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig("github_token");
-
-      if (!token) {
-        await desktop.showMessage("No estás autenticado", "Error", "error");
-        return;
-      }
-
-      const response = await fetch("https://api.github.com/user/repos", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Proyecto-Totem-Games",
-        },
-      });
-
-      if (response.ok) {
-        const repos = await response.json();
-        setGithubRepos(repos);
-      } else {
-        await desktop.showMessage(
-          "Error al cargar repositorios",
-          "GitHub Error",
-          "error",
-        );
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading((prev) => ({ ...prev, github: false }));
-    }
-  };
-
-  const selectLocalFolder = async () => {
-    setLoading((prev) => ({ ...prev, local: true }));
-
-    try {
-      const desktop = DesktopManager.getInstance();
-      const folder = await desktop.selectFolder();
-
-      if (folder) {
-        // Guardar la carpeta seleccionada
-        await desktop.setConfig("selected_folder", folder);
-
-        setSelectedFolder(folder);
-        const files = await desktop.readFolder(folder);
-        const repos = await Promise.all(
-          files
-            .filter((f: any) => f.isGitRepo)
-            .map(async (repo: any) => {
-              const status = await getRepoStatus(repo.path);
-              return { ...repo, status };
-            }),
-        );
-        setLocalRepos(repos);
-      }
-    } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(
-        error.message,
-        "Error",
-        "error",
-      );
-    } finally {
-      setLoading((prev) => ({ ...prev, local: false }));
-    }
-  };
-
-  const cloneRepository = async (repo: any) => {
-    if (!selectedFolder) {
-      await DesktopManager.getInstance().showMessage(
-        "Primero selecciona una carpeta local",
-        "Selecciona carpeta",
-        "warning",
-      );
-      return;
-    }
-
-    try {
-      const desktop = DesktopManager.getInstance();
-      const token = await desktop.getConfig("github_token");
-
-      const destination = `${selectedFolder}/${repo.name}`;
-
-      await desktop.cloneRepository({
-        url: repo.clone_url,
-        destination,
-        token,
-      });
-
-      await desktop.showMessage(
-        `Repositorio "${repo.name}" clonado exitosamente en:\n${destination}`,
-        "Clonado exitoso",
-      );
-
-      const files = await desktop.readFolder(selectedFolder);
+      const files = await desktop.readFolder(folder);
       const repos = await Promise.all(
-        files
-          .filter((f: any) => f.isGitRepo)
-          .map(async (repoItem: any) => {
-            const status = await getRepoStatus(repoItem.path);
-            return { ...repoItem, status };
-          }),
+        files.filter((f: any) => f.isGitRepo).map(async (repo: any) => {
+          await desktop.gitCommand({ command: "git fetch origin", cwd: repo.path }).catch(() => null);
+          const log = await desktop.gitCommand({ command: "git log -1 --format=%cd --date=iso", cwd: repo.path }).catch(() => null);
+          const branchStatus = await desktop.gitCommand({ command: "git status -b --porcelain", cwd: repo.path }).catch(() => null);
+          const localChanges = await desktop.gitCommand({ command: "git status --porcelain", cwd: repo.path }).catch(() => "");
+          
+          let state = "unknown";
+          if (localChanges && localChanges.trim().length > 0) {
+            state = "modified";
+          } else if (branchStatus) {
+            if (branchStatus.includes("behind")) state = "behind";
+            else if (branchStatus.includes("ahead")) state = "ahead";
+            else state = "up-to-date";
+          }
+          
+          return { ...repo, status: { lastPull: log ? new Date(log.trim()) : null, status: state } };
+        })
       );
       setLocalRepos(repos);
-    } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(
-        error,
-        "Error al clonar",
-        "error",
-      );
+    } finally {
+      setLoadingLocal(false);
     }
   };
 
-  const gitPull = async (repoPath: string, repoName: string) => {
-    try {
-      const desktop = DesktopManager.getInstance();
-
-      const output = await desktop.gitCommand({
-        command: `git pull origin main`,
-        cwd: repoPath,
+  const fetchGithub = async () => {
+    setLoading(d => ({ ...d, github: true }));
+    const token = await DesktopManager.getInstance().getConfig("github_token");
+    if (token) {
+      const res = await fetch("https://api.github.com/user/repos", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
       });
-
-      await desktop.showMessage(
-        `Repositorio "${repoName}" actualizado:\n${output}`,
-        "Git Pull exitoso",
-      );
-
-      // Actualizar estado del repositorio
-      const updatedRepos = localRepos.map((repo) => {
-        if (repo.path === repoPath) {
-          return {
-            ...repo,
-            status: {
-              ...repo.status,
-              status: "up-to-date",
-              lastPullDate: new Date(),
-            },
-          };
-        }
-        return repo;
-      });
-      setLocalRepos(updatedRepos);
-    } catch (error: any) {
-      await DesktopManager.getInstance().showMessage(
-        error,
-        "Error en Git Pull",
-        "error",
-      );
+      if (res.ok) setGithubRepos(await res.json());
     }
+    setLoading(d => ({ ...d, github: false }));
+  };
+
+  const refreshAll = async () => {
+    setGlobalLoading(true);
+    const token = await DesktopManager.getInstance().getConfig("github_token");
+    if (token) {
+      try {
+        const res = await fetch("https://api.github.com/user/repos", {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
+        });
+        if (res.ok) setGithubRepos(await res.json());
+      } catch (error) {
+        console.error("Error actualizando GitHub:", error);
+      }
+    }
+    if (selectedFolder) await loadLocalRepos(selectedFolder);
+    setGlobalLoading(false);
+  };
+
+  const selectFolder = async () => {
+    setLoading(d => ({ ...d, local: true }));
+    const folder = await DesktopManager.getInstance().selectFolder();
+    if (folder) {
+      await DesktopManager.getInstance().setConfig("selected_folder", folder);
+      setSelectedFolder(folder);
+      await loadLocalRepos(folder);
+    }
+    setLoading(d => ({ ...d, local: false }));
+  };
+
+  const cloneRepo = async (repo: any) => {
+    if (!selectedFolder || isRepoCloned(repo.name)) return;
+    const token = await DesktopManager.getInstance().getConfig("github_token");
+    await DesktopManager.getInstance().cloneRepository({
+      url: repo.clone_url, destination: `${selectedFolder}/${repo.name}`, token
+    });
+    await loadLocalRepos(selectedFolder);
+  };
+
+  const confirmPull = async () => {
+    if (!repoToPull) return;
+    setShowPullModal(false);
+    setGlobalLoading(true);
+    
+    try {
+      const token = await DesktopManager.getInstance().getConfig("github_token");
+      const githubRepo = githubRepos.find(r => r.name === repoToPull.name);
+      
+      if (!githubRepo || !token) return;
+
+      const lastSeparator = Math.max(repoToPull.path.lastIndexOf("\\"), repoToPull.path.lastIndexOf("/"));
+      const parentFolder = repoToPull.path.substring(0, lastSeparator);
+      const destination = `${parentFolder}\\${repoToPull.name}`;
+      
+      await DesktopManager.getInstance().deleteFolder(repoToPull.path);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await DesktopManager.getInstance().cloneRepository({
+        url: githubRepo.clone_url,
+        destination: destination,
+        token,
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (selectedFolder) {
+        await loadLocalRepos(selectedFolder);
+      }
+    } catch (error) {
+      console.error("Error en pull:", error);
+      if (selectedFolder) {
+        await loadLocalRepos(selectedFolder);
+      }
+    } finally {
+      setGlobalLoading(false);
+      setRepoToPull(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!repoToDelete) return;
+    setShowDeleteModal(false);
+    setLoading(d => ({ ...d, deleting: true }));
+    await DesktopManager.getInstance().deleteFolder(repoToDelete.path);
+    if (selectedFolder) await loadLocalRepos(selectedFolder);
+    setLoading(d => ({ ...d, deleting: false }));
+    setRepoToDelete(null);
   };
 
   const handleLogout = async () => {
-    try {
-      const desktop = DesktopManager.getInstance();
-
-      // Eliminar información del usuario
-      try {
-        await desktop.setConfig("github_token", null);
-        await desktop.setConfig("github_user", null);
-      } catch (error) {
-        console.error("Error eliminando configuración:", error);
-      }
-
-      // Redirigir al login
-      navigate("/");
-    } catch (error) {
-      console.error("Error cerrando sesión:", error);
-    }
+    const d = DesktopManager.getInstance();
+    await d.setConfig("github_token", null);
+    await d.setConfig("github_user", null);
+    navigate("/");
   };
 
-  const ProfilePopup = () => {
-    if (!user) return null;
+  const navigateToProject = async (path: string, name: string) => {
+    const githubRepo = githubRepos.find(r => r.name === name);
+    await DesktopManager.getInstance().setConfig("current_project", {
+      repoPath: path, repoName: name, repoOwner: githubRepo?.owner?.login || ""
+    });
+    navigate("/landing");
+  };
 
-    return (
-      <div
-        className="profile-popup-overlay"
-        onClick={() => setShowProfilePopup(false)}
-      >
-        <div className="profile-popup" onClick={(e) => e.stopPropagation()}>
-          <div className="profile-popup-header">
-            {user?.avatar_url && (
-              <img
-                src={user.avatar_url}
-                alt={user.login}
-                className="profile-popup-avatar"
-              />
-            )}
-            <div className="profile-popup-info">
-              <h3 className="profile-popup-name">
-                {user?.name || user?.login}
-              </h3>
-              <p className="profile-popup-username">@{user?.login}</p>
-              <div className="profile-popup-role">
-                <Shield size={14} />
-                <span>Desarrollador</span>
-              </div>
-            </div>
-          </div>
+  const isRepoCloned = (repoName: string) => localRepos.some(r => r.name === repoName);
 
-          <div className="profile-popup-actions">
-            <button onClick={handleLogout} className="profile-popup-logout">
-              <LogOut size={16} />
-              Cerrar Sesión
-            </button>
-          </div>
+  const statusBadge = (status: string) => {
+    const map: any = {
+      "up-to-date": { text: "Al día", icon: <CheckCircle size={12} />, class: "status-badge-up-to-date" },
+      "behind": { text: "Pendientes", icon: <Download size={12} />, class: "status-badge-behind" },
+      "ahead": { text: "Adelantado", icon: <AlertCircle size={12} />, class: "status-badge-ahead" },
+      "modified": { text: "Modificado", icon: <AlertCircle size={12} />, class: "status-badge-modified" },
+      "unknown": { text: "Desconocido", icon: <Clock size={12} />, class: "status-badge-unknown" }
+    };
+    return map[status] || map.unknown;
+  };
 
-          <button
-            className="profile-popup-close"
-            onClick={() => setShowProfilePopup(false)}
-          >
-            ×
-          </button>
-        </div>
+  const filteredLocal = localRepos.filter(r => r.name.toLowerCase().includes(search.local.toLowerCase()));
+  const filteredGithub = githubRepos.filter(r => r.name.toLowerCase().includes(search.github.toLowerCase()));
+
+  const Modal = ({ show, onClose, children, className = "" }: any) => show ? (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className={`modal ${className}`} onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        {children}
       </div>
-    );
-  };
+    </div>
+  ) : null;
+
+  const GlobalLoadingOverlay = () => (
+    <div className="global-loading-overlay">
+      <div className="global-loading-content">
+        <div className="spinner-large" />
+        <p>Actualizando repositorios...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="dashboard">
-      {/* Header */}
+      {globalLoading && <GlobalLoadingOverlay />}
+
       <div className="dashboard-header">
-        <div
-          className="user-info"
-          onClick={() => setShowProfilePopup(true)}
-          style={{ cursor: "pointer" }}
-        >
-          {user?.avatar_url && (
-            <img
-              src={user.avatar_url}
-              alt={user.login}
-              className="user-avatar"
-            />
-          )}
-          <div className="user-details">
-            <h3 className="user-name">{user?.name || user?.login}</h3>
-            <p className="user-username">
-              @{user?.login} • {githubRepos.length} repositorios
-            </p>
+        <div className="user-info" onClick={() => setShowProfile(true)}>
+          {user?.avatar_url && <img src={user.avatar_url} alt={user.login} className="user-avatar" />}
+          <div>
+            <h3>{user?.name || user?.login}</h3>
+            <p>@{user?.login} • {githubRepos.length} repos</p>
           </div>
         </div>
 
-        <button
-          onClick={selectLocalFolder}
-          className={`folder-btn ${loading.local ? "loading" : ""}`}
-          disabled={loading.local}
-        >
-          {loading.local ? (
-            <>
-              <div className="spinner-small" />
-              Cargando...
-            </>
-          ) : (
-            <>
-              <Folder size={16} />
-              {selectedFolder ? "Cambiar Carpeta" : "Seleccionar Carpeta"}
-            </>
-          )}
-        </button>
+        <div className="header-actions">
+          <button onClick={refreshAll} disabled={globalLoading} className="btn-refresh-all">
+            {globalLoading ? <><div className="spinner-small" />Actualizando...</> : <><RefreshCw size={16} />Actualizar Todo</>}
+          </button>
+          <button onClick={selectFolder} disabled={loading.local} className="btn-folder">
+            {loading.local ? <><div className="spinner-small" />Cargando...</> : <><Folder size={16} />{selectedFolder ? "Cambiar" : "Seleccionar"} Carpeta</>}
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-columns">
-        {/* Local repos */}
         <div className="column column-local">
           <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">
-                <Monitor size={18} />
-                Repositorios Locales
-                {selectedFolder && (
-                  <span className="badge badge-blue">{localRepos.length}</span>
-                )}
-              </h3>
-            </div>
+            <h3><Monitor size={18} /> Locales {selectedFolder && <span className="badge blue">{localRepos.length}</span>}</h3>
             {selectedFolder ? (
               <>
-                <div className="folder-path">
-                  <MapPin size={14} /> {selectedFolder}
+                <div className="folder-path" title={selectedFolder}>
+                  <MapPin size={14} className="folder-icon" />
+                  <span className="folder-text">{selectedFolder}</span>
                 </div>
 
-                <div className="search-container">
+                <div className="search-box">
                   <Search size={16} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Buscar repositorio local..."
-                    className="search-input"
-                    value={localSearch}
-                    onChange={(e) => setLocalSearch(e.target.value)}
-                  />
+                  <input placeholder="Buscar..." value={search.local} onChange={e => setSearch(s => ({ ...s, local: e.target.value }))} />
                 </div>
 
-                {filteredLocalRepos.length > 0 ? (
-                  <div className="repos-list">
-                    {filteredLocalRepos.map((repo, index) => {
-                      const statusBadge = getStatusBadge(repo.status?.status);
+                {loadingLocal ? (
+                  <div className="loading"><div className="spinner-large" /><p>Cargando...</p></div>
+                ) : filteredLocal.length ? (
+                  <div className="repo-list">
+                    {filteredLocal.map((r, i) => {
+                      const badge = statusBadge(r.status?.status);
                       return (
-                        <div
-                          key={index}
-                          className="repo-card repo-card-local"
-                          onClick={() =>
-                            navigateToProject(repo.path, repo.name)
-                          }
-                          style={{ cursor: "pointer" }}
-                        >
-                          <div className="repo-card-content">
-                            <div className="repo-info">
-                              {/* Título */}
-                              <div className="repo-name">{repo.name}</div>
-
-                              {/* Descripción */}
-                              {repo.description && (
-                                <p className="repo-description">
-                                  {repo.description}
-                                </p>
-                              )}
-
-                              {/* Fecha del último pull y estado */}
-                              <div className="repo-stats">
-                                <span className="repo-date">
-                                  <Calendar size={12} />
-                                  Último pull:{" "}
-                                  {new Date(
-                                    repo.status.lastPullDate,
-                                  ).toLocaleDateString()}
-                                </span>
-
-                                <div
-                                  className={`status-badge ${statusBadge.className}`}
-                                >
-                                  {statusBadge.icon}
-                                  <span>{statusBadge.text}</span>
-                                </div>
-                              </div>
+                        <div key={i} className="repo-card-local" onClick={() => navigateToProject(r.path, r.name)}>
+                          <div className="repo-info">
+                            <div className="repo-name">{r.name}</div>
+                            {r.description && <p className="repo-desc">{r.description}</p>}
+                            <div className="repo-meta">
+                              <span className="repo-date"><Calendar size={12} /> {r.status?.lastPull?.toLocaleDateString() || "?"}</span>
+                              <span className={`status-badge ${badge.class}`}>{badge.icon} {badge.text}</span>
                             </div>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                gitPull(repo.path, repo.name);
-                              }}
-                              className="btn-pull"
-                              disabled={repo.status?.status === "up-to-date"}
-                            >
-                              <Download size={14} /> Pull
+                          </div>
+                          <div className="repo-actions">
+                            <button onClick={e => { e.stopPropagation(); setRepoToPull({ path: r.path, name: r.name }); setShowPullModal(true); }} 
+                              className="btn-icon btn-pull" 
+                              disabled={r.status?.status === "up-to-date" || globalLoading}
+                              title={r.status?.status === "up-to-date" ? "Repositorio al día" : "Sincronizar con remoto"}>
+                              <Download size={14} />
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); setRepoToDelete({ path: r.path, name: r.name }); setShowDeleteModal(true); }} 
+                              className="btn-icon btn-delete" disabled={loading.deleting || globalLoading}
+                              title="Eliminar repositorio localmente">
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
@@ -555,113 +294,103 @@ const Dashboard: React.FC = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="empty-repos">
-                    {localSearch ? (
-                      <p>No se encontraron repositorios con "{localSearch}"</p>
-                    ) : (
-                      <p>No se encontraron repositorios Git en esta carpeta</p>
-                    )}
-                  </div>
+                  <div className="empty"><p>{search.local ? "No hay resultados" : "No hay repositorios"}</p></div>
                 )}
               </>
             ) : (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  <Folder size={48} />
-                </div>
-                <p>Selecciona una carpeta para ver tus repositorios locales</p>
-              </div>
+              <div className="empty"><Folder size={48} /><p>Selecciona una carpeta</p></div>
             )}
           </div>
         </div>
 
-        {/* GitHub repos */}
         <div className="column column-github">
           <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">
-                <Github size={18} />
-                Repositorios de GitHub
-                <span className="badge badge-green">{githubRepos.length}</span>
-              </h3>
-
-              <button
-                onClick={fetchGithubRepos}
-                disabled={loading.github}
-                className="btn-refresh"
-              >
-                <RefreshCw size={14} /> Actualizar
-              </button>
-            </div>
-
-            <div className="search-container">
+            <h3><Github size={18} /> GitHub <span className="badge green">{githubRepos.length}</span></h3>
+            <div className="search-box">
               <Search size={16} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Buscar repositorio de GitHub..."
-                className="search-input"
-                value={githubSearch}
-                onChange={(e) => setGithubSearch(e.target.value)}
-              />
+              <input placeholder="Buscar..." value={search.github} onChange={e => setSearch(s => ({ ...s, github: e.target.value }))} />
             </div>
 
             {loading.github ? (
-              <div className="loading-state">
-                <div className="spinner-large" />
-                <p>Cargando repositorios de GitHub...</p>
-              </div>
+              <div className="loading"><div className="spinner-large" /><p>Cargando...</p></div>
             ) : (
-              <div className="repos-list">
-                {filteredGithubRepos.map((repo) => (
-                  <div key={repo.id} className="repo-card repo-card-github">
-                    <div className="repo-card-content">
+              <div className="repo-list">
+                {filteredGithub.map(r => {
+                  const cloned = isRepoCloned(r.name);
+                  return (
+                    <div key={r.id} className="repo-card-github">
                       <div className="repo-info">
-                        {/* Título */}
-                        <div className="repo-name">{repo.name}</div>
-
-                        {/* Descripción */}
-                        {repo.description && (
-                          <p className="repo-description">{repo.description}</p>
-                        )}
-
-                        {/* Fecha de último cambio del repo */}
-                        <div className="repo-stats">
-                          <span className="repo-date">
-                            <Calendar size={12} /> Actualizado:{" "}
-                            {new Date(repo.updated_at).toLocaleDateString()}
-                          </span>
-                        </div>
+                        <div className="repo-name">{r.name}</div>
+                        {r.description && <p className="repo-desc">{r.description}</p>}
+                        <span className="repo-date"><Calendar size={12} /> {new Date(r.updated_at).toLocaleDateString()}</span>
                       </div>
-
-                      <button
-                        onClick={() => cloneRepository(repo)}
-                        disabled={!selectedFolder}
-                        className={`btn-clone ${
-                          !selectedFolder ? "disabled" : ""
-                        }`}
+                      <button 
+                        onClick={() => cloneRepo(r)} 
+                        disabled={!selectedFolder || cloned || globalLoading}
+                        className={`btn-icon btn-clone ${!selectedFolder ? "disabled" : ""} ${cloned ? "cloned" : ""}`}
+                        title={!selectedFolder ? "Selecciona una carpeta primero" : cloned ? "Repositorio ya clonado" : "Clonar repositorio"}
                       >
-                        <DownloadCloud size={14} /> Clonar Local
+                        <DownloadCloud size={14} />
                       </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-
-            {!loading.github && filteredGithubRepos.length === 0 && (
-              <div className="empty-repos">
-                {githubSearch ? (
-                  <p>No se encontraron repositorios con "{githubSearch}"</p>
-                ) : (
-                  <p>No hay repositorios de GitHub disponibles</p>
-                )}
-              </div>
+            {!loading.github && !filteredGithub.length && (
+              <div className="empty"><p>{search.github ? "No hay resultados" : "No hay repositorios"}</p></div>
             )}
           </div>
         </div>
       </div>
 
-      {showProfilePopup && <ProfilePopup />}
+      <Modal show={showProfile} onClose={() => setShowProfile(false)} className="profile-modal">
+        <div className="profile-header">
+          {user?.avatar_url && <img src={user.avatar_url} alt={user.login} className="profile-avatar" />}
+          <div>
+            <h4>{user?.name || user?.login}</h4>
+            <p>@{user?.login}</p>
+            <span className="profile-role"><Shield size={14} /> Desarrollador</span>
+          </div>
+        </div>
+        <button onClick={handleLogout} className="btn-logout"><LogOut size={16} /> Cerrar Sesión</button>
+      </Modal>
+
+      <Modal show={showPullModal} onClose={() => setShowPullModal(false)} className="pull-modal">
+        <div className="pull-header">
+          <div className="pull-icon"><RefreshCwOff size={32} /></div>
+          <div>
+            <h4>¿Sincronizar con el repositorio remoto?</h4>
+          </div>
+        </div>
+        <div className="pull-content">
+          <p><strong>• Si tienes cambios locales (Modificado):</strong> Se ELIMINARÁN todos tus cambios y el repositorio quedará exactamente igual al remoto.</p>
+          <p><strong>• Si el remoto tiene cambios (Pendientes):</strong> Se DESCARGARÁN los cambios remotos y el repositorio quedará actualizado.</p>
+          <p className="pull-warning">Los cambios no guardados se perderán permanentemente.</p>
+          <p className="repo-name-pull"><strong>"{repoToPull?.name}"</strong></p>
+        </div>
+        <div className="pull-actions">
+          <button onClick={confirmPull} className="btn-pull-confirm"><Download size={16} />Sincronizar</button>
+          <button onClick={() => setShowPullModal(false)} className="btn-cancel">Cancelar</button>
+        </div>
+      </Modal>
+
+      <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} className="delete-modal">
+        <div className="delete-header">
+          <div className="delete-icon"><AlertTriangle size={32} /></div>
+          <div>
+            <h4>Confirmar eliminación</h4>
+          </div>
+        </div>
+        <div className="delete-content">
+          <p>¿Eliminar el repositorio localmente?</p>
+          <p className="repo-name-delete"><strong>"{repoToDelete?.name}"</strong></p>
+        </div>
+        <div className="delete-actions">
+          <button onClick={confirmDelete} className="btn-delete-confirm"><Trash2 size={16} />Eliminar</button>
+          <button onClick={() => setShowDeleteModal(false)} className="btn-cancel">Cancelar</button>
+        </div>
+      </Modal>
     </div>
   );
 };

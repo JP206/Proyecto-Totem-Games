@@ -15,6 +15,8 @@ import {
   Undo2,
   ChevronLeft,
   ChevronRight,
+  CheckCircle,
+  AlertCircle,
   Coins,
 } from "lucide-react";
 import "../styles/translation-preview.css";
@@ -80,6 +82,10 @@ const TranslationPreview: React.FC = () => {
   const [editableRows, setEditableRows] = useState<string[][]>([]);
   const [originalRows, setOriginalRows] = useState<string[][]>([]);
   const [currentPage, setCurrentPage] = useState(0);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const ROWS_PER_PAGE = 40;
   const spellCheckOnly = Boolean(state?.spellCheckOnly);
@@ -93,6 +99,11 @@ const TranslationPreview: React.FC = () => {
   const hasSpellCheckData = Boolean(
     state?.fileInfo && state?.spellCheckPreview && spellCheckOnly,
   );
+
+  const showNotification = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const { header, keyCol, sourceCol, langCodeToColIndex } = useMemo(() => {
     const targetLangs =
@@ -322,11 +333,7 @@ const TranslationPreview: React.FC = () => {
         content: contentToWrite,
       });
       if (!writeResult.success) {
-        await desktop.showMessage(
-          writeResult.error || "Error al guardar correcciones.",
-          "Error",
-          "error",
-        );
+        showNotification("error", writeResult.error || "Error al guardar correcciones.");
         return;
       }
       const unsub = desktop.onTranslationProgress((d) =>
@@ -362,11 +369,7 @@ const TranslationPreview: React.FC = () => {
         },
       });
     } catch (error: any) {
-      await desktop.showMessage(
-        error?.message || String(error),
-        "Error en traducción",
-        "error",
-      );
+      showNotification("error", error?.message || "Error en traducción");
     } finally {
       setTranslating(false);
       setConfirmProgressPercent(0);
@@ -386,11 +389,7 @@ const TranslationPreview: React.FC = () => {
         content,
       });
       if (!writeResult.success) {
-        await desktop.showMessage(
-          writeResult.error || "Error al guardar el archivo.",
-          "Error",
-          "error",
-        );
+        showNotification("error", writeResult.error || "Error al guardar el archivo.");
         return;
       }
       const result = await desktop.uploadTranslation({
@@ -398,24 +397,12 @@ const TranslationPreview: React.FC = () => {
         filePath: fileInfo.filePath,
       });
       if (result.success) {
-        await desktop.showMessage(
-          "Traducciones subidas correctamente al repositorio (git push origin main).",
-          "Subida completada",
-          "info",
-        );
+        showNotification("success", "Traducciones subidas correctamente al repositorio");
       } else {
-        await desktop.showMessage(
-          result.error || "Error desconocido al subir las traducciones.",
-          "Error al subir",
-          "error",
-        );
+        showNotification("error", result.error || "Error al subir las traducciones");
       }
     } catch (error: any) {
-      await desktop.showMessage(
-        error?.message || String(error),
-        "Error al subir traducciones",
-        "error",
-      );
+      showNotification("error", error?.message || "Error al subir traducciones");
     } finally {
       setUploading(false);
     }
@@ -440,6 +427,13 @@ const TranslationPreview: React.FC = () => {
     <>
       <Navbar />
       <div className="translation-preview-page">
+        {notification && (
+          <div className={`translation-preview-notification ${notification.type}`}>
+            {notification.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+            <span>{notification.message}</span>
+          </div>
+        )}
+
         <header className="translation-preview-header">
           <div className="translation-preview-header-left">
             <button
