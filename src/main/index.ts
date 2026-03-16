@@ -613,6 +613,17 @@ ipcMain.handle(
   },
 );
 
+// 11c. LEER ARCHIVO
+ipcMain.handle("read-file", async (event: any, filePath: string) => {
+  try {
+    const content = await fs.readFile(filePath, "utf8");
+    return content;
+  } catch (error: any) {
+    console.error("Error leyendo archivo:", error);
+    throw new Error(`Error leyendo archivo: ${error.message}`);
+  }
+});
+
 // 12. SUBIR TRADUCCIÓN AL REPOSITORIO (git add/commit/push)
 ipcMain.handle(
   "ai-upload-translation",

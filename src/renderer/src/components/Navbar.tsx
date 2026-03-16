@@ -117,13 +117,13 @@ const Navbar: React.FC = () => {
           <Flag size={20} />
         </button>
 
-        {/* <button
+        <button
           className={`nav-btn ${location.pathname === "/contexts-glossaries" ? "active" : ""}`}
           data-tooltip="Contextos / Glosarios"
           onClick={() => navigate("/contexts-glossaries")}
         >
           <BookOpen size={20} />
-        </button>*/}
+        </button>
       </div>
     </nav>
   );

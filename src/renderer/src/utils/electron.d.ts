@@ -153,6 +153,7 @@ export interface ElectronAPI {
   deleteFile: (path: string) => Promise<boolean>;
   deleteFolder: (path: string) => Promise<boolean>;
   saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
+  readFile: (filePath: string) => Promise<string>;
 
   // AI translation
   translateFile: (

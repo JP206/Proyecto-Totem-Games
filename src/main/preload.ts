@@ -111,4 +111,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 11b. ESCRIBIR ARCHIVO DE TRADUCCIÓN (guardar ediciones)
   writeTranslationFile: (data: { filePath: string; content: string }) =>
     ipcRenderer.invoke("write-translation-file", data),
+
+  // 11c. LEER ARCHIVO
+  readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
 });
