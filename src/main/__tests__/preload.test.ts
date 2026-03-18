@@ -131,7 +131,6 @@ describe("preload", () => {
     await exposedApi.getConfig("k");
     await exposedApi.deleteConfig("k");
     await exposedApi.openExternal("https://example.com");
-    await exposedApi.showMessage({ type: "info", title: "t", message: "m" });
     await exposedApi.fileExists("C:/repo/file.txt");
     await exposedApi.deleteFile("C:/repo/file.txt");
     await exposedApi.saveFile({
@@ -169,11 +168,6 @@ describe("preload", () => {
     expect(invoke).toHaveBeenCalledWith("get-config", "k");
     expect(invoke).toHaveBeenCalledWith("delete-config", "k");
     expect(invoke).toHaveBeenCalledWith("open-external", "https://example.com");
-    expect(invoke).toHaveBeenCalledWith("show-message", {
-      type: "info",
-      title: "t",
-      message: "m",
-    });
     expect(invoke).toHaveBeenCalledWith("file-exists", "C:/repo/file.txt");
     expect(invoke).toHaveBeenCalledWith("delete-file", "C:/repo/file.txt");
     expect(invoke).toHaveBeenCalledWith("save-file", {

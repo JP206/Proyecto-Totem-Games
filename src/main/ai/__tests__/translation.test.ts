@@ -267,6 +267,98 @@ describe("translateFileInMain", () => {
     );
   });
 
+  it("includes both global and specific contexts in translation", async () => {
+    const globalContextPath = "/base/repo-general-totem-games/contextos_generales/lore.txt";
+    const specificContextPath = "/base/MyGame/Localizacion/contextos_especificos/ui.txt";
+    const provider = {
+      translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
+    };
+    getProviderMock.mockReturnValue(provider);
+    readFileMock.mockImplementation((filePath: string) => {
+      if (filePath === "/repo/localizar.csv") return Promise.resolve(CSV_MINIMAL);
+      if (filePath === globalContextPath) return Promise.resolve("global lore content");
+      if (filePath === specificContextPath) return Promise.resolve("specific UI content");
+      return Promise.resolve("");
+    });
+
+    await translateFileInMain({
+      ...defaultTranslationPayload,
+      contexts: [globalContextPath, specificContextPath],
+      glossaries: [],
+    });
+
+    const call = provider.translateBatch.mock.calls[0][2];
+    expect(call.contextSnippet).toContain("global lore content");
+    expect(call.contextSnippet).toContain("specific UI content");
+  });
+
+  it("includes both global and specific glossaries in translation", async () => {
+    const globalGlossaryPath = "/base/repo-general-totem-games/glosarios_generales/terms.csv";
+    const specificGlossaryPath = "/base/MyGame/Localizacion/glosarios_especificos/game.csv";
+    const provider = {
+      translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
+    };
+    getProviderMock.mockReturnValue(provider);
+    readFileMock.mockImplementation((filePath: string) => {
+      if (filePath === "/repo/localizar.csv") return Promise.resolve(CSV_MINIMAL);
+      if (filePath === globalGlossaryPath)
+        return Promise.resolve("term,translation\nAttack,Ataque\nDefend,Defender");
+      if (filePath === specificGlossaryPath)
+        return Promise.resolve("term,translation\nBoss,Jefe\nItem,Objeto");
+      return Promise.resolve("");
+    });
+
+    await translateFileInMain({
+      ...defaultTranslationPayload,
+      contexts: [],
+      glossaries: [globalGlossaryPath, specificGlossaryPath],
+    });
+
+    const call = provider.translateBatch.mock.calls[0][2];
+    expect(call.glossarySnippet).toContain("Attack");
+    expect(call.glossarySnippet).toContain("Defender");
+    expect(call.glossarySnippet).toContain("Boss");
+    expect(call.glossarySnippet).toContain("Objeto");
+  });
+
+  it("preserves order of contexts and glossaries (global first, then specific)", async () => {
+    const globalCtx = "/general/contextos_generales/a.txt";
+    const specificCtx = "/project/contextos_especificos/b.txt";
+    const globalGlos = "/general/glosarios_generales/g.csv";
+    const specificGlos = "/project/glosarios_especificos/s.csv";
+    const provider = {
+      translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
+    };
+    getProviderMock.mockReturnValue(provider);
+    readFileMock.mockImplementation((filePath: string) => {
+      if (filePath === "/repo/localizar.csv") return Promise.resolve(CSV_MINIMAL);
+      if (filePath === globalCtx) return Promise.resolve("FIRST");
+      if (filePath === specificCtx) return Promise.resolve("SECOND");
+      if (filePath === globalGlos) return Promise.resolve("term,translation\nG1,T1");
+      if (filePath === specificGlos) return Promise.resolve("term,translation\nS1,T2");
+      return Promise.resolve("");
+    });
+
+    await translateFileInMain({
+      ...defaultTranslationPayload,
+      contexts: [globalCtx, specificCtx],
+      glossaries: [globalGlos, specificGlos],
+    });
+
+    const call = provider.translateBatch.mock.calls[0][2];
+    const firstCtxIdx = call.contextSnippet.indexOf("FIRST");
+    const secondCtxIdx = call.contextSnippet.indexOf("SECOND");
+    expect(firstCtxIdx).toBeGreaterThanOrEqual(0);
+    expect(secondCtxIdx).toBeGreaterThanOrEqual(0);
+    expect(firstCtxIdx).toBeLessThan(secondCtxIdx);
+
+    const g1Idx = call.glossarySnippet.indexOf("G1");
+    const s1Idx = call.glossarySnippet.indexOf("S1");
+    expect(g1Idx).toBeGreaterThanOrEqual(0);
+    expect(s1Idx).toBeGreaterThanOrEqual(0);
+    expect(g1Idx).toBeLessThan(s1Idx);
+  });
+
   it("uses gemini provider when mode is gemini", async () => {
     process.env.OPENAI_API_KEY = "";
     process.env.GEMINI_API_KEY = "gem-key";
