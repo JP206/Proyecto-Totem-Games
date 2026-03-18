@@ -1,4 +1,4 @@
-// src/renderer/src/themes/colors.ts
+// src/renderer/src/theme/colors.ts
 export const colors = {
   primary: {
     dark: "rgb(83, 37, 99)",

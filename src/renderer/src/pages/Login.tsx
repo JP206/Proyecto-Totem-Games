@@ -8,6 +8,7 @@ import {
   Rocket,
   Loader2,
   FileText,
+  CheckCircle,
 } from "lucide-react";
 import DesktopManager from "../utils/desktop";
 import "../styles/login.css";
@@ -16,6 +17,7 @@ const Login: React.FC = () => {
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,6 +47,7 @@ const Login: React.FC = () => {
 
     setLoading(true);
     setError("");
+    setSuccess(false);
 
     try {
       // Verificar token con GitHub API
@@ -52,7 +55,6 @@ const Login: React.FC = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "Proyecto-Totem-Games",
         },
       });
 
@@ -64,14 +66,12 @@ const Login: React.FC = () => {
         await desktop.setConfig("github_token", token);
         await desktop.setConfig("github_user", userData);
 
-        // Mostrar mensaje de éxito
-        await desktop.showMessage(
-          `¡Bienvenido ${userData.login}!`,
-          "Autenticación exitosa",
-        );
-
-        // Navegar a la página principal
-        navigate("/dashboard");
+        setSuccess(true);
+        
+        // Pequeña pausa para mostrar el mensaje de éxito antes de redirigir
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
       } else if (response.status === 401) {
         setError("Token inválido o expirado");
       } else {
@@ -135,13 +135,18 @@ const Login: React.FC = () => {
 
           <button
             type="submit"
-            disabled={loading || !token.trim()}
-            className={`submit-btn ${loading ? "loading" : ""}`}
+            disabled={loading || !token.trim() || success}
+            className={`submit-btn ${loading ? "loading" : ""} ${success ? "success" : ""}`}
           >
             {loading ? (
               <>
                 <Loader2 size={18} className="spinner" />
                 Verificando...
+              </>
+            ) : success ? (
+              <>
+                <CheckCircle size={18} />
+                ¡Bienvenido!
               </>
             ) : (
               <>

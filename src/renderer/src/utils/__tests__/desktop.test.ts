@@ -45,7 +45,6 @@ describe("DesktopManager", () => {
     getConfig: jest.fn().mockResolvedValue("v"),
     deleteConfig: jest.fn().mockResolvedValue(true),
     openExternal: jest.fn().mockResolvedValue(undefined),
-    showMessage: jest.fn().mockResolvedValue(undefined),
     onMenuSelectFolder: jest.fn((cb: () => void) => {
       selectFolderCb = cb;
     }),
@@ -187,7 +186,6 @@ describe("DesktopManager", () => {
     await manager.setConfig("k", "v");
     await manager.getConfig("k");
     await manager.deleteConfig("k");
-    await manager.showMessage("msg");
     await manager.openInBrowser("https://example.com");
     await manager.uploadTranslation({ repoPath: "/r", filePath: "/r/f.csv" });
     await manager.writeTranslationFile({
@@ -211,11 +209,6 @@ describe("DesktopManager", () => {
     expect(electronAPI.setConfig).toHaveBeenCalledWith("k", "v");
     expect(electronAPI.getConfig).toHaveBeenCalledWith("k");
     expect(electronAPI.deleteConfig).toHaveBeenCalledWith("k");
-    expect(electronAPI.showMessage).toHaveBeenCalledWith({
-      type: "info",
-      title: "GitHub Desktop",
-      message: "msg",
-    });
     expect(electronAPI.openExternal).toHaveBeenCalledWith(
       "https://example.com",
     );

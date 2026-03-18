@@ -4,27 +4,47 @@ import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import { IssueData } from "../utils/electron";
-import { FileText, Plus, Calendar, X, Trash2, AlertCircle } from "lucide-react";
+import { FileText, Plus, Calendar, X, Trash2, AlertCircle, User, Search } from "lucide-react";
 import "../styles/notes.css";
 
 export default function Notes() {
   const navigate = useNavigate();
   const [notes, setNotes] = useState<any[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedNote, setSelectedNote] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>("");
   const [currentProject, setCurrentProject] = useState<{
     repoPath: string;
     repoName: string;
     repoOwner: string;
   } | null>(null);
 
+  const MAX_TITLE_LENGTH = 50;
+
   useEffect(() => {
     loadProjectAndNotes();
   }, []);
+
+  // Efecto para filtrar notas cuando cambia el término de búsqueda o las notas
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredNotes(notes);
+    } else {
+      const term = searchTerm.toLowerCase();
+      const filtered = notes.filter(note => 
+        note.title.toLowerCase().includes(term) || 
+        note.author.toLowerCase().includes(term)
+      );
+      setFilteredNotes(filtered);
+    }
+  }, [searchTerm, notes]);
 
   const loadProjectAndNotes = async () => {
     try {
@@ -33,45 +53,36 @@ export default function Notes() {
 
       const token = await desktop.getConfig("github_token");
       if (!token) {
-        await desktop.showMessage(
-          "Debes iniciar sesión para acceder a esta sección",
-          "Acceso denegado",
-          "warning",
-        );
-        navigate("/login");
+        setTimeout(() => navigate("/login"), 2000);
         return;
       }
 
+      const user = await desktop.getConfig("github_user");
+      setCurrentUser(user?.login || "Desconocido");
+
       const project = await desktop.getConfig("current_project");
       if (!project?.repoName || !project?.repoOwner) {
-        await desktop.showMessage(
-          "No hay un proyecto seleccionado",
-          "Error",
-          "error",
-        );
-        navigate("/dashboard");
+        setTimeout(() => navigate("/dashboard"), 2000);
         return;
       }
 
       setCurrentProject(project);
-      await loadNotes(project, token);
+      await loadNotes(project, token, false);
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar el proyecto",
-        "Error",
-        "error",
-      );
-      navigate("/dashboard");
+      setTimeout(() => navigate("/dashboard"), 2000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadNotes = async (
     project: { repoName: string; repoOwner: string },
     token: string,
+    showSyncing: boolean = true
   ) => {
     try {
-      setLoading(true);
+      if (showSyncing) setSyncing(true);
+      
       const desktop = DesktopManager.getInstance();
 
       const data = await desktop.getIssues(
@@ -84,25 +95,60 @@ export default function Notes() {
       );
 
       const formattedNotes = data
-        .filter((issue: any) => !issue.pull_request)
+        .filter((issue: any) => !issue.pull_request && issue.state === "open")
         .map((issue: any) => ({
           id: issue.number,
           title: issue.title,
           description: issue.body,
           date: new Date(issue.created_at).toLocaleDateString(),
-          status: issue.state,
+          author: issue.user?.login || "Desconocido",
         }));
 
       setNotes(formattedNotes);
+      setFilteredNotes(formattedNotes);
+      return formattedNotes;
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al cargar las notas",
-        "Error",
-        "error",
-      );
+      console.error("Error cargando notas:", error);
+      return [];
     } finally {
-      setLoading(false);
+      if (showSyncing) setSyncing(false);
+    }
+  };
+
+  const waitForNote = async (
+    project: { repoName: string; repoOwner: string },
+    token: string,
+    title: string,
+    author: string,
+    attempts = 0
+  ): Promise<boolean> => {
+    const maxAttempts = 10;
+
+    if (attempts >= maxAttempts) {
+      setSyncing(false);
+      return false;
+    }
+
+    try {
+      const freshNotes = await loadNotes(project, token, false);
+      const noteExists = freshNotes.some(
+        (n) => n.title === title && n.author === author
+      );
+
+      if (noteExists) {
+        setSyncing(false);
+        return true;
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(waitForNote(project, token, title, author, attempts + 1));
+        }, 500);
+      });
+    } catch (error) {
+      console.error("Error en waitForNote:", error);
+      setSyncing(false);
+      return false;
     }
   };
 
@@ -112,10 +158,8 @@ export default function Notes() {
       const token = await desktop.getConfig("github_token");
       if (!token || !currentProject) return;
 
-      let response;
-
       if (!selectedNote) {
-        let issueData: IssueData = {
+        const issueData: IssueData = {
           title: editedTitle,
           description: editedDescription,
           id: null,
@@ -123,21 +167,22 @@ export default function Notes() {
           labels: ["documentation"],
         };
 
-        response = await desktop.createIssue(issueData, {
+        await desktop.createIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
           token,
         });
 
-        if (response) {
-          await desktop.showMessage(
-            "Nota creada exitosamente",
-            "Éxito",
-            "info",
-          );
-        }
+        setIsModalOpen(false);
+        setSelectedNote(null);
+        setEditedTitle("");
+        setEditedDescription("");
+        setSyncing(true);
+
+        waitForNote(currentProject, token, editedTitle, currentUser || "Tú").catch(console.error);
+        
       } else {
-        let issueData: IssueData = {
+        const issueData: IssueData = {
           title: editedTitle,
           description: editedDescription,
           id: selectedNote.id,
@@ -145,35 +190,26 @@ export default function Notes() {
           labels: null,
         };
 
-        response = await desktop.editIssue(issueData, {
+        await desktop.editIssue(issueData, {
           repoName: currentProject.repoName,
           repoOwner: currentProject.repoOwner,
           token,
         });
 
-        if (response) {
-          await desktop.showMessage(
-            `Nota #${selectedNote.id} actualizada`,
-            "Éxito",
-            "info",
-          );
-        }
-      }
-
-      if (response) {
-        await loadNotes(currentProject, token);
+        setNotes(prev => prev.map(note => 
+          note.id === selectedNote.id 
+            ? { ...note, title: editedTitle, description: editedDescription }
+            : note
+        ));
+        
         setIsModalOpen(false);
         setSelectedNote(null);
         setEditedTitle("");
         setEditedDescription("");
       }
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al guardar la nota",
-        "Error",
-        "error",
-      );
+      console.error("Error al guardar la nota:", error);
+      setSyncing(false);
     }
   };
 
@@ -189,23 +225,13 @@ export default function Notes() {
         token,
       });
 
-      await desktop.showMessage(
-        `Nota #${selectedNote.id} archivada`,
-        "Éxito",
-        "info",
-      );
-
-      await loadNotes(currentProject, token);
+      setNotes(prev => prev.filter(note => note.id !== selectedNote.id));
       setShowDeleteConfirm(false);
       setIsModalOpen(false);
       setSelectedNote(null);
+      
     } catch (error: any) {
-      const desktop = DesktopManager.getInstance();
-      await desktop.showMessage(
-        error.message || "Error al archivar la nota",
-        "Error",
-        "error",
-      );
+      console.error("Error al archivar la nota:", error);
     }
   };
 
@@ -223,7 +249,14 @@ export default function Notes() {
     setIsModalOpen(true);
   };
 
-  if (loading && !currentProject) {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    if (newTitle.length <= MAX_TITLE_LENGTH) {
+      setEditedTitle(newTitle);
+    }
+  };
+
+  if (loading) {
     return (
       <>
         <Navbar />
@@ -241,62 +274,113 @@ export default function Notes() {
     <>
       <Navbar />
       <div className="notes-page">
+        {syncing && (
+          <div className="syncing-overlay">
+            <div className="syncing-content">
+              <div className="spinner-large" />
+              <p>Sincronizando nota con GitHub...</p>
+            </div>
+          </div>
+        )}
+
         <div className="notes-header">
-          <h2>
-            <FileText size={24} />
-            Notas del Proyecto
-          </h2>
-          <button
-            className="add-note-btn"
-            onClick={openNewNoteModal}
-            disabled={loading}
-          >
-            <Plus size={16} />
-            Nueva Nota
-          </button>
+          <div className="notes-header-left">
+            <h2>
+              <FileText size={24} />
+              Notas del Proyecto
+            </h2>
+          </div>
+          
+          <div className="notes-header-right">
+            <div className="search-container">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Buscar por título o autor..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              {searchTerm && (
+                <button 
+                  className="search-clear"
+                  onClick={() => setSearchTerm("")}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            
+            <button
+              className="add-note-btn"
+              onClick={openNewNoteModal}
+              disabled={syncing}
+            >
+              <Plus size={16} />
+              Nueva Nota
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner-large" />
-            <p>Cargando notas...</p>
-          </div>
-        ) : (
-          <div className="notes-grid">
-            {notes.length > 0 ? (
-              notes.map((note) => (
-                <div
-                  key={note.id}
-                  className={`note-card ${selectedNote?.id === note.id ? "selected" : ""}`}
-                  onClick={() => openEditNoteModal(note)}
-                >
-                  <h3 className="note-title">{note.title}</h3>
-                  <p className="note-description">
-                    {note.description || "Sin descripción"}
-                  </p>
-                  <div className="note-footer">
-                    <span className="note-date">
-                      <Calendar size={12} />
-                      {note.date}
-                    </span>
-                    {note.status === "closed" && (
-                      <span className="note-status-badge">Archivada</span>
-                    )}
-                  </div>
-                </div>
-              ))
+        {searchTerm && (
+          <div className="search-results-info">
+            {filteredNotes.length === 0 ? (
+              <p>No se encontraron notas para "<strong>{searchTerm}</strong>"</p>
             ) : (
-              <div className="empty-notes">
-                <FileText size={48} />
-                <p>No hay notas para este proyecto</p>
-                <button className="add-note-btn" onClick={openNewNoteModal}>
-                  <Plus size={16} />
-                  Crear primera nota
-                </button>
-              </div>
+              <p>Se encontraron {filteredNotes.length} nota(s) para "<strong>{searchTerm}</strong>"</p>
             )}
           </div>
         )}
+
+        <div className="notes-grid">
+          {filteredNotes.length > 0 ? (
+            filteredNotes.map((note) => (
+              <div
+                key={note.id}
+                className={`note-card ${selectedNote?.id === note.id ? "selected" : ""}`}
+                onClick={() => openEditNoteModal(note)}
+              >
+                <h3 className="note-title">{note.title}</h3>
+                <p className="note-description">
+                  {note.description || "Sin descripción"}
+                </p>
+                <div className="note-footer">
+                  <span className="note-author">
+                    <User size={12} />
+                    {note.author}
+                  </span>
+                  <span className="note-date">
+                    <Calendar size={12} />
+                    {note.date}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="empty-notes">
+              <FileText size={48} />
+              {searchTerm ? (
+                <>
+                  <p>No hay notas que coincidan con "<strong>{searchTerm}</strong>"</p>
+                  <button 
+                    className="add-note-btn" 
+                    onClick={() => setSearchTerm("")}
+                  >
+                    Limpiar búsqueda
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p>No hay notas para este proyecto</p>
+                  <button className="add-note-btn" onClick={openNewNoteModal} disabled={syncing}>
+                    <Plus size={16} />
+                    Crear primera nota
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {isModalOpen && (
           <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
@@ -320,8 +404,12 @@ export default function Notes() {
                   type="text"
                   placeholder="Título de la nota"
                   value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onChange={handleTitleChange}
+                  maxLength={MAX_TITLE_LENGTH}
                 />
+                <div className="character-counter">
+                  {editedTitle.length}/{MAX_TITLE_LENGTH}
+                </div>
               </div>
 
               <div className="modal-field">
@@ -338,15 +426,16 @@ export default function Notes() {
                 <button
                   className="save-btn"
                   onClick={editNote}
-                  disabled={!editedTitle.trim()}
+                  disabled={!editedTitle.trim() || syncing}
                 >
                   Guardar Nota
                 </button>
 
-                {selectedNote && selectedNote.status !== "closed" && (
+                {selectedNote && (
                   <button
                     className="delete-btn"
                     onClick={() => setShowDeleteConfirm(true)}
+                    disabled={syncing}
                   >
                     <Trash2 size={16} />
                     Archivar
@@ -356,6 +445,7 @@ export default function Notes() {
                 <button
                   className="cancel-btn"
                   onClick={() => setIsModalOpen(false)}
+                  disabled={syncing}
                 >
                   Cancelar
                 </button>
@@ -367,15 +457,16 @@ export default function Notes() {
                     <AlertCircle size={32} color="var(--color-error)" />
                     <p>¿Archivar esta nota?</p>
                     <p className="confirm-note">
-                      Las notas archivadas se pueden recuperar desde GitHub
+                      La nota se archivará y dejará de mostrarse
                     </p>
                     <div className="confirm-actions">
-                      <button className="confirm-delete" onClick={deleteNote}>
+                      <button className="confirm-delete" onClick={deleteNote} disabled={syncing}>
                         Archivar
                       </button>
                       <button
                         className="confirm-cancel"
                         onClick={() => setShowDeleteConfirm(false)}
+                        disabled={syncing}
                       >
                         Cancelar
                       </button>

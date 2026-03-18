@@ -64,6 +64,65 @@ class DesktopManager {
     return await this.electron.deleteFile(path);
   }
 
+  async deleteFolder(path: string): Promise<boolean> {
+    return await this.electron.deleteFolder(path);
+  }
+
+    async writeFile(filePath: string, content: string): Promise<boolean> {
+    try {
+      // Usamos writeTranslationFile que ya existe
+      const result = await this.electron.writeTranslationFile({ filePath, content });
+      return result.success;
+    } catch (error) {
+      console.error("Error escribiendo archivo:", error);
+      return false;
+    }
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    try {
+      const content = await this.electron.readFile(filePath);
+      return content;
+    } catch (error) {
+      console.error("Error leyendo archivo:", error);
+      return "";
+    }
+  }
+
+  async ensureDir(dirPath: string): Promise<boolean> {
+    try {
+      // Verificamos si existe, si no, creamos un archivo temporal
+      const exists = await this.fileExists(dirPath);
+      if (!exists) {
+        const keepFile = `${dirPath}/.keep`;
+        await this.writeFile(keepFile, "");
+        await this.deleteFile(keepFile);
+      }
+      return true;
+    } catch (error) {
+      console.error("Error asegurando directorio:", error);
+      return false;
+    }
+  }
+
+  async renameFile(oldPath: string, newName: string): Promise<boolean> {
+    try {
+      const content = await this.readFile(oldPath);
+      const folderPath = oldPath.substring(0, oldPath.lastIndexOf("/"));
+      const newPath = `${folderPath}/${newName}`;
+      const writeResult = await this.writeFile(newPath, content);
+      
+      if (writeResult) {
+        await this.deleteFile(oldPath);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error renombrando archivo:", error);
+      return false;
+    }
+  }
+
   async saveFile(
     file: File,
     destinationPath: string,
@@ -136,14 +195,6 @@ class DesktopManager {
   }
 
   // Utilitarios
-  async showMessage(
-    message: string,
-    title: string = "GitHub Desktop",
-    type: MessageData["type"] = "info",
-  ): Promise<void> {
-    await this.electron.showMessage({ type, title, message });
-  }
-
   async openInBrowser(url: string): Promise<void> {
     await this.electron.openExternal(url);
   }

@@ -14,6 +14,7 @@ import TranslationPreview from "./pages/TranslationPreview";
 import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
+import ContextsGlossaries from "./pages/ContextsGlossaries";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -46,8 +47,11 @@ function App() {
         <Route path="/notes" element={<Notes />} />
 
         {/* Ruta para Historial de Cambios */}
-        <Route path="/changes" element={<Changes />} />
+        <Route path="/changes" element={ < Changes /> } />
 
+        {/* Ruta para Contextos / Glosarios */}
+        <Route path="/contexts-glossaries" element={<ContextsGlossaries />} />
+      
         {/* Ruta para Perfil */}
         <Route path="/profile" element={<Profile />} />
       </Routes>

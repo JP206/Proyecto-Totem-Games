@@ -3,7 +3,6 @@
 .login-container {
   height: 100vh;
   width: 100vw;
-  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,6 +16,7 @@
   border-radius: 12px;
   border: 1px solid var(--color-neutral-medium);
   max-width: 500px;
+  width: 90%;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
@@ -27,15 +27,14 @@
 }
 
 .login-icon {
-  font-size: 48px;
-  margin-bottom: 15px;
   display: flex;
   justify-content: center;
   color: var(--color-white);
+  margin-bottom: 15px;
 }
 
 .login-title {
-  margin: 0 0 10px 0;
+  margin: 0 0 10px;
   color: var(--color-white);
   font-size: var(--text-2xl);
   font-weight: 600;
@@ -59,12 +58,12 @@
 .form-label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 600;
-  font-size: var(--text-sm);
   color: var(--color-neutral-lighter);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
-/* Token input */
+/* Input */
 .token-input {
   width: 100%;
   padding: 12px 15px;
@@ -73,15 +72,15 @@
   border-radius: 6px;
   color: var(--color-white);
   font-size: var(--text-sm);
-  box-sizing: border-box;
-  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-family: monospace;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
 
 .token-input:focus {
   outline: none;
   border-color: var(--color-secondary-cyan);
-  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  box-shadow: 0 0 0 3px rgba(90, 206, 229, 0.2);
 }
 
 .token-input:disabled {
@@ -89,23 +88,19 @@
   cursor: not-allowed;
 }
 
-.token-input::placeholder {
-  color: var(--color-neutral-medium);
-}
-
-/* Token link button */
+/* Token link */
 .token-link-btn {
   margin-top: 8px;
   padding: 8px 12px;
-  background-color: transparent;
+  background: transparent;
   border: 1px solid var(--color-neutral-medium);
   border-radius: 6px;
   color: var(--color-secondary-cyan);
   font-size: var(--text-xs);
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -119,18 +114,31 @@
   cursor: not-allowed;
 }
 
-/* Error message */
+/* Messages */
 .error-message {
-  background-color: rgba(248, 81, 73, 0.1);
-  border: 1px solid var(--color-error);
-  color: var(--color-error);
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 12px;
+  margin-bottom: 20px;
+  background-color: rgba(248, 81, 73, 0.1);
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 20px;
+  background-color: rgba(46, 164, 79, 0.1);
+  border: 1px solid var(--color-success);
+  border-radius: 6px;
+  color: var(--color-success);
+  font-size: var(--text-sm);
 }
 
 /* Submit button */
@@ -138,16 +146,16 @@
   width: 100%;
   padding: 14px;
   background-color: var(--color-success);
-  color: var(--color-white);
   border: none;
   border-radius: 6px;
+  color: var(--color-white);
   font-size: var(--text-base);
   font-weight: 600;
-  cursor: pointer;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  cursor: pointer;
   transition: background-color 0.2s;
 }
 
@@ -161,8 +169,9 @@
   cursor: not-allowed;
 }
 
-.submit-btn.loading {
-  background-color: var(--color-primary-main);
+.submit-btn.success {
+  background-color: var(--color-success);
+  cursor: default;
 }
 
 /* Spinner */
@@ -182,16 +191,15 @@
   background-color: var(--color-neutral-darker);
   border: 1px solid var(--color-secondary-cyan);
   border-radius: 6px;
-  font-size: var(--text-sm);
   color: var(--color-neutral-light);
+  font-size: var(--text-sm);
 }
 
 .instructions-title {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-weight: 600;
+  margin: 0 0 10px;
   color: var(--color-secondary-cyan);
   font-size: var(--text-sm);
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -199,7 +207,7 @@
 
 .instructions-list {
   padding-left: 20px;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .instructions-list li {
@@ -212,66 +220,34 @@
   margin-bottom: 0;
 }
 
-/* Code tags */
 .code-tag {
-  background-color: var(--color-neutral-darker);
+  display: inline-block;
   padding: 2px 6px;
-  border-radius: 4px;
-  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  font-size: var(--text-xs);
-  color: var(--color-white);
   margin: 0 4px;
+  background-color: var(--color-neutral-darker);
   border: 1px solid var(--color-neutral-medium);
+  border-radius: 4px;
+  color: var(--color-white);
+  font-family: monospace;
+  font-size: var(--text-xs);
 }
 
-/* Spin animation (define aquí si no está en Dashboard.css) */
+/* Animation */
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* Responsive design */
+/* Responsive */
 @media (max-width: 768px) {
-  .login-container {
-    padding: 20px;
-  }
-
-  .login-card {
-    padding: 30px 20px;
-  }
-
-  .login-title {
-    font-size: var(--text-xl);
-  }
+  .login-container { padding: 20px; }
+  .login-card { padding: 30px 20px; }
+  .login-title { font-size: var(--text-xl); }
 }
 
 @media (max-width: 480px) {
-  .login-card {
-    padding: 25px 15px;
-  }
-
-  .login-title {
-    font-size: var(--text-lg);
-  }
-
-  .login-icon {
-    font-size: 40px;
-  }
-
-  .submit-btn {
-    padding: 12px;
-    font-size: var(--text-sm);
-  }
-
-  .instructions-card {
-    padding: 15px;
-  }
-
-  .instructions-list {
-    padding-left: 16px;
-  }
+  .login-card { padding: 25px 15px; }
+  .login-title { font-size: var(--text-lg); }
+  .login-icon svg { width: 40px; height: 40px; }
+  .submit-btn { padding: 12px; font-size: var(--text-sm); }
+  .instructions-card { padding: 15px; }
 }
