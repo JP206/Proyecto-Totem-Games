@@ -86,7 +86,10 @@ describe("openaiProvider", () => {
         items: mockTranslationItems,
       });
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        results: [],
+        usage: undefined,
+      });
     });
 
     it("parses array content embedded in extra text", async () => {
@@ -113,7 +116,71 @@ describe("openaiProvider", () => {
         items: mockTranslationItems,
       });
 
-      expect(result).toEqual([{ id: "1", translatedText: "Hola" }]);
+      expect(result).toEqual({
+        results: [{ id: "1", translatedText: "Hola" }],
+        usage: undefined,
+      });
+    });
+
+    it("includes usage metrics when present in response", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...mockTranslationAPIResponse,
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 5,
+              total_tokens: 15,
+            },
+          }),
+      });
+
+      const result = await openaiProvider.translateBatch("fake-key", "gpt-4", {
+        contextSnippet: "",
+        glossarySnippet: "",
+        sourceLanguageName: "English",
+        targetLanguage: { code: "es", name: "Spanish" },
+        items: mockTranslationItems,
+      });
+
+      expect(result.usage).toEqual({
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+      });
+    });
+
+    it("coerces non-string translatedText to empty string", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify([
+                    { id: "1", translatedText: 123 },
+                    { id: "2" },
+                  ]),
+                },
+              },
+            ],
+          }),
+      });
+
+      const result = await openaiProvider.translateBatch("fake-key", "gpt-4", {
+        contextSnippet: "",
+        glossarySnippet: "",
+        sourceLanguageName: "English",
+        targetLanguage: { code: "es", name: "Spanish" },
+        items: mockTranslationItems,
+      });
+
+      expect(result.results).toEqual([
+        { id: "1", translatedText: "" },
+        { id: "2", translatedText: "" },
+      ]);
     });
   });
 
@@ -133,7 +200,10 @@ describe("openaiProvider", () => {
         },
       );
 
-      expect(result).toEqual(mockSpellCheckResponse);
+      expect(result).toEqual({
+        results: mockSpellCheckResponse,
+        usage: undefined,
+      });
       expect(mockFetch).toHaveBeenCalledWith(
         "https://api.openai.com/v1/chat/completions",
         expect.any(Object),
@@ -173,7 +243,40 @@ describe("openaiProvider", () => {
         },
       );
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        results: [],
+        usage: undefined,
+      });
+    });
+
+    it("includes usage metrics for spellcheck when present", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...mockSpellCheckAPIResponse,
+            usage: {
+              prompt_tokens: 7,
+              completion_tokens: 3,
+              total_tokens: 10,
+            },
+          }),
+      });
+
+      const result = await openaiProvider.spellCorrectBatch(
+        "fake-key",
+        "gpt-4",
+        {
+          languageName: "Español",
+          items: [{ id: "spell:1", key: "k1", sourceText: "Incorrect text" }],
+        },
+      );
+
+      expect(result.usage).toEqual({
+        inputTokens: 7,
+        outputTokens: 3,
+        totalTokens: 10,
+      });
     });
 
     it("supports empty items list", async () => {
@@ -191,7 +294,7 @@ describe("openaiProvider", () => {
         },
       );
 
-      expect(Array.isArray(result)).toBe(true);
+      expect(Array.isArray(result.results)).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });

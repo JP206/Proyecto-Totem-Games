@@ -549,6 +549,18 @@
   margin-top: 2px;
 }
 
+.landing-link-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 0 0 4px;
+  color: var(--color-secondary-cyan);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+}
+
 /* Panel derecho - Área de trabajo */
 .work-panel {
   flex: 1;

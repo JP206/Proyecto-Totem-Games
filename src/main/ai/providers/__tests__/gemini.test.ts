@@ -96,7 +96,10 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        results: [],
+        usage: undefined,
+      });
     });
 
     it("parses array content embedded in extra text", async () => {
@@ -130,7 +133,10 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toEqual([{ id: "1", translatedText: "Hola" }]);
+      expect(result).toEqual({
+        results: [{ id: "1", translatedText: "Hola" }],
+        usage: undefined,
+      });
     });
 
     it("handles promptFeedback blockReason", async () => {
@@ -161,7 +167,51 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toHaveLength(2);
+      expect(result.results).toHaveLength(2);
+      expect(result.usage).toBeUndefined();
+    });
+
+    it("includes usage metrics when usageMetadata is present", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify(mockTranslationResponse),
+                    },
+                  ],
+                },
+              },
+            ],
+            usageMetadata: {
+              promptTokenCount: 11,
+              candidatesTokenCount: 4,
+              totalTokenCount: 15,
+            },
+          }),
+      });
+
+      const result = await geminiProvider.translateBatch(
+        "fake-key",
+        "gemini-1.5",
+        {
+          contextSnippet: "",
+          glossarySnippet: "",
+          sourceLanguageName: "English",
+          targetLanguage: { code: "es", name: "Spanish" },
+          items: mockTranslationItems,
+        },
+      );
+
+      expect(result.usage).toEqual({
+        inputTokens: 11,
+        outputTokens: 4,
+        totalTokens: 15,
+      });
     });
   });
 
@@ -194,7 +244,10 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toEqual(mockSpellCheckResponse);
+      expect(result).toEqual({
+        results: mockSpellCheckResponse,
+        usage: undefined,
+      });
     });
 
     it("throws when response is not ok", async () => {
@@ -227,7 +280,10 @@ describe("geminiProvider", () => {
         },
       );
 
-      expect(result).toEqual([]);
+      expect(result).toEqual({
+        results: [],
+        usage: undefined,
+      });
     });
   });
 });

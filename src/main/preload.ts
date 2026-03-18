@@ -45,6 +45,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   deleteConfig: (key: string) => ipcRenderer.invoke("delete-config", key),
 
+  getPersonalAIConfig: () => ipcRenderer.invoke("ai-get-personal-config"),
+
+  savePersonalAIConfig: (
+    provider: "openai" | "gemini",
+    apiKey: string | null,
+    preferredModelId: string | null,
+  ) =>
+    ipcRenderer.invoke("ai-save-personal-config", {
+      provider,
+      apiKey,
+      preferredModelId,
+    }),
+
   // 4. UTILITARIOS
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 

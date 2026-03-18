@@ -29,7 +29,12 @@ const Landing: React.FC = () => {
     pendingFile: null as { file: File; extension: string } | null,
     translating: false, progressPercent: 0, providerMode: "openai" as "openai" | "gemini" | "both",
     spellCheck: false, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash",
-    spellCheckBeforeTranslate: false, tokensToday: 0
+    spellCheckBeforeTranslate: false, tokensToday: 0,
+    usePersonalOpenAI: false, usePersonalGemini: false,
+    personalOpenaiModel: "", personalGeminiModel: "",
+    hasPersonalOpenAI: false, hasPersonalGemini: false,
+    openaiModels: [] as string[], geminiModels: [] as string[],
+    showProviderConfig: false
   });
 
   const [errorModal, setErrorModal] = useState({ show: false, message: "", filename: "" });
@@ -62,11 +67,30 @@ const Landing: React.FC = () => {
       }
 
       setState(prev => ({ ...prev, repoPath: project.repoPath, repoName: project.repoName }));
-      const basePath = project.repoPath.substring(0, project.repoPath.lastIndexOf("/"));
+      const lastSep = Math.max(project.repoPath.lastIndexOf("/"), project.repoPath.lastIndexOf("\\"));
+      const basePath = lastSep >= 0 ? project.repoPath.substring(0, lastSep) : project.repoPath;
       const generalPath = await ensureGeneralRepo(basePath);
       
       setState(prev => ({ ...prev, generalRepoPath: generalPath }));
       await loadProjectStructure(project.repoPath, project.repoName, generalPath);
+
+      try {
+        const aiConfig = await window.electronAPI.getPersonalAIConfig();
+        setState(prev => ({
+          ...prev,
+          ...(aiConfig?.openai ? {
+            hasPersonalOpenAI: aiConfig.openai.hasKey,
+            openaiModels: aiConfig.openai.models?.map((m: any) => m.id) || [],
+            ...(aiConfig.openai.defaultModel ? { personalOpenaiModel: aiConfig.openai.defaultModel } : {}),
+          } : {}),
+          ...(aiConfig?.gemini ? {
+            hasPersonalGemini: aiConfig.gemini.hasKey,
+            geminiModels: aiConfig.gemini.models?.map((m: any) => m.id) || [],
+            ...(aiConfig.gemini.defaultModel ? { personalGeminiModel: aiConfig.gemini.defaultModel } : {}),
+          } : {}),
+        }));
+      } catch {
+      }
     } catch (error: any) {
       setTimeout(() => navigate("/dashboard"), 2000);
     } finally {
@@ -397,6 +421,14 @@ const Landing: React.FC = () => {
       console.warn("Por favor selecciona al menos un idioma destino");
       return;
     }
+    if (state.usePersonalOpenAI && !state.hasPersonalOpenAI) {
+      alert("Configuración requerida: No hay una API key personal configurada para OpenAI. Configurala en tu perfil.");
+      return;
+    }
+    if (state.usePersonalGemini && !state.hasPersonalGemini) {
+      alert("Configuración requerida: No hay una API key personal configurada para Gemini. Configurala en tu perfil.");
+      return;
+    }
 
     setState(prev => ({ ...prev, translating: true, progressPercent: 0 }));
     
@@ -407,7 +439,15 @@ const Landing: React.FC = () => {
         targetLanguages: state.targetLanguages.map(l => ({ code: l.code, name: l.name })),
         contexts: state.contextFiles.filter(c => c.selected).map(c => c.path),
         glossaries: state.glossaryFiles.filter(g => g.selected).map(g => g.path),
-        providerOptions: { mode: state.providerMode, openaiModel: state.openaiModel, geminiModel: state.geminiModel },
+        providerOptions: {
+          mode: state.providerMode,
+          openaiModel: state.openaiModel,
+          geminiModel: state.geminiModel,
+          usePersonalOpenAI: state.usePersonalOpenAI,
+          usePersonalGemini: state.usePersonalGemini,
+          personalOpenAIModel: state.personalOpenaiModel || undefined,
+          personalGeminiModel: state.personalGeminiModel || undefined,
+        },
       };
 
       const spellCheckActive = state.spellCheck || state.spellCheckBeforeTranslate;
@@ -621,6 +661,61 @@ const Landing: React.FC = () => {
             <FileList title="CONTEXTOS" icon={BookOpen} files={state.contextFiles} show={state.showContexts} setShow={(v: boolean) => setState(prev => ({ ...prev, showContexts: v }))} type="contextFiles" />
             <FileList title="GLOSARIOS" icon={FileText} files={state.glossaryFiles} show={state.showGlossaries} setShow={(v: boolean) => setState(prev => ({ ...prev, showGlossaries: v }))} type="glossaryFiles" />
             <LanguageSelector selectedLanguages={state.targetLanguages} onToggleLanguage={toggleLanguage} onToggleRegion={toggleRegion} />
+            <div className="config-section">
+              <div className="section-header" onClick={() => setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig }))}>
+                <h3>Proveedor de IA <span className="section-count">OpenAI / Gemini</span></h3>
+                <div className="section-actions">
+                  <button className="dropdown-toggle" onClick={(e) => { e.stopPropagation(); setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig })); }} title={state.showProviderConfig ? "Ocultar configuración" : "Mostrar configuración"}>
+                    <ChevronDown size={16} className={state.showProviderConfig ? "open" : ""} />
+                  </button>
+                </div>
+              </div>
+              {state.showProviderConfig && (
+                <div className="dropdown-content">
+                  <div className="spellcheck-option">
+                    <small className="spellcheck-note">Por defecto se usa la API key compartida de la aplicación. Activá estas opciones solo si querés usar tus propias keys personales.</small>
+                  </div>
+                  <div className="spellcheck-option">
+                    <label className="spellcheck-label">
+                      <input type="checkbox" checked={state.usePersonalOpenAI} onChange={(e) => setState(prev => ({ ...prev, usePersonalOpenAI: e.target.checked }))} disabled={!state.hasPersonalOpenAI} />
+                      <span>Usar API key personal de OpenAI</span>
+                    </label>
+                    {!state.hasPersonalOpenAI && <small className="spellcheck-note">No hay una key personal de OpenAI configurada.</small>}
+                    {state.hasPersonalOpenAI && (
+                      <div className="profile-model-section">
+                        <label className="profile-input-label">Modelo personal de OpenAI</label>
+                        <select className="profile-select" value={state.personalOpenaiModel} onChange={(e) => setState(prev => ({ ...prev, personalOpenaiModel: e.target.value }))}>
+                          <option value="">Usar modelo configurado en el perfil</option>
+                          {state.openaiModels.map((id) => <option key={id} value={id}>{id}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="spellcheck-option" style={{ marginTop: 8 }}>
+                    <label className="spellcheck-label">
+                      <input type="checkbox" checked={state.usePersonalGemini} onChange={(e) => setState(prev => ({ ...prev, usePersonalGemini: e.target.checked }))} disabled={!state.hasPersonalGemini} />
+                      <span>Usar API key personal de Gemini</span>
+                    </label>
+                    {!state.hasPersonalGemini && <small className="spellcheck-note">No hay una key personal de Gemini configurada.</small>}
+                    {state.hasPersonalGemini && (
+                      <div className="profile-model-section">
+                        <label className="profile-input-label">Modelo personal de Gemini</label>
+                        <select className="profile-select" value={state.personalGeminiModel} onChange={(e) => setState(prev => ({ ...prev, personalGeminiModel: e.target.value }))}>
+                          <option value="">Usar modelo configurado en el perfil</option>
+                          {state.geminiModels.map((id) => <option key={id} value={id}>{id}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="info-note" style={{ marginTop: 12 }}>
+                    <AlertCircle size={16} />
+                    <span>¿Querés usar tu propia API key? Configurala en tu perfil o{" "}
+                      <button type="button" className="landing-link-button" onClick={() => navigate("/profile", { state: { from: "/landing" } })}>clickeando aquí</button>.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="info-note"><AlertCircle size={16} /><span>Archivos con <Globe size={12} /> son globales. Los archivos se usarán en el orden de prioridad indicado</span></div>
           </div>
           <div className="work-panel">

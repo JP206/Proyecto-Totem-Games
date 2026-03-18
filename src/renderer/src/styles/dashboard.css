@@ -393,7 +393,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   color: white;
   font-size: var(--text-xs);
 }
-.btn-logout {
+.profile-popup-actions {
+  border-top: 1px solid var(--color-neutral-medium);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-popup-logout {
   width: 100%;
   padding: 12px;
   background: var(--color-error);
@@ -409,6 +417,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   cursor: pointer;
   transition: background 0.2s;
 }
+.profile-popup-logout.profile-popup-secondary {
+  background: var(--color-neutral-medium);
+}
+.profile-popup-logout.profile-popup-secondary:hover {
+  background: var(--color-neutral-light);
+}
+.profile-popup-logout:hover { background: #dc2626; }
+.btn-logout { width: 100%; padding: 12px; background: var(--color-error); border: none; border-radius: 8px; color: white; font-size: var(--text-sm); font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: background 0.2s; }
 .btn-logout:hover { background: #dc2626; }
 
 /* Modal Eliminar */

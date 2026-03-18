@@ -15,6 +15,7 @@ import Issues from "./pages/Issues";
 import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
 import ContextsGlossaries from "./pages/ContextsGlossaries";
+import Profile from "./pages/Profile";
 
 function App() {
   useEffect(() => {
@@ -50,6 +51,9 @@ function App() {
 
         {/* Ruta para Contextos / Glosarios */}
         <Route path="/contexts-glossaries" element={<ContextsGlossaries />} />
+      
+        {/* Ruta para Perfil */}
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   );

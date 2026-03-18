@@ -97,7 +97,8 @@ const ContextsGlossaries: React.FC = () => {
       }
 
       setCurrentProject(project);
-      const basePath = project.repoPath.substring(0, project.repoPath.lastIndexOf("/"));
+      const lastSep = Math.max(project.repoPath.lastIndexOf("/"), project.repoPath.lastIndexOf("\\"));
+      const basePath = lastSep >= 0 ? project.repoPath.substring(0, lastSep) : project.repoPath;
       const generalPath = await ensureGeneralRepo(basePath);
       setGeneralRepoPath(generalPath);
 
@@ -124,6 +125,7 @@ const ContextsGlossaries: React.FC = () => {
           token,
         });
       } else {
+        console.log("ensureGeneralRepo generalPath:", generalPath);
         await desktop.gitCommand({ command: "git fetch origin", cwd: generalPath }).catch(() => {});
         await desktop.gitCommand({ command: "git reset --hard origin/main", cwd: generalPath }).catch(() => {});
       }

@@ -353,7 +353,10 @@ const Dashboard: React.FC = () => {
             <span className="profile-role"><Shield size={14} /> Desarrollador</span>
           </div>
         </div>
-        <button onClick={handleLogout} className="btn-logout"><LogOut size={16} /> Cerrar Sesión</button>
+        <div className="profile-popup-actions">
+          <button onClick={() => { setShowProfile(false); navigate("/profile", { state: { from: "/dashboard" } }); }} className="profile-popup-logout profile-popup-secondary">Ver perfil completo</button>
+          <button onClick={handleLogout} className="profile-popup-logout"><LogOut size={16} /> Cerrar Sesión</button>
+        </div>
       </Modal>
 
       <Modal show={showPullModal} onClose={() => setShowPullModal(false)} className="pull-modal">
