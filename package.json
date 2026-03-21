@@ -16,6 +16,7 @@
     "fix_probar": "cd src/renderer && npm run build && cd ../.. && npm start"
   },
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.22",
     "csv-parse": "^5.6.0",
     "csv-stringify": "^6.6.0",
     "dotenv": "^16.4.6",

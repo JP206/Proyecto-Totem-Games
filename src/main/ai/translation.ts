@@ -7,10 +7,11 @@ import type { WebContents } from "electron";
 import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
 import { detectDelimiter } from "./csvDelimiter";
+import { createTokenEstimator } from "./tokenEstimate";
 
 const TRANSLATION_PROGRESS_CHANNEL = "translation-progress";
 
-export type ProviderMode = "openai" | "gemini" | "both";
+export type ProviderMode = "openai" | "gemini";
 
 export interface TargetLanguage {
   code: string;
@@ -21,8 +22,6 @@ export interface ProviderOptions {
   mode: ProviderMode;
   openaiModel: string;
   geminiModel: string;
-  usePersonalOpenAI?: boolean;
-  usePersonalGemini?: boolean;
   personalOpenAIModel?: string;
   personalGeminiModel?: string;
 }
@@ -38,6 +37,9 @@ export interface TranslateFilePayload {
   providerOptions: ProviderOptions;
   maxRowsPerBatch?: number;
   maxContextChars?: number;
+  calculateConfidence?: boolean;
+  confidenceMode?: "standard" | "standard+embeddings";
+  confidenceEmbeddingModel?: string;
 }
 
 export type { TranslationResultItem } from "./providers";
@@ -45,6 +47,10 @@ export type { TranslationResultItem } from "./providers";
 export interface RowProviderTranslation {
   openaiText?: string;
   geminiText?: string;
+  providerText?: string;
+  roundTripText?: string;
+  textSimilarity?: number | null;
+  embeddingSimilarity?: number | null;
   mergedText: string;
   confidence: number | null;
 }
@@ -66,11 +72,12 @@ export interface TranslateFileResult {
     totalRows: number;
     translatedRows: number;
     tokensUsed?: number;
+    estimatedTokens?: number;
   };
 }
 
-function estimateTokensFromText(text: string): number {
-  return Math.ceil(text.length / 4);
+export interface TranslationCostEstimate {
+  estimatedTokens: number;
 }
 
 function normalizeForSimilarity(text: string): string[] {
@@ -96,6 +103,77 @@ function jaccardSimilarity(a: string, b: string): number {
   if (union === 0) return 0;
   return intersection / union;
 }
+
+function levenshteinDistance(a: string, b: string): number {
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function normalizedLevenshteinSimilarity(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1;
+  return 1 - levenshteinDistance(a, b) / maxLen;
+}
+
+function hybridSimilarity(a: string, b: string): number {
+  return (jaccardSimilarity(a, b) + normalizedLevenshteinSimilarity(a, b)) / 2;
+}
+
+function estimateTranslationBatchTotals(
+  batchItems: { key: string; sourceText: string }[],
+  contextSnippet: string,
+  glossarySnippet: string,
+  estimateTokens: (text: string) => number,
+): { inputTokens: number; outputTokens: number; totalTokens: number } {
+  const sourceTokens = batchItems.reduce(
+    (acc, item) => acc + estimateTokens(item.sourceText),
+    0,
+  );
+  const itemsMetadataTokens = estimateTokens(
+    JSON.stringify(batchItems.map((it) => ({ key: it.key, text: it.sourceText }))),
+  );
+  const contextTokens = estimateTokens(contextSnippet);
+  const glossaryTokens = estimateTokens(glossarySnippet);
+  const promptOverhead = 180;
+  const inputTokens =
+    sourceTokens + itemsMetadataTokens + contextTokens + glossaryTokens + promptOverhead;
+  const outputTokens = Math.max(Math.ceil(sourceTokens * 1.15), batchItems.length * 6);
+  return { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens };
+}
+
+/**
+ * Same prompt shell as forward but empty context/glossary; items carry merged target text (~longer than source).
+ * Derived from forward batch estimate with empty snippets, scaled for longer inputs + JSON back to source.
+ */
+function estimateBackTranslationBatchTotals(
+  batchItems: { key: string; sourceText: string }[],
+  estimateTokens: (text: string) => number,
+): { inputTokens: number; outputTokens: number; totalTokens: number } {
+  const base = estimateTranslationBatchTotals(batchItems, "", "", estimateTokens);
+  const inputTokens = Math.ceil(base.inputTokens * 1.18);
+  const outputTokens = Math.ceil(base.outputTokens * 1.08);
+  return { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens };
+}
+
+function resolveModelIdForEstimate(payload: TranslateFilePayload): string {
+  const o = payload.providerOptions;
+  if (o.mode === "openai") {
+    return o.personalOpenAIModel || o.openaiModel;
+  }
+  return o.personalGeminiModel || o.geminiModel;
+}
+
+let rollingEstimateCalibration = 0.72;
 
 function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
   if (!row || row.length === 0) return true;
@@ -133,6 +211,11 @@ async function readGlossaries(
   for (const glossaryPath of glossaryPaths) {
     if (result.length >= maxChars) break;
     try {
+      // Marker per file so selection changes the snippet even if entries are empty/truncated alike.
+      const fileHeader = `\n\n[Glosario: ${path.basename(glossaryPath)}]\n`;
+      if (result.length + fileHeader.length > maxChars) break;
+      result += fileHeader;
+
       const ext = path.extname(glossaryPath).toLowerCase();
       let entries: { term: string; translation: string }[] = [];
 
@@ -172,6 +255,9 @@ async function readGlossaries(
         }
         result += line;
       }
+      if (!entries.length && result.length + 40 <= maxChars) {
+        result += "[Sin entradas válidas en este archivo]\n";
+      }
     } catch {
       // ignorar errores individuales
     }
@@ -179,21 +265,72 @@ async function readGlossaries(
   return result.trim();
 }
 
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (!a.length || !b.length || a.length !== b.length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+async function getEmbeddingVector(
+  providerId: ProviderMode,
+  apiKey: string,
+  modelId: string,
+  text: string,
+): Promise<number[] | null> {
+  try {
+    if (providerId === "openai") {
+      const response = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model: modelId, input: text }),
+      });
+      if (!response.ok) return null;
+      const data: any = await response.json();
+      return Array.isArray(data?.data?.[0]?.embedding) ? data.data[0].embedding : null;
+    }
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        modelId,
+      )}:embedContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+        }),
+      },
+    );
+    if (!response.ok) return null;
+    const data: any = await response.json();
+    const values = data?.embedding?.values;
+    return Array.isArray(values) ? values : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Resolve which providers to run and their config (key + model) from payload. */
-function getProvidersToRun(
+function getProviderToRun(
   payload: TranslateFilePayload,
-): { id: string; apiKey: string; modelId: string }[] {
+): { id: ProviderMode; apiKey: string; modelId: string } {
   const {
     mode,
     openaiModel,
     geminiModel,
-    usePersonalOpenAI,
-    usePersonalGemini,
     personalOpenAIModel,
     personalGeminiModel,
   } = payload.providerOptions;
-
-  const list: { id: string; apiKey: string; modelId: string }[] = [];
 
   const personalConfig =
     (global as any).__aiPersonalConfig ??
@@ -201,52 +338,38 @@ function getProvidersToRun(
       ? (global as any).getAiPersonalConfig()
       : null);
 
-  const openaiEnvKey = process.env.OPENAI_API_KEY;
-  const geminiEnvKey = process.env.GEMINI_API_KEY;
-
-  if (mode === "openai" || mode === "both") {
-    let apiKey: string | undefined;
+  if (mode === "openai") {
     let modelId = openaiModel;
 
     const personal = personalConfig?.openai as
       | { apiKey?: string; defaultModel?: string | null }
       | undefined;
 
-    if (usePersonalOpenAI && personal?.apiKey) {
-      apiKey = personal.apiKey;
-      modelId =
-        personalOpenAIModel || personal.defaultModel || openaiModel;
-    } else if (openaiEnvKey) {
-      apiKey = openaiEnvKey;
+    if (personal?.apiKey) {
+      modelId = personalOpenAIModel || personal.defaultModel || openaiModel;
+      return { id: "openai", apiKey: personal.apiKey, modelId };
     }
-
-    if (apiKey) {
-      list.push({ id: "openai", apiKey, modelId });
-    }
+    throw new Error(
+      "No hay una API key personal disponible para OpenAI. Configurala en tu perfil.",
+    );
   }
 
-  if (mode === "gemini" || mode === "both") {
-    let apiKey: string | undefined;
+  if (mode === "gemini") {
     let modelId = geminiModel;
 
     const personal = personalConfig?.gemini as
       | { apiKey?: string; defaultModel?: string | null }
       | undefined;
 
-    if (usePersonalGemini && personal?.apiKey) {
-      apiKey = personal.apiKey;
-      modelId =
-        personalGeminiModel || personal.defaultModel || geminiModel;
-    } else if (geminiEnvKey) {
-      apiKey = geminiEnvKey;
+    if (personal?.apiKey) {
+      modelId = personalGeminiModel || personal.defaultModel || geminiModel;
+      return { id: "gemini", apiKey: personal.apiKey, modelId };
     }
-
-    if (apiKey) {
-      list.push({ id: "gemini", apiKey, modelId });
-    }
+    throw new Error(
+      "No hay una API key personal disponible para Gemini. Configurala en tu perfil.",
+    );
   }
-
-  return list;
+  throw new Error("Proveedor de IA inválido.");
 }
 
 export async function translateFileInMain(
@@ -327,20 +450,11 @@ export async function translateFileInMain(
   }
   rows[0] = header;
 
-  const providerMode = payload.providerOptions.mode;
-  const providersToRun = getProvidersToRun(payload);
-  if (!providersToRun.length) {
-    if (providerMode === "openai" || providerMode === "both") {
-      throw new Error(
-        "No hay una API key disponible para OpenAI. Configura OPENAI_API_KEY en el entorno o una key personal en tu perfil.",
-      );
-    }
-    if (providerMode === "gemini" || providerMode === "both") {
-      throw new Error(
-        "No hay una API key disponible para Gemini. Configura GEMINI_API_KEY en el entorno o una key personal en tu perfil.",
-      );
-    }
-  }
+  const selectedProvider = getProviderToRun(payload);
+  const estimateTokens = createTokenEstimator(
+    selectedProvider.id,
+    selectedProvider.modelId,
+  );
 
   // Build preview for all data rows so the UI can show translations (and provider/confidence) for every row.
   // Cap at 10_000 to avoid huge payloads; typical files are hundreds of rows.
@@ -365,6 +479,7 @@ export async function translateFileInMain(
 
   let translatedRowsCount = 0;
   let totalTokensUsed = 0;
+  let estimatedTokens = 0;
 
   type WorkItem = {
     rowIndex: number;
@@ -375,11 +490,13 @@ export async function translateFileInMain(
   const toBatchRequest = (
     batchItems: WorkItem[],
     targetLang: TargetLanguage,
+    phase: "forward" | "backTranslation" = "forward",
   ) => ({
     contextSnippet,
     glossarySnippet,
     sourceLanguageName,
     targetLanguage: targetLang,
+    phase,
     items: batchItems.map((it) => ({
       id: it.id,
       key: it.key,
@@ -398,7 +515,11 @@ export async function translateFileInMain(
       const existingTranslation = String(row[langColIndex] || "").trim();
       if (sourceText && !existingTranslation) count++;
     }
-    totalBatches += Math.ceil(count / maxRowsPerBatch) || 0;
+    const forwardBatches = Math.ceil(count / maxRowsPerBatch) || 0;
+    totalBatches += forwardBatches;
+    if (payload.calculateConfidence) {
+      totalBatches += forwardBatches;
+    }
   }
   let batchDone = 0;
 
@@ -443,79 +564,155 @@ export async function translateFileInMain(
         : 0;
       sendProgress(percent, `${lang.name}`);
 
-      const textsConcat = batchItems.map((it) => it.sourceText).join("\n");
-      const approxTokens =
-        estimateTokensFromText(textsConcat) +
-        estimateTokensFromText(contextSnippet) +
-        estimateTokensFromText(glossarySnippet);
-
-      if (approxTokens > 12000) {
+      const batchEstimate = estimateTranslationBatchTotals(
+        batchItems,
+        contextSnippet,
+        glossarySnippet,
+        estimateTokens,
+      );
+      if (batchEstimate.inputTokens > 12000) {
         // ya tenemos límites por caracteres, así que esto es solo una red
       }
 
-      const resultsByProvider: Record<string, TranslationResultItem[]> = {};
-      for (const { id, apiKey, modelId } of providersToRun) {
-        const provider = getProvider(id);
-        if (!provider) continue;
-        try {
-          console.log(
-            `[AI Translate] Provider ${id} batch lang=${lang.code} items=${batchItems.length}`,
+      const provider = getProvider(selectedProvider.id);
+      if (!provider) continue;
+      const response = await provider.translateBatch(
+        selectedProvider.apiKey,
+        selectedProvider.modelId,
+        toBatchRequest(batchItems, lang, "forward"),
+      );
+      const asAny: any = response as any;
+      const providerResults: TranslationResultItem[] = Array.isArray(asAny)
+        ? (asAny as TranslationResultItem[])
+        : asAny.results ?? [];
+      if (asAny.usage?.totalTokens) {
+        totalTokensUsed += asAny.usage.totalTokens;
+      }
+      const providerMap = new Map<string, string>();
+      for (const resultItem of providerResults) {
+        providerMap.set(resultItem.id, resultItem.translatedText);
+      }
+
+      estimatedTokens += batchEstimate.totalTokens;
+
+      const backMap = new Map<string, string>();
+      const confidenceMode = payload.confidenceMode ?? "standard";
+
+      if (payload.calculateConfidence) {
+        const backItems: { id: string; key: string; sourceText: string }[] = [];
+        const backEstimateItems: { key: string; sourceText: string }[] = [];
+        for (const item of batchItems) {
+          const merged = providerMap.get(item.id) || "";
+          if (!merged) continue;
+          backItems.push({
+            id: item.id,
+            key: item.key,
+            sourceText: merged,
+          });
+          backEstimateItems.push({ key: item.key, sourceText: item.sourceText });
+        }
+
+        if (backItems.length > 0) {
+          const backBatchEstimate = estimateBackTranslationBatchTotals(
+            backEstimateItems,
+            estimateTokens,
           );
-          const batchResult = await provider.translateBatch(
-            apiKey,
-            modelId,
-            toBatchRequest(batchItems, lang),
-          );
-          const asAny: any = batchResult as any;
-          const batchResultsArray: TranslationResultItem[] = Array.isArray(asAny)
-            ? (asAny as TranslationResultItem[])
-            : asAny.results ?? [];
-          resultsByProvider[id] = batchResultsArray;
-          if (asAny.usage?.totalTokens) {
-            totalTokensUsed += asAny.usage.totalTokens;
+          estimatedTokens += backBatchEstimate.totalTokens;
+
+          const runBackBatch = async (
+            items: { id: string; key: string; sourceText: string }[],
+          ) => {
+            return provider.translateBatch(selectedProvider.apiKey, selectedProvider.modelId, {
+              contextSnippet: "",
+              glossarySnippet: "",
+              sourceLanguageName: lang.name,
+              targetLanguage: { code: "src", name: sourceLanguageName },
+              phase: "backTranslation",
+              items,
+            });
+          };
+
+          let backResponse = await runBackBatch(backItems);
+          let asAnyBack: any = backResponse as any;
+          let backResults: TranslationResultItem[] = Array.isArray(asAnyBack)
+            ? (asAnyBack as TranslationResultItem[])
+            : asAnyBack.results ?? [];
+          for (const r of backResults) {
+            if (r.id && r.translatedText) backMap.set(r.id, r.translatedText);
           }
-          console.log(
-            `[AI Translate] Provider ${id} returned ${resultsByProvider[id].length} results`,
+
+          const missingAfterBatch = backItems.filter(
+            (it) => !backMap.get(it.id)?.trim(),
           );
-        } catch (err) {
-          console.error(`[AI Translate] Provider ${id} error:`, err);
-          throw err;
+          for (const it of missingAfterBatch) {
+            const singleRes = await runBackBatch([it]);
+            const s: any = singleRes as any;
+            const singleList: TranslationResultItem[] = Array.isArray(s)
+              ? (s as TranslationResultItem[])
+              : s.results ?? [];
+            const bt = singleList[0]?.translatedText || "";
+            if (bt) backMap.set(it.id, bt);
+            if (s.usage?.totalTokens) {
+              totalTokensUsed += s.usage.totalTokens;
+            }
+          }
+
+          if (asAnyBack.usage?.totalTokens) {
+            totalTokensUsed += asAnyBack.usage.totalTokens;
+          }
+
+          batchDone++;
+          const pctBack = totalBatches
+            ? Math.round((batchDone / totalBatches) * 100)
+            : 0;
+          sendProgress(pctBack, `${lang.name} (round-trip)`);
         }
       }
 
-      const openaiResults: TranslationResultItem[] =
-        resultsByProvider["openai"] ?? [];
-      const geminiResults: TranslationResultItem[] =
-        resultsByProvider["gemini"] ?? [];
-
-      const openaiMap = new Map<string, string>();
-      for (const item of openaiResults) {
-        openaiMap.set(item.id, item.translatedText);
-      }
-
-      const geminiMap = new Map<string, string>();
-      for (const item of geminiResults) {
-        geminiMap.set(item.id, item.translatedText);
-      }
-
       for (const item of batchItems) {
-        const openaiText = openaiMap.get(item.id);
-        const geminiText = geminiMap.get(item.id);
-
-        let mergedText = openaiText || geminiText || "";
+        const providerText = providerMap.get(item.id);
+        let mergedText = providerText || "";
         let confidence: number | null = null;
+        let roundTripText: string | undefined;
+        let textSimilarity: number | null = null;
+        let embeddingSimilarity: number | null = null;
 
-        if (openaiText && geminiText) {
-          const sim = jaccardSimilarity(openaiText, geminiText);
-          confidence = sim;
-
-          const sourceLen = item.sourceText.length || 1;
-          const diffOpenai = Math.abs((openaiText.length || 0) - sourceLen);
-          const diffGemini = Math.abs((geminiText.length || 0) - sourceLen);
-          mergedText = diffOpenai <= diffGemini ? openaiText : geminiText;
-        } else if (openaiText || geminiText) {
-          mergedText = openaiText || geminiText || "";
-          confidence = null; // single provider: no comparison
+        if (payload.calculateConfidence && mergedText) {
+          const backText = backMap.get(item.id) || "";
+          roundTripText = backText || undefined;
+          textSimilarity = hybridSimilarity(item.sourceText, backText);
+          confidence = textSimilarity;
+          if (
+            confidenceMode === "standard+embeddings" &&
+            payload.confidenceEmbeddingModel &&
+            backText
+          ) {
+            const [originalEmbedding, backEmbedding] = await Promise.all([
+              getEmbeddingVector(
+                selectedProvider.id,
+                selectedProvider.apiKey,
+                payload.confidenceEmbeddingModel,
+                item.sourceText,
+              ),
+              getEmbeddingVector(
+                selectedProvider.id,
+                selectedProvider.apiKey,
+                payload.confidenceEmbeddingModel,
+                backText,
+              ),
+            ]);
+            if (originalEmbedding && backEmbedding) {
+              embeddingSimilarity = cosineSimilarity(originalEmbedding, backEmbedding);
+              confidence = (confidence + embeddingSimilarity) / 2;
+            }
+          }
+          if (
+            confidenceMode === "standard+embeddings" &&
+            payload.confidenceEmbeddingModel
+          ) {
+            estimatedTokens +=
+              estimateTokens(item.sourceText) + estimateTokens(backText);
+          }
         }
 
         if (mergedText) {
@@ -530,8 +727,12 @@ export async function translateFileInMain(
         );
         if (previewRow) {
           previewRow.perLanguage[lang.code] = {
-            openaiText,
-            geminiText,
+            openaiText: selectedProvider.id === "openai" ? providerText : undefined,
+            geminiText: selectedProvider.id === "gemini" ? providerText : undefined,
+            providerText,
+            roundTripText,
+            textSimilarity,
+            embeddingSimilarity,
             mergedText,
             confidence,
           };
@@ -539,6 +740,14 @@ export async function translateFileInMain(
       }
     }
   }
+
+  if (totalTokensUsed > 0 && estimatedTokens > 0) {
+    const ratio = Math.min(1.2, Math.max(0.4, totalTokensUsed / estimatedTokens));
+    rollingEstimateCalibration = rollingEstimateCalibration * 0.8 + ratio * 0.2;
+  }
+  const calibratedEstimatedTokens = Math.round(
+    estimatedTokens * rollingEstimateCalibration,
+  );
 
   sendProgress(100, "done");
 
@@ -573,6 +782,111 @@ export async function translateFileInMain(
       })(),
       translatedRows: translatedRowsCount,
       tokensUsed: totalTokensUsed || undefined,
+      estimatedTokens: calibratedEstimatedTokens || undefined,
     },
   };
+}
+
+export async function estimateTranslationCostInMain(
+  payload: TranslateFilePayload,
+): Promise<TranslationCostEstimate> {
+  const fileExt = path.extname(payload.filePath).toLowerCase();
+  let rows: any[][] = [];
+  if (fileExt === ".csv") {
+    const raw = await fs.readFile(payload.filePath, "utf8");
+    const delimiter = detectDelimiter(raw);
+    rows = csvParse(raw, { delimiter, skip_empty_lines: true });
+  } else if (fileExt === ".xlsx") {
+    const buf = await fs.readFile(payload.filePath);
+    const workbook = XLSX.read(buf, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false }) as any[][];
+  }
+  if (!rows.length) return { estimatedTokens: 0 };
+  const header = rows[0] || [];
+  const sourceColIndex = 1;
+  const maxContextChars = payload.maxContextChars ?? 8000;
+  const [contextSnippet, glossarySnippet] = await Promise.all([
+    readContexts(payload.contexts, maxContextChars),
+    readGlossaries(payload.glossaries, maxContextChars),
+  ]);
+
+  const estimateTokens = createTokenEstimator(
+    payload.providerOptions.mode,
+    resolveModelIdForEstimate(payload),
+  );
+
+  const maxRowsPerBatch = payload.maxRowsPerBatch ?? 40;
+  let estimatedInputTokens = 0;
+  let estimatedOutputTokens = 0;
+  for (const lang of payload.targetLanguages) {
+    let langColIndex = -1;
+    for (let col = 2; col < header.length; col++) {
+      if (String(header[col] || "").trim().toLowerCase() === lang.name.toLowerCase()) {
+        langColIndex = col;
+        break;
+      }
+    }
+    const pendingItems: { key: string; sourceText: string }[] = [];
+    for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex] || [];
+      const key = String(row[0] || "").trim();
+      const sourceText = String(row[sourceColIndex] || "").trim();
+      const existing = langColIndex >= 0 ? String(row[langColIndex] || "").trim() : "";
+      if (!sourceText || existing) continue;
+      pendingItems.push({ key, sourceText });
+    }
+    for (let i = 0; i < pendingItems.length; i += maxRowsPerBatch) {
+      const batchItems = pendingItems.slice(i, i + maxRowsPerBatch);
+      const batchTotals = estimateTranslationBatchTotals(
+        batchItems,
+        contextSnippet,
+        glossarySnippet,
+        estimateTokens,
+      );
+      estimatedInputTokens += batchTotals.inputTokens;
+      estimatedOutputTokens += batchTotals.outputTokens;
+      if (payload.calculateConfidence) {
+        const backTotals = estimateBackTranslationBatchTotals(batchItems, estimateTokens);
+        estimatedInputTokens += backTotals.inputTokens;
+        estimatedOutputTokens += backTotals.outputTokens;
+      }
+    }
+  }
+  let estimatedTokens = estimatedInputTokens + estimatedOutputTokens;
+  // No pending cells to translate → batch math stays 0, but context/glossary still ship on a run.
+  // Include them so toggling glossaries/contexts changes the preview.
+  if (estimatedInputTokens === 0 && estimatedOutputTokens === 0) {
+    estimatedTokens =
+      estimateTokens(contextSnippet) +
+      estimateTokens(glossarySnippet) +
+      200;
+  }
+  if (
+    payload.calculateConfidence &&
+    payload.confidenceMode === "standard+embeddings" &&
+    payload.confidenceEmbeddingModel
+  ) {
+    let embeddingTokenExtra = 0;
+    for (const lang of payload.targetLanguages) {
+      let langColIndex = -1;
+      for (let col = 2; col < header.length; col++) {
+        if (String(header[col] || "").trim().toLowerCase() === lang.name.toLowerCase()) {
+          langColIndex = col;
+          break;
+        }
+      }
+      for (let rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex] || [];
+        const sourceText = String(row[sourceColIndex] || "").trim();
+        const existing = langColIndex >= 0 ? String(row[langColIndex] || "").trim() : "";
+        if (sourceText && !existing) {
+          embeddingTokenExtra +=
+            estimateTokens(sourceText) + estimateTokens(sourceText);
+        }
+      }
+    }
+    estimatedTokens += embeddingTokenExtra;
+  }
+  return { estimatedTokens: Math.round(estimatedTokens) };
 }

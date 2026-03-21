@@ -1,5 +1,6 @@
 // src/renderer/src/pages/Landing.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
@@ -8,7 +9,7 @@ import UploadPopup from "../components/UploadPopup";
 import {
   FileText, BookOpen, Layers, AlertCircle, Download,
   FileSpreadsheet, X, CheckSquare, Square, ChevronDown,
-  CheckCircle, Globe, Trash2, Sparkles, Coins
+  CheckCircle, Globe, Trash2, Sparkles, Coins, CircleHelp, Binary
 } from "lucide-react";
 import { getTokensToday, addTokensToday } from "../utils/tokenUsage";
 import "../styles/landing.css";
@@ -16,6 +17,78 @@ import "../styles/landing.css";
 interface FileItem { name: string; path: string; isDirectory: boolean; isFile: boolean; }
 interface ContextFile { name: string; path: string; priority: number; selected: boolean; isGlobal?: boolean; isNew?: boolean; }
 interface Language { id: string; name: string; code: string; region?: string; country?: string; }
+
+/** Portal + fixed position so help is not clipped by the config panel (overflow). */
+function LandingFloatingHelp({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, placement: "above" as "above" | "below" });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const updatePos = useCallback(() => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const w = Math.min(300, window.innerWidth - 16);
+    let left = r.left + r.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    const spaceAbove = r.top;
+    const spaceBelow = window.innerHeight - r.bottom;
+    if (spaceAbove > 96 || spaceAbove >= spaceBelow) {
+      setPos({ top: r.top - 8, left, placement: "above" });
+    } else {
+      setPos({ top: r.bottom + 8, left, placement: "below" });
+    }
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    updatePos();
+    const onScroll = () => updatePos();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open, updatePos]);
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className="landing-help-trigger"
+        aria-label="Ayuda"
+        onMouseEnter={() => {
+          updatePos();
+          setOpen(true);
+        }}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => {
+          updatePos();
+          setOpen(true);
+        }}
+        onBlur={() => setOpen(false)}
+      >
+        <CircleHelp size={14} />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            className="landing-help-floating"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: Math.min(300, window.innerWidth - 16),
+              zIndex: 10050,
+              transform: pos.placement === "above" ? "translateY(-100%)" : "none",
+            }}
+          >
+            {text}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 const GENERAL_REPO = { name: "repo-general-totem-games", owner: "biancaluzz" };
 
@@ -27,14 +100,18 @@ const Landing: React.FC = () => {
     contextFiles: [] as ContextFile[], glossaryFiles: [] as ContextFile[],
     showContexts: false, showGlossaries: false, showUploadPopup: false,
     pendingFile: null as { file: File; extension: string } | null,
-    translating: false, progressPercent: 0, providerMode: "openai" as "openai" | "gemini" | "both",
+    translating: false, progressPercent: 0, providerMode: null as "openai" | "gemini" | null,
     spellCheck: false, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash",
     spellCheckBeforeTranslate: false, tokensToday: 0,
-    usePersonalOpenAI: false, usePersonalGemini: false,
     personalOpenaiModel: "", personalGeminiModel: "",
     hasPersonalOpenAI: false, hasPersonalGemini: false,
     openaiModels: [] as string[], geminiModels: [] as string[],
-    showProviderConfig: false
+    openaiEmbeddingModels: [] as string[], geminiEmbeddingModels: [] as string[],
+    showProviderConfig: false, calculateConfidence: false,
+    confidenceMode: "standard" as "standard" | "standard+embeddings",
+    confidenceEmbeddingModel: "",
+    estimatingCost: false,
+    estimatedTokens: 0
   });
 
   const [errorModal, setErrorModal] = useState({ show: false, message: "", filename: "" });
@@ -45,6 +122,125 @@ const Landing: React.FC = () => {
     if (!state.repoPath) return;
     setState(prev => ({ ...prev, tokensToday: getTokensToday(state.repoPath) }));
   }, [state.repoPath]);
+
+  // Preserve list order (priority), same as payload sent to estimation — not sorted paths.
+  const estimateSelectionKey = useMemo(() => {
+    const ctx = state.contextFiles
+      .filter((c) => c.selected)
+      .map((c) => c.path)
+      .join("\0");
+    const glo = state.glossaryFiles
+      .filter((g) => g.selected)
+      .map((g) => g.path)
+      .join("\0");
+    return `${ctx}|||${glo}`;
+  }, [state.contextFiles, state.glossaryFiles]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const desktop = DesktopManager.getInstance();
+    const selectedProviderMode =
+      state.providerMode === "openai" || state.providerMode === "gemini"
+        ? state.providerMode
+        : null;
+    const hasSelectedProvider = selectedProviderMode !== null;
+    const hasSelectedProviderKey =
+      (state.providerMode === "openai" && state.hasPersonalOpenAI) ||
+      (state.providerMode === "gemini" && state.hasPersonalGemini);
+    const shouldEstimate =
+      !!state.selectedFile &&
+      state.targetLanguages.length > 0 &&
+      hasSelectedProvider &&
+      hasSelectedProviderKey &&
+      !state.translating;
+
+    if (!shouldEstimate) {
+      setState(prev => ({
+        ...prev,
+        estimatingCost: false,
+        estimatedTokens: 0,
+      }));
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        if (cancelled) return;
+        setState(prev => ({ ...prev, estimatingCost: true }));
+        const payload = {
+          repoPath: state.repoPath,
+          projectName: state.repoName,
+          filePath: state.selectedFile!.path,
+          sourceLanguageName: undefined as string | undefined,
+          targetLanguages: state.targetLanguages.map(l => ({ code: l.code, name: l.name })),
+          contexts: state.contextFiles.filter(c => c.selected).map(c => c.path),
+          glossaries: state.glossaryFiles.filter(g => g.selected).map(g => g.path),
+          providerOptions: {
+            mode: selectedProviderMode as "openai" | "gemini",
+            openaiModel: state.openaiModel,
+            geminiModel: state.geminiModel,
+            personalOpenAIModel: state.personalOpenaiModel || undefined,
+            personalGeminiModel: state.personalGeminiModel || undefined,
+          },
+          calculateConfidence: state.calculateConfidence,
+          confidenceMode: state.confidenceMode,
+          confidenceEmbeddingModel:
+            state.confidenceMode === "standard+embeddings"
+              ? state.confidenceEmbeddingModel || undefined
+              : undefined,
+        };
+        if (cancelled) return;
+        const estimate = await desktop.estimateRunCost({
+          translationPayload: payload,
+          includeSpellcheck: state.spellCheck || state.spellCheckBeforeTranslate,
+          spellcheckPayload: {
+            filePath: state.selectedFile!.path,
+            language: "Español",
+            applyToFile: false,
+            providerOptions: payload.providerOptions,
+          },
+        });
+        if (cancelled) return;
+        setState(prev => ({
+          ...prev,
+          estimatingCost: false,
+          estimatedTokens: estimate.total.estimatedTokens,
+        }));
+      } catch {
+        if (cancelled) return;
+        // Missing/renamed file or transient estimate failures should not block UX.
+        setState(prev => ({
+          ...prev,
+          estimatingCost: false,
+          estimatedTokens: 0,
+        }));
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    state.selectedFile,
+    state.targetLanguages,
+    estimateSelectionKey,
+    state.spellCheck,
+    state.spellCheckBeforeTranslate,
+    state.providerMode,
+    state.openaiModel,
+    state.geminiModel,
+    state.personalOpenaiModel,
+    state.personalGeminiModel,
+    state.calculateConfidence,
+    state.confidenceMode,
+    state.confidenceEmbeddingModel,
+    state.hasPersonalOpenAI,
+    state.hasPersonalGemini,
+    state.repoPath,
+    state.repoName,
+    state.translating,
+  ]);
 
   useEffect(() => {
     const onFocus = () => {
@@ -81,11 +277,13 @@ const Landing: React.FC = () => {
           ...(aiConfig?.openai ? {
             hasPersonalOpenAI: aiConfig.openai.hasKey,
             openaiModels: aiConfig.openai.models?.map((m: any) => m.id) || [],
+            openaiEmbeddingModels: aiConfig.openai.embeddingModels?.map((m: any) => m.id) || [],
             ...(aiConfig.openai.defaultModel ? { personalOpenaiModel: aiConfig.openai.defaultModel } : {}),
           } : {}),
           ...(aiConfig?.gemini ? {
             hasPersonalGemini: aiConfig.gemini.hasKey,
             geminiModels: aiConfig.gemini.models?.map((m: any) => m.id) || [],
+            geminiEmbeddingModels: aiConfig.gemini.embeddingModels?.map((m: any) => m.id) || [],
             ...(aiConfig.gemini.defaultModel ? { personalGeminiModel: aiConfig.gemini.defaultModel } : {}),
           } : {}),
         }));
@@ -261,8 +459,9 @@ const Landing: React.FC = () => {
 
   // Manejadores de listas
   const toggleSelection = (files: ContextFile[], setFiles: Function, index: number) => {
-    const newFiles = [...files];
-    newFiles[index].selected = !newFiles[index].selected;
+    const newFiles = files.map((f, i) =>
+      i === index ? { ...f, selected: !f.selected } : f,
+    );
     setFiles(newFiles);
   };
 
@@ -421,12 +620,28 @@ const Landing: React.FC = () => {
       console.warn("Por favor selecciona al menos un idioma destino");
       return;
     }
-    if (state.usePersonalOpenAI && !state.hasPersonalOpenAI) {
-      alert("Configuración requerida: No hay una API key personal configurada para OpenAI. Configurala en tu perfil.");
+    const selectedProviderMode =
+      state.providerMode === "openai" || state.providerMode === "gemini"
+        ? state.providerMode
+        : null;
+    const missingSelectedProvider = selectedProviderMode === null;
+    if (missingSelectedProvider) {
+      alert("Selecciona un proveedor (OpenAI o Gemini) para continuar.");
       return;
     }
-    if (state.usePersonalGemini && !state.hasPersonalGemini) {
-      alert("Configuración requerida: No hay una API key personal configurada para Gemini. Configurala en tu perfil.");
+    const missingSelectedPersonalKey =
+      (state.providerMode === "openai" && !state.hasPersonalOpenAI) ||
+      (state.providerMode === "gemini" && !state.hasPersonalGemini);
+    if (missingSelectedPersonalKey) {
+      alert("Configuración requerida: Debes configurar tu API key personal del proveedor seleccionado en tu perfil.");
+      return;
+    }
+    if (
+      state.calculateConfidence &&
+      state.confidenceMode === "standard+embeddings" &&
+      !state.confidenceEmbeddingModel
+    ) {
+      alert("Selecciona un modelo de embeddings para usar confianza con embeddings.");
       return;
     }
 
@@ -440,14 +655,18 @@ const Landing: React.FC = () => {
         contexts: state.contextFiles.filter(c => c.selected).map(c => c.path),
         glossaries: state.glossaryFiles.filter(g => g.selected).map(g => g.path),
         providerOptions: {
-          mode: state.providerMode,
+          mode: selectedProviderMode as "openai" | "gemini",
           openaiModel: state.openaiModel,
           geminiModel: state.geminiModel,
-          usePersonalOpenAI: state.usePersonalOpenAI,
-          usePersonalGemini: state.usePersonalGemini,
           personalOpenAIModel: state.personalOpenaiModel || undefined,
           personalGeminiModel: state.personalGeminiModel || undefined,
         },
+        calculateConfidence: state.calculateConfidence,
+        confidenceMode: state.confidenceMode,
+        confidenceEmbeddingModel:
+          state.confidenceMode === "standard+embeddings"
+            ? state.confidenceEmbeddingModel || undefined
+            : undefined,
       };
 
       const spellCheckActive = state.spellCheck || state.spellCheckBeforeTranslate;
@@ -663,7 +882,7 @@ const Landing: React.FC = () => {
             <LanguageSelector selectedLanguages={state.targetLanguages} onToggleLanguage={toggleLanguage} onToggleRegion={toggleRegion} />
             <div className="config-section">
               <div className="section-header" onClick={() => setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig }))}>
-                <h3>Proveedor de IA <span className="section-count">OpenAI / Gemini</span></h3>
+                <h3>Proveedor de IA <span className="section-count">{state.providerMode === "openai" ? "OpenAI" : state.providerMode === "gemini" ? "Gemini" : "Sin seleccionar"}</span></h3>
                 <div className="section-actions">
                   <button className="dropdown-toggle" onClick={(e) => { e.stopPropagation(); setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig })); }} title={state.showProviderConfig ? "Ocultar configuración" : "Mostrar configuración"}>
                     <ChevronDown size={16} className={state.showProviderConfig ? "open" : ""} />
@@ -673,14 +892,11 @@ const Landing: React.FC = () => {
               {state.showProviderConfig && (
                 <div className="dropdown-content">
                   <div className="spellcheck-option">
-                    <small className="spellcheck-note">Por defecto se usa la API key compartida de la aplicación. Activá estas opciones solo si querés usar tus propias keys personales.</small>
-                  </div>
-                  <div className="spellcheck-option">
                     <label className="spellcheck-label">
-                      <input type="checkbox" checked={state.usePersonalOpenAI} onChange={(e) => setState(prev => ({ ...prev, usePersonalOpenAI: e.target.checked }))} disabled={!state.hasPersonalOpenAI} />
-                      <span>Usar API key personal de OpenAI</span>
+                      <input type="radio" checked={state.providerMode === "openai"} onChange={() => setState(prev => ({ ...prev, providerMode: "openai" }))} disabled={!state.hasPersonalOpenAI} />
+                      <span>OpenAI</span>
                     </label>
-                    {!state.hasPersonalOpenAI && <small className="spellcheck-note">No hay una key personal de OpenAI configurada.</small>}
+                    {!state.hasPersonalOpenAI && state.providerMode === "openai" && <small className="spellcheck-note">No hay una key personal de OpenAI configurada.</small>}
                     {state.hasPersonalOpenAI && (
                       <div className="profile-model-section">
                         <label className="profile-input-label">Modelo personal de OpenAI</label>
@@ -693,10 +909,10 @@ const Landing: React.FC = () => {
                   </div>
                   <div className="spellcheck-option" style={{ marginTop: 8 }}>
                     <label className="spellcheck-label">
-                      <input type="checkbox" checked={state.usePersonalGemini} onChange={(e) => setState(prev => ({ ...prev, usePersonalGemini: e.target.checked }))} disabled={!state.hasPersonalGemini} />
-                      <span>Usar API key personal de Gemini</span>
+                      <input type="radio" checked={state.providerMode === "gemini"} onChange={() => setState(prev => ({ ...prev, providerMode: "gemini" }))} disabled={!state.hasPersonalGemini} />
+                      <span>Gemini</span>
                     </label>
-                    {!state.hasPersonalGemini && <small className="spellcheck-note">No hay una key personal de Gemini configurada.</small>}
+                    {!state.hasPersonalGemini && state.providerMode === "gemini" && <small className="spellcheck-note">No hay una key personal de Gemini configurada.</small>}
                     {state.hasPersonalGemini && (
                       <div className="profile-model-section">
                         <label className="profile-input-label">Modelo personal de Gemini</label>
@@ -705,6 +921,72 @@ const Landing: React.FC = () => {
                           {state.geminiModels.map((id) => <option key={id} value={id}>{id}</option>)}
                         </select>
                       </div>
+                    )}
+                  </div>
+                  <div className="spellcheck-option" style={{ marginTop: 8 }}>
+                    <label className="spellcheck-label">
+                      <input
+                        type="checkbox"
+                        checked={state.calculateConfidence}
+                        onChange={(e) =>
+                          setState(prev => ({
+                            ...prev,
+                            calculateConfidence: e.target.checked,
+                            confidenceMode: e.target.checked ? prev.confidenceMode : "standard",
+                          }))
+                        }
+                      />
+                      <span>Calcular confianza con retraducción (más costo)</span>
+                      <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
+                        <LandingFloatingHelp
+                          text="Estándar compara el parecido del texto al volverlo al idioma original. Estándar + embeddings también considera si el significado se mantiene aunque cambien las palabras."
+                        />
+                      </span>
+                    </label>
+                    {state.calculateConfidence && (
+                      <>
+                        <div className="profile-model-section" style={{ marginTop: 8 }}>
+                          <label className="profile-input-label">Modo de confianza</label>
+                          <select
+                            className="profile-select"
+                            value={state.confidenceMode}
+                            onChange={(e) =>
+                              setState(prev => ({
+                                ...prev,
+                                confidenceMode: e.target.value as "standard" | "standard+embeddings",
+                              }))
+                            }
+                          >
+                            <option value="standard">Estandar</option>
+                            <option value="standard+embeddings">Estandar + embeddings</option>
+                          </select>
+                        </div>
+                        {state.confidenceMode === "standard+embeddings" && (
+                          <div className="profile-model-section" style={{ marginTop: 8 }}>
+                            <label className="profile-input-label">Modelo de embeddings</label>
+                            <select
+                              className="profile-select"
+                              value={state.confidenceEmbeddingModel}
+                              onChange={(e) =>
+                                setState(prev => ({
+                                  ...prev,
+                                  confidenceEmbeddingModel: e.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">Seleccionar modelo</option>
+                              {(state.providerMode === "openai"
+                                ? state.openaiEmbeddingModels
+                                : state.geminiEmbeddingModels
+                              ).map((id) => (
+                                <option key={id} value={id}>
+                                  {id}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="info-note" style={{ marginTop: 12 }}>
@@ -759,7 +1041,33 @@ const Landing: React.FC = () => {
               </small>
             </div>
             <div className="action-section">
-              <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || state.translating}>
+              {state.estimatingCost && (
+                <div className="landing-token-estimate landing-token-estimate--loading">
+                  <Binary size={22} className="landing-token-estimate-icon" aria-hidden />
+                  <div className="landing-token-estimate-body">
+                    <div className="landing-token-estimate-label">Estimación de tokens</div>
+                    <div className="landing-token-estimate-value">
+                      <span className="spinner-small" style={{ display: "inline-block", marginRight: 8 }} />
+                      Calculando…
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!state.estimatingCost && state.estimatedTokens > 0 && (
+                <div className="landing-token-estimate">
+                  <Binary size={22} className="landing-token-estimate-icon" aria-hidden />
+                  <div className="landing-token-estimate-body">
+                    <div className="landing-token-estimate-label">Estimación de tokens (aprox.)</div>
+                    <div className="landing-token-estimate-value">
+                      {state.estimatedTokens.toLocaleString()} tokens
+                    </div>
+                    <div className="landing-token-estimate-hint">
+                      Incluye traducción{state.spellCheck || state.spellCheckBeforeTranslate ? ", revisión ortográfica" : ""}, contextos y glosarios seleccionados.
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.calculateConfidence && state.confidenceMode === "standard+embeddings" && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || !state.providerMode || (state.providerMode === "openai" && !state.hasPersonalOpenAI) || (state.providerMode === "gemini" && !state.hasPersonalGemini) || (state.calculateConfidence && state.confidenceMode === "standard+embeddings" && !state.confidenceEmbeddingModel) || state.translating}>
                 {state.translating ? (
                   <>
                     <div className="spinner-small" /> 

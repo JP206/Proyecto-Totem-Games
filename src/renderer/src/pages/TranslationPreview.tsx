@@ -1,5 +1,6 @@
 // src/renderer/src/pages/TranslationPreview.tsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
@@ -18,12 +19,70 @@ import {
   CheckCircle,
   AlertCircle,
   Coins,
+  CircleHelp,
+  Eye,
 } from "lucide-react";
 import "../styles/translation-preview.css";
 import "../styles/dashboard.css";
 
 const SOURCE_LANG_CODE = "__source__";
 const SOURCE_LANG_NAME = "Origen";
+
+/** Help text in a fixed portal so it is not clipped by table overflow. */
+function FloatingHelpIcon({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const updatePos = useCallback(() => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.top, left: r.left + r.width / 2 });
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    updatePos();
+    const onScroll = () => updatePos();
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [open, updatePos]);
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className="translation-help-trigger"
+        aria-label="Ayuda"
+        onMouseEnter={() => {
+          updatePos();
+          setOpen(true);
+        }}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => {
+          updatePos();
+          setOpen(true);
+        }}
+        onBlur={() => setOpen(false)}
+      >
+        <CircleHelp size={13} />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            className="translation-help-floating"
+            style={{
+              position: "fixed",
+              top: pos.top - 8,
+              left: pos.left,
+              transform: "translate(-50%, -100%)",
+              zIndex: 10050,
+            }}
+          >
+            {text}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 interface TranslationPreviewState {
   fileInfo: { filePath: string; csvContent: string };
@@ -37,6 +96,9 @@ interface TranslationPreviewState {
         {
           openaiText?: string;
           geminiText?: string;
+          roundTripText?: string;
+          textSimilarity?: number;
+          embeddingSimilarity?: number;
           mergedText?: string;
           confidence?: number;
         }
@@ -86,6 +148,20 @@ const TranslationPreview: React.FC = () => {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [showRoundTripCheck, setShowRoundTripCheck] = useState(false);
+  const [rowModal, setRowModal] = useState<
+    | null
+    | {
+        rowIndex: number;
+        variant: "spellcheck" | "translation" | "spellDiff" | "sourceOnly";
+      }
+  >(null);
+  const [modalDraft, setModalDraft] = useState({
+    key: "",
+    source: "",
+    target: "",
+    roundTrip: "",
+  });
 
   const ROWS_PER_PAGE = 40;
   const spellCheckOnly = Boolean(state?.spellCheckOnly);
@@ -182,6 +258,15 @@ const TranslationPreview: React.FC = () => {
     if (currentPage > maxPage) setCurrentPage(maxPage);
   }, [effectiveTotalPages, currentPage]);
 
+  useEffect(() => {
+    if (!rowModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRowModal(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [rowModal]);
+
   if (!state?.fileInfo || (!hasTranslationData && !hasSpellCheckData)) {
     navigate("/landing", { replace: true });
     return null;
@@ -201,6 +286,11 @@ const TranslationPreview: React.FC = () => {
     (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
   const isSourceView = effectiveLangCode === SOURCE_LANG_CODE;
   const previewRows = previewData?.preview || [];
+  const hasRoundTripDataForSelectedLanguage =
+    !isSourceView &&
+    previewRows.some(
+      (row: any) => !!row?.perLanguage?.[effectiveLangCode]?.roundTripText,
+    );
   const pageRowIndices = dataRowIndices.slice(
     currentPage * ROWS_PER_PAGE,
     (currentPage + 1) * ROWS_PER_PAGE,
@@ -422,6 +512,67 @@ const TranslationPreview: React.FC = () => {
     const pct = Math.round(confidence * 100);
     return <span className={getConfidenceClass(confidence)}>{pct}%</span>;
   };
+  const renderSimpleScore = (score: number | null | undefined) => {
+    if (score == null) return <span className={getConfidenceClass(null)}>-</span>;
+    return <span className={getConfidenceClass(score)}>{Math.round(score * 100)}%</span>;
+  };
+
+  /** Translation column text for editing (not the round-trip view). */
+  const getTranslationEditTextForRow = (dataRowIndex: number): string => {
+    const previewRow = previewRows.find((pr: any) => pr.rowIndex === dataRowIndex);
+    const langData = previewRow?.perLanguage?.[effectiveLangCode] || null;
+    const editCol = langCodeToColIndex[effectiveLangCode];
+    let t = "";
+    if (editCol !== undefined) t = getCellValue(dataRowIndex, editCol);
+    if (!t && langData) {
+      if (currentProviderView === "openai")
+        t = langData.openaiText || langData.mergedText || "";
+      else if (currentProviderView === "gemini")
+        t = langData.geminiText || langData.mergedText || "";
+      else
+        t =
+          langData.mergedText ||
+          langData.openaiText ||
+          langData.geminiText ||
+          "";
+    }
+    return t;
+  };
+
+  const handleRowModalCancel = () => {
+    setRowModal(null);
+  };
+
+  const handleRowModalSave = () => {
+    if (!rowModal) return;
+    const { rowIndex, variant } = rowModal;
+    if (variant === "spellcheck" || variant === "spellDiff") {
+      setCellValue(rowIndex, sourceCol, modalDraft.target);
+      setOriginalRows((prev) => {
+        const next = prev.map((r) => r.slice());
+        const row = next[rowIndex];
+        if (row) {
+          while (row.length <= sourceCol) row.push("");
+          row[sourceCol] = modalDraft.source;
+        }
+        return next;
+      });
+    } else if (variant === "sourceOnly") {
+      setCellValue(rowIndex, sourceCol, modalDraft.source);
+    } else if (variant === "translation") {
+      setCellValue(rowIndex, sourceCol, modalDraft.source);
+      const col = langCodeToColIndex[effectiveLangCode];
+      if (col !== undefined) setCellValue(rowIndex, col, modalDraft.target);
+    }
+    setRowModal(null);
+  };
+
+  const modalLangData =
+    rowModal && rowModal.variant === "translation"
+      ? previewRows.find((pr: any) => pr.rowIndex === rowModal.rowIndex)?.perLanguage?.[
+          effectiveLangCode
+        ]
+      : null;
 
   return (
     <>
@@ -649,6 +800,30 @@ const TranslationPreview: React.FC = () => {
                   </button>
                 </div>
               )}
+              {!isSourceView && hasRoundTripDataForSelectedLanguage && (
+                <div className="translation-preview-provider-toggle">
+                  <button
+                    type="button"
+                    className={
+                      "translation-preview-provider-btn" +
+                      (!showRoundTripCheck ? " active" : "")
+                    }
+                    onClick={() => setShowRoundTripCheck(false)}
+                  >
+                    Traducción
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      "translation-preview-provider-btn" +
+                      (showRoundTripCheck ? " active" : "")
+                    }
+                    onClick={() => setShowRoundTripCheck(true)}
+                  >
+                    Re-traducción
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -676,7 +851,8 @@ const TranslationPreview: React.FC = () => {
             <table className="translation-preview-table">
               <thead>
                 <tr>
-                  <th>Clave</th>
+                  <th className="col-key-header">Clave</th>
+                  <th className="col-view" title="Ver en detalle" aria-label="Ver detalle" />
                   <th>
                     {spellCheckOnly
                       ? "Texto original"
@@ -689,7 +865,9 @@ const TranslationPreview: React.FC = () => {
                       ? "Texto corregido"
                       : originSpellCheckDiff
                         ? "Texto corregido (origen)"
-                        : isSourceView
+                          : showRoundTripCheck && !isSourceView
+                            ? `Re-traducción a ${sourceLabel}`
+                          : isSourceView
                           ? "Texto (origen)"
                           : `Traducción (${effectiveLangCode})`}
                     {!spellCheckOnly &&
@@ -706,7 +884,18 @@ const TranslationPreview: React.FC = () => {
                         </span>
                       )}
                   </th>
-                  {!spellCheckOnly && !isSourceView && <th>Confianza</th>}
+                  {!spellCheckOnly && !isSourceView && (
+                    <>
+                      <th className="col-confidence">
+                        Similitud de palabras
+                        <FloatingHelpIcon text="Mide cuánto se parece el texto original a la re-traducción en palabras y estructura." />
+                      </th>
+                      <th className="col-confidence">
+                        Similitud de significado
+                        <FloatingHelpIcon text="Mide si conserva la misma idea general, aunque use palabras distintas." />
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -726,6 +915,27 @@ const TranslationPreview: React.FC = () => {
                       return (
                         <tr key={key + String(dataRowIndex)}>
                           <td className="col-key">{key}</td>
+                          <td className="col-view">
+                            <button
+                              type="button"
+                              className="translation-preview-eye-btn"
+                              title="Ver y editar en detalle"
+                              onClick={() => {
+                                setModalDraft({
+                                  key: String(key),
+                                  source: originalVal,
+                                  target: correctedVal,
+                                  roundTrip: "",
+                                });
+                                setRowModal({
+                                  rowIndex: dataRowIndex,
+                                  variant: "spellcheck",
+                                });
+                              }}
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </td>
                           <td className="col-text translation-preview-diff-original">
                             {originalVal}
                           </td>
@@ -792,6 +1002,9 @@ const TranslationPreview: React.FC = () => {
                         if (editCol !== undefined)
                           displayText = getCellValue(dataRowIndex, editCol);
                         if (!displayText && langData) {
+                          if (showRoundTripCheck) {
+                            displayText = langData.roundTripText || "";
+                          } else
                           if (currentProviderView === "openai")
                             displayText =
                               langData.openaiText || langData.mergedText || "";
@@ -814,10 +1027,33 @@ const TranslationPreview: React.FC = () => {
                         const originalVal =
                           spellRow?.originalSource ?? sourceVal;
                         const correctedVal =
-                          spellRow?.correctedSource ?? sourceVal;
+                          getCellValue(dataRowIndex, sourceCol) ||
+                          spellRow?.correctedSource ||
+                          sourceVal;
                         return (
                           <tr key={key + String(dataRowIndex)}>
                             <td className="col-key">{key}</td>
+                            <td className="col-view">
+                              <button
+                                type="button"
+                                className="translation-preview-eye-btn"
+                                title="Ver y editar en detalle"
+                                onClick={() => {
+                                  setModalDraft({
+                                    key: String(key),
+                                    source: originalVal,
+                                    target: correctedVal,
+                                    roundTrip: "",
+                                  });
+                                  setRowModal({
+                                    rowIndex: dataRowIndex,
+                                    variant: "spellDiff",
+                                  });
+                                }}
+                              >
+                                <Eye size={16} />
+                              </button>
+                            </td>
                             <td className="col-text translation-preview-diff-original">
                               {originalVal}
                             </td>
@@ -830,6 +1066,51 @@ const TranslationPreview: React.FC = () => {
                       return (
                         <tr key={key + String(dataRowIndex)}>
                           <td className="col-key">{key}</td>
+                          <td className="col-view">
+                            <button
+                              type="button"
+                              className="translation-preview-eye-btn"
+                              title="Ver y editar en detalle"
+                              onClick={() => {
+                                const previewRow = previewRows.find(
+                                  (pr: any) => pr.rowIndex === dataRowIndex,
+                                );
+                                const s =
+                                  getCellValue(dataRowIndex, sourceCol) ||
+                                  previewRow?.sourceText ||
+                                  "";
+                                if (isSourceView) {
+                                  setModalDraft({
+                                    key: String(key),
+                                    source: s,
+                                    target: "",
+                                    roundTrip: "",
+                                  });
+                                  setRowModal({
+                                    rowIndex: dataRowIndex,
+                                    variant: "sourceOnly",
+                                  });
+                                } else {
+                                  const ld =
+                                    previewRow?.perLanguage?.[effectiveLangCode];
+                                  setModalDraft({
+                                    key: String(key),
+                                    source: s,
+                                    target: getTranslationEditTextForRow(
+                                      dataRowIndex,
+                                    ),
+                                    roundTrip: ld?.roundTripText || "",
+                                  });
+                                  setRowModal({
+                                    rowIndex: dataRowIndex,
+                                    variant: "translation",
+                                  });
+                                }
+                              }}
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </td>
                           <td className="col-text">
                             <span className="translation-preview-cell-with-undo">
                               <input
@@ -867,26 +1148,36 @@ const TranslationPreview: React.FC = () => {
                           </td>
                           <td className="col-text">
                             <span className="translation-preview-cell-with-undo">
-                              <input
-                                type="text"
-                                className="translation-preview-cell-input"
-                                value={displayText}
-                                onChange={(e) => {
-                                  if (isSourceView)
-                                    setCellValue(
-                                      dataRowIndex,
-                                      sourceCol,
-                                      e.target.value,
-                                    );
-                                  else if (editCol !== undefined)
-                                    setCellValue(
-                                      dataRowIndex,
-                                      editCol,
-                                      e.target.value,
-                                    );
-                                }}
-                              />
-                              {editCol !== undefined &&
+                              {showRoundTripCheck ? (
+                                <input
+                                  type="text"
+                                  className="translation-preview-cell-input"
+                                  value={displayText || "-"}
+                                  readOnly
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  className="translation-preview-cell-input"
+                                  value={displayText}
+                                  onChange={(e) => {
+                                    if (isSourceView)
+                                      setCellValue(
+                                        dataRowIndex,
+                                        sourceCol,
+                                        e.target.value,
+                                      );
+                                    else if (editCol !== undefined)
+                                      setCellValue(
+                                        dataRowIndex,
+                                        editCol,
+                                        e.target.value,
+                                      );
+                                  }}
+                                />
+                              )}
+                              {!showRoundTripCheck &&
+                                editCol !== undefined &&
                                 hasCellChanged(dataRowIndex, editCol) && (
                                   <button
                                     type="button"
@@ -909,11 +1200,18 @@ const TranslationPreview: React.FC = () => {
                             </span>
                           </td>
                           {!isSourceView && (
-                            <td>
-                              {langData
-                                ? renderConfidence(langData.confidence)
-                                : renderConfidence(null)}
-                            </td>
+                            <>
+                              <td className="col-confidence">
+                                {langData
+                                  ? renderSimpleScore((langData as any).textSimilarity)
+                                  : renderSimpleScore(null)}
+                              </td>
+                              <td className="col-confidence">
+                                {langData
+                                  ? renderSimpleScore((langData as any).embeddingSimilarity)
+                                  : renderSimpleScore(null)}
+                              </td>
+                            </>
                           )}
                         </tr>
                       );
@@ -956,9 +1254,9 @@ const TranslationPreview: React.FC = () => {
 
           {!spellCheckOnly && !isSourceView && (
             <div className="translation-preview-footer-note">
-              Las filas con baja confianza indican que las traducciones de los
-              modelos difieren significativamente y deberían revisarse
-              manualmente.
+              {showRoundTripCheck
+                ? "La vista de re-traducción muestra cómo vuelve cada idioma al texto original para facilitar la revisión."
+                : "Las filas con baja confianza indican que la traducción y su re-traducción difieren y deberían revisarse manualmente."}
             </div>
           )}
           {spellCheckOnly && (
@@ -970,6 +1268,164 @@ const TranslationPreview: React.FC = () => {
           )}
         </div>
       </div>
+
+      {rowModal &&
+        createPortal(
+          <div
+            className="translation-row-modal-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleRowModalCancel();
+            }}
+          >
+            <div
+              className="translation-row-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="translation-row-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2
+                id="translation-row-modal-title"
+                className="translation-row-modal-title"
+              >
+                {rowModal.variant === "spellcheck" ||
+                rowModal.variant === "spellDiff"
+                  ? "Corrección — vista detalle"
+                  : rowModal.variant === "sourceOnly"
+                    ? "Texto origen — vista detalle"
+                    : `Traducción (${effectiveLangCode}) — vista detalle`}
+              </h2>
+              <p className="translation-row-modal-meta">
+                Clave: <code>{modalDraft.key}</code>
+              </p>
+
+              {(rowModal.variant === "spellcheck" ||
+                rowModal.variant === "spellDiff") && (
+                <div className="translation-row-modal-fields">
+                  <label className="translation-row-modal-label">
+                    Texto original
+                  </label>
+                  <textarea
+                    className="translation-row-modal-textarea"
+                    value={modalDraft.source}
+                    onChange={(e) =>
+                      setModalDraft((d) => ({ ...d, source: e.target.value }))
+                    }
+                    rows={8}
+                  />
+                  <label className="translation-row-modal-label">
+                    Texto corregido
+                  </label>
+                  <textarea
+                    className="translation-row-modal-textarea"
+                    value={modalDraft.target}
+                    onChange={(e) =>
+                      setModalDraft((d) => ({ ...d, target: e.target.value }))
+                    }
+                    rows={8}
+                  />
+                </div>
+              )}
+
+              {rowModal.variant === "sourceOnly" && (
+                <div className="translation-row-modal-fields">
+                  <label className="translation-row-modal-label">
+                    Texto origen
+                  </label>
+                  <textarea
+                    className="translation-row-modal-textarea"
+                    value={modalDraft.source}
+                    onChange={(e) =>
+                      setModalDraft((d) => ({ ...d, source: e.target.value }))
+                    }
+                    rows={14}
+                  />
+                </div>
+              )}
+
+              {rowModal.variant === "translation" && (
+                <div className="translation-row-modal-fields">
+                  <label className="translation-row-modal-label">
+                    Texto origen
+                  </label>
+                  <textarea
+                    className="translation-row-modal-textarea"
+                    value={modalDraft.source}
+                    onChange={(e) =>
+                      setModalDraft((d) => ({ ...d, source: e.target.value }))
+                    }
+                    rows={8}
+                  />
+                  <label className="translation-row-modal-label">
+                    Traducción ({effectiveLangCode})
+                  </label>
+                  <textarea
+                    className="translation-row-modal-textarea"
+                    value={modalDraft.target}
+                    onChange={(e) =>
+                      setModalDraft((d) => ({ ...d, target: e.target.value }))
+                    }
+                    rows={8}
+                  />
+                  {modalDraft.roundTrip ? (
+                    <>
+                      <label className="translation-row-modal-label">
+                        Re-traducción al origen (referencia)
+                      </label>
+                      <textarea
+                        className="translation-row-modal-textarea translation-row-modal-textarea-readonly"
+                        value={modalDraft.roundTrip}
+                        readOnly
+                        rows={6}
+                      />
+                    </>
+                  ) : null}
+                  {modalLangData && (
+                    <div className="translation-row-modal-scores">
+                      <div>
+                        <strong>Similitud (palabras):</strong>{" "}
+                        {renderSimpleScore(
+                          (modalLangData as any).textSimilarity,
+                        )}
+                      </div>
+                      <div>
+                        <strong>Similitud (significado):</strong>{" "}
+                        {renderSimpleScore(
+                          (modalLangData as any).embeddingSimilarity,
+                        )}
+                      </div>
+                      <div>
+                        <strong>Confianza combinada:</strong>{" "}
+                        {renderConfidence((modalLangData as any).confidence)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="translation-row-modal-actions">
+                <button
+                  type="button"
+                  className="translation-preview-btn translation-preview-btn-rollback"
+                  onClick={handleRowModalCancel}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="translation-preview-btn translation-preview-btn-upload"
+                  onClick={handleRowModalSave}
+                >
+                  Guardar cambios
+                </button>
+              </div>
+              <p className="translation-row-modal-hint">
+                Cancelar cierra sin aplicar cambios. Guardar actualiza la tabla.
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 };

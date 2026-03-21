@@ -24,6 +24,10 @@ describe("translateFileInMain", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv, OPENAI_API_KEY: "test-key" };
+    (global as any).__aiPersonalConfig = {
+      openai: { apiKey: "personal-key", defaultModel: "gpt-4" },
+      gemini: { apiKey: "gem-personal-key", defaultModel: "gemini-1.5" },
+    };
     readFileMock.mockResolvedValue(CSV_MINIMAL);
     getProviderMock.mockReturnValue({
       translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
@@ -32,6 +36,7 @@ describe("translateFileInMain", () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    delete (global as any).__aiPersonalConfig;
   });
 
   it("returns result with filePath, csvContent, preview and stats", async () => {
@@ -85,13 +90,11 @@ describe("translateFileInMain", () => {
     ).rejects.toThrow(/no soportado|\.csv|\.xlsx/);
   });
 
-  it("throws when OPENAI_API_KEY not set and mode is openai", async () => {
-    process.env.OPENAI_API_KEY = "";
-    process.env.GEMINI_API_KEY = "";
-
-    await expect(
-      translateFileInMain(defaultTranslationPayload),
-    ).rejects.toThrow(/API key disponible para OpenAI/);
+  it("throws when personal OpenAI key is missing", async () => {
+    (global as any).__aiPersonalConfig = {};
+    await expect(translateFileInMain(defaultTranslationPayload)).rejects.toThrow(
+      /API key personal disponible para OpenAI/,
+    );
   });
 
   it("calls provider translateBatch with batch request shape", async () => {
@@ -103,7 +106,7 @@ describe("translateFileInMain", () => {
     await translateFileInMain(defaultTranslationPayload);
 
     expect(provider.translateBatch).toHaveBeenCalledWith(
-      "test-key",
+      "personal-key",
       "gpt-4",
       expect.objectContaining({
         sourceLanguageName: expect.any(String),
@@ -177,37 +180,38 @@ describe("translateFileInMain", () => {
     );
   });
 
-  it("runs both providers and stores confidence in preview", async () => {
-    process.env.GEMINI_API_KEY = "gem-key";
+  it("computes confidence with optional back-translation", async () => {
     const openaiProvider = {
       translateBatch: jest.fn().mockResolvedValue([
         { id: "es:1", translatedText: "Hola mundo" },
         { id: "es:2", translatedText: "Otra cadena" },
       ]),
     };
-    const geminiProvider = {
-      translateBatch: jest.fn().mockResolvedValue([
-        { id: "es:1", translatedText: "Hola, mundo" },
-        { id: "es:2", translatedText: "Cadena diferente" },
-      ]),
-    };
-    getProviderMock.mockImplementation((id: string) => {
-      if (id === "openai") return openaiProvider;
-      if (id === "gemini") return geminiProvider;
-      return null;
-    });
+    getProviderMock.mockReturnValue(openaiProvider);
 
     const result = await translateFileInMain({
       ...defaultTranslationPayload,
       providerOptions: {
         ...defaultTranslationPayload.providerOptions,
-        mode: "both",
+        mode: "openai",
       },
+      calculateConfidence: true,
     });
 
-    expect(openaiProvider.translateBatch).toHaveBeenCalled();
-    expect(geminiProvider.translateBatch).toHaveBeenCalled();
+    expect(openaiProvider.translateBatch).toHaveBeenCalledTimes(2);
+    expect(openaiProvider.translateBatch.mock.calls[1][2]).toEqual(
+      expect.objectContaining({
+        phase: "backTranslation",
+        contextSnippet: "",
+        glossarySnippet: "",
+        items: expect.arrayContaining([
+          expect.objectContaining({ id: "es:1", sourceText: "Hola mundo" }),
+          expect.objectContaining({ id: "es:2", sourceText: "Otra cadena" }),
+        ]),
+      }),
+    );
     expect(result.preview[0].perLanguage.es.confidence).not.toBeNull();
+    expect(result.preview[0].perLanguage.es.roundTripText).toBeTruthy();
   });
 
   it("supports multiple target languages in one run", async () => {
@@ -258,7 +262,7 @@ describe("translateFileInMain", () => {
     });
 
     expect(provider.translateBatch).toHaveBeenCalledWith(
-      "test-key",
+      "personal-key",
       "gpt-4",
       expect.objectContaining({
         contextSnippet: expect.stringContaining("combat and UI lore"),
@@ -360,8 +364,6 @@ describe("translateFileInMain", () => {
   });
 
   it("uses gemini provider when mode is gemini", async () => {
-    process.env.OPENAI_API_KEY = "";
-    process.env.GEMINI_API_KEY = "gem-key";
     const provider = {
       translateBatch: jest.fn().mockResolvedValue(mockTranslateResults),
     };
@@ -376,15 +378,14 @@ describe("translateFileInMain", () => {
     });
 
     expect(provider.translateBatch).toHaveBeenCalledWith(
-      "gem-key",
+      "gem-personal-key",
       "gemini-1.5",
       expect.any(Object),
     );
   });
 
-  it("throws when GEMINI_API_KEY not set and mode is gemini", async () => {
-    process.env.OPENAI_API_KEY = "test-key";
-    process.env.GEMINI_API_KEY = "";
+  it("throws when personal Gemini key is missing and mode is gemini", async () => {
+    (global as any).__aiPersonalConfig = { openai: { apiKey: "personal-key", defaultModel: "gpt-4" } };
 
     await expect(
       translateFileInMain({
@@ -394,7 +395,7 @@ describe("translateFileInMain", () => {
           mode: "gemini",
         },
       }),
-    ).rejects.toThrow(/API key disponible para Gemini/);
+    ).rejects.toThrow(/API key personal disponible para Gemini/);
   });
 
   it("uses personal OpenAI key when configured", async () => {
@@ -410,7 +411,6 @@ describe("translateFileInMain", () => {
       ...defaultTranslationPayload,
       providerOptions: {
         ...defaultTranslationPayload.providerOptions,
-        usePersonalOpenAI: true,
         personalOpenAIModel: "gpt-personal",
       },
     });
@@ -434,8 +434,6 @@ describe("translateFileInMain", () => {
   });
 
   it("skips provider ids with no provider instance", async () => {
-    process.env.OPENAI_API_KEY = "";
-    process.env.GEMINI_API_KEY = "gem-key";
     getProviderMock.mockReturnValue(null);
 
     const result = await translateFileInMain({
@@ -519,7 +517,7 @@ describe("translateFileInMain", () => {
     });
 
     expect(provider.translateBatch).toHaveBeenCalledWith(
-      "test-key",
+      "personal-key",
       "gpt-4",
       expect.objectContaining({
         contextSnippet: expect.any(String),

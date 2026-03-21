@@ -11,6 +11,7 @@ import {
   TranslateFileResult,
   SpellCheckPayload,
   SpellCheckResult,
+  RunCostEstimate,
   UploadTranslationPayload,
   UploadTranslationResult,
 } from "./electron";
@@ -208,6 +209,14 @@ class DesktopManager {
 
   async spellCheckFile(payload: SpellCheckPayload): Promise<SpellCheckResult> {
     return await this.electron.spellCheckFile(payload);
+  }
+
+  async estimateRunCost(payload: {
+    translationPayload: TranslateFilePayload;
+    includeSpellcheck: boolean;
+    spellcheckPayload?: SpellCheckPayload;
+  }): Promise<RunCostEstimate> {
+    return await this.electron.estimateRunCost(payload);
   }
 
   onSpellCheckProgress(

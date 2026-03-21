@@ -9,11 +9,13 @@ import { IssueData, RepoInformation } from "../renderer/src/utils/electron";
 import "dotenv/config";
 import {
   translateFileInMain,
+  estimateTranslationCostInMain,
   TranslateFilePayload,
   TranslateFileResult,
 } from "./ai/translation";
 import {
   spellCheckFileInMain,
+  estimateSpellCheckCostInMain,
   SpellCheckPayload,
   SpellCheckResult,
 } from "./ai/spellcheck";
@@ -42,6 +44,7 @@ interface PersonalProviderConfigSummary {
   hasKey: boolean;
   defaultModel: string | null;
   models: ProviderModelInfo[];
+  embeddingModels: ProviderModelInfo[];
 }
 
 interface PersonalAIConfigSummary {
@@ -93,6 +96,22 @@ function getAiPersonalConfig(): AiPersonalConfig {
   return raw as AiPersonalConfig;
 }
 
+// Expose a runtime helper with decrypted keys for AI modules.
+// translation.ts / spellcheck.ts resolve personal keys from this global getter.
+(global as any).getAiPersonalConfig = () => {
+  const cfg = getAiPersonalConfig();
+  return {
+    openai: {
+      apiKey: decryptString(cfg.openai?.encryptedKey) || undefined,
+      defaultModel: cfg.openai?.defaultModel ?? null,
+    },
+    gemini: {
+      apiKey: decryptString(cfg.gemini?.encryptedKey) || undefined,
+      defaultModel: cfg.gemini?.defaultModel ?? null,
+    },
+  };
+};
+
 function setAiPersonalConfig(cfg: AiPersonalConfig) {
   store.set("ai_personal_config", cfg);
 }
@@ -113,6 +132,15 @@ function mapOpenAIModels(raw: any): ProviderModelInfo[] {
         !lower.includes("speech")
       );
     })
+    .map((id: string) => ({ id, displayName: id }));
+}
+
+function mapOpenAIEmbeddingModels(raw: any): ProviderModelInfo[] {
+  const data = Array.isArray(raw?.data) ? raw.data : [];
+  return data
+    .map((m: any): string => String(m.id || ""))
+    .filter((id: string) => id)
+    .filter((id: string) => id.toLowerCase().includes("embedding"))
     .map((id: string) => ({ id, displayName: id }));
 }
 
@@ -138,6 +166,18 @@ function mapGeminiModels(raw: any): ProviderModelInfo[] {
       }
       return true;
     });
+}
+
+function mapGeminiEmbeddingModels(raw: any): ProviderModelInfo[] {
+  const models = Array.isArray(raw?.models) ? raw.models : [];
+  return models
+    .map((m: any): string => String(m.name || ""))
+    .filter((name: string) => name)
+    .map((name: string) => {
+      const id = name.split("/").pop() || name;
+      return { id, displayName: id };
+    })
+    .filter((m: ProviderModelInfo) => m.id.toLowerCase().includes("embedding"));
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -269,6 +309,31 @@ ipcMain.handle(
   "ai-spellcheck-file",
   async (event: any, payload: SpellCheckPayload): Promise<SpellCheckResult> => {
     return await spellCheckFileInMain(payload, event.sender);
+  },
+);
+
+ipcMain.handle(
+  "ai-estimate-run-cost",
+  async (
+    _event: any,
+    payload: {
+      translationPayload: TranslateFilePayload;
+      includeSpellcheck: boolean;
+      spellcheckPayload?: SpellCheckPayload;
+    },
+  ) => {
+    const translation = await estimateTranslationCostInMain(payload.translationPayload);
+    const spellcheck =
+      payload.includeSpellcheck && payload.spellcheckPayload
+        ? await estimateSpellCheckCostInMain(payload.spellcheckPayload)
+        : { estimatedTokens: 0 };
+    return {
+      translation,
+      spellcheck,
+      total: {
+        estimatedTokens: translation.estimatedTokens + spellcheck.estimatedTokens,
+      },
+    };
   },
 );
 
@@ -604,11 +669,13 @@ ipcMain.handle("ai-get-personal-config", async (): Promise<PersonalAIConfigSumma
       hasKey: !!cfg.openai?.encryptedKey,
       defaultModel: cfg.openai?.defaultModel ?? null,
       models: [],
+      embeddingModels: [],
     },
     gemini: {
       hasKey: !!cfg.gemini?.encryptedKey,
       defaultModel: cfg.gemini?.defaultModel ?? null,
       models: [],
+      embeddingModels: [],
     },
   };
 
@@ -623,6 +690,7 @@ ipcMain.handle("ai-get-personal-config", async (): Promise<PersonalAIConfigSumma
       if (response.ok) {
         const data = await response.json();
         summary.openai.models = mapOpenAIModels(data);
+        summary.openai.embeddingModels = mapOpenAIEmbeddingModels(data);
       }
     } catch {
     }
@@ -639,6 +707,7 @@ ipcMain.handle("ai-get-personal-config", async (): Promise<PersonalAIConfigSumma
       if (response.ok) {
         const data = await response.json();
         summary.gemini.models = mapGeminiModels(data);
+        summary.gemini.embeddingModels = mapGeminiEmbeddingModels(data);
       }
     } catch {
     }

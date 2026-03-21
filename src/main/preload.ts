@@ -98,6 +98,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 10b. REVISIÓN ORTOGRÁFICA Y GRAMATICAL (IA)
   spellCheckFile: (payload: any) =>
     ipcRenderer.invoke("ai-spellcheck-file", payload),
+  estimateRunCost: (payload: any) =>
+    ipcRenderer.invoke("ai-estimate-run-cost", payload),
 
   onSpellCheckProgress: (
     callback: (data: {

@@ -25,6 +25,10 @@ describe("spellCheckFileInMain", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...originalEnv, OPENAI_API_KEY: "test-key" };
+    (global as any).__aiPersonalConfig = {
+      openai: { apiKey: "personal-key", defaultModel: "gpt-4" },
+      gemini: { apiKey: "gem-personal-key", defaultModel: "gemini-1.5" },
+    };
     readFileMock.mockResolvedValue(CSV_SOURCE);
     getProviderMock.mockReturnValue({
       spellCorrectBatch: jest.fn().mockResolvedValue(mockSpellResults),
@@ -33,6 +37,7 @@ describe("spellCheckFileInMain", () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    delete (global as any).__aiPersonalConfig;
   });
 
   it("returns result with filePath, csvContent, preview and stats", async () => {
@@ -115,13 +120,12 @@ describe("spellCheckFileInMain", () => {
     ).rejects.toThrow(/\.csv o \.xlsx/);
   });
 
-  it("throws when no API key is set", async () => {
-    process.env.OPENAI_API_KEY = "";
-    process.env.GEMINI_API_KEY = "";
+  it("throws when no personal API key is set", async () => {
+    (global as any).__aiPersonalConfig = {};
 
     await expect(
       spellCheckFileInMain(defaultSpellCheckPayload),
-    ).rejects.toThrow(/OPENAI_API_KEY|GEMINI_API_KEY/);
+    ).rejects.toThrow(/API key personal disponible para OpenAI/);
   });
 
   it("calls provider spellCorrectBatch with language and items", async () => {
@@ -134,7 +138,7 @@ describe("spellCheckFileInMain", () => {
     });
 
     expect(provider.spellCorrectBatch).toHaveBeenCalledWith(
-      "test-key",
+      "personal-key",
       "gpt-4",
       expect.objectContaining({
         languageName: "English",
@@ -161,7 +165,7 @@ describe("spellCheckFileInMain", () => {
     });
 
     expect(provider.spellCorrectBatch).toHaveBeenCalledWith(
-      "test-key",
+      "personal-key",
       "gpt-4",
       expect.objectContaining({
         items: expect.any(Array),
@@ -194,33 +198,22 @@ describe("spellCheckFileInMain", () => {
     );
   });
 
-  it("runs both providers when mode is both", async () => {
-    process.env.GEMINI_API_KEY = "gem-key";
-    const openaiProvider = {
-      spellCorrectBatch: jest
-        .fn()
-        .mockResolvedValue([{ id: "spell:1", translatedText: "Hello world" }]),
-    };
+  it("uses gemini provider when mode is gemini", async () => {
     const geminiProvider = {
       spellCorrectBatch: jest
         .fn()
         .mockResolvedValue([{ id: "spell:1", translatedText: "Hallo world" }]),
     };
-    getProviderMock.mockImplementation((id: string) => {
-      if (id === "openai") return openaiProvider;
-      if (id === "gemini") return geminiProvider;
-      return null;
-    });
+    getProviderMock.mockReturnValue(geminiProvider);
 
     await spellCheckFileInMain({
       ...defaultSpellCheckPayload,
       providerOptions: {
         ...defaultSpellCheckPayload.providerOptions,
-        mode: "both",
+        mode: "gemini",
       },
     });
 
-    expect(openaiProvider.spellCorrectBatch).toHaveBeenCalledTimes(1);
     expect(geminiProvider.spellCorrectBatch).toHaveBeenCalledTimes(1);
   });
 

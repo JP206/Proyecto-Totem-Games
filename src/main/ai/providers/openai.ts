@@ -107,10 +107,12 @@ export const openaiProvider: ITranslationProvider = {
           totalTokens: data.usage.total_tokens ?? 0,
         }
       : undefined;
+    const logKind =
+      request.phase === "backTranslation" ? "Back-translation" : "Translation";
     console.log(
-      "[OpenAI] Parsed",
+      `[OpenAI] ${logKind}: parsed`,
       results.length,
-      "translations for",
+      "/",
       request.items.length,
       "items",
       usage ? `| tokens: ${usage.totalTokens}` : "",

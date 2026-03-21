@@ -11,10 +11,11 @@ import type { WebContents } from "electron";
 import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
 import { detectDelimiter } from "./csvDelimiter";
+import { createTokenEstimator } from "./tokenEstimate";
 
 const PROGRESS_CHANNEL = "spellcheck-progress";
 
-export type ProviderMode = "openai" | "gemini" | "both";
+export type ProviderMode = "openai" | "gemini";
 
 export interface SpellCheckPayload {
   filePath: string;
@@ -50,7 +51,20 @@ export interface SpellCheckResult {
     totalRows: number;
     correctedRows: number;
     tokensUsed?: number;
+    estimatedTokens?: number;
   };
+}
+
+export interface SpellCheckCostEstimate {
+  estimatedTokens: number;
+}
+
+function resolveModelIdForSpellEstimate(payload: SpellCheckPayload): string {
+  const o = payload.providerOptions;
+  if (o.mode === "openai") {
+    return o.personalOpenAIModel || o.openaiModel;
+  }
+  return o.personalGeminiModel || o.geminiModel;
 }
 
 function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
@@ -63,18 +77,14 @@ function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
 
 function getProvidersToRun(
   payload: SpellCheckPayload,
-): { id: string; apiKey: string; modelId: string }[] {
+): { id: ProviderMode; apiKey: string; modelId: string } {
   const {
     mode,
     openaiModel,
     geminiModel,
-    usePersonalOpenAI,
-    usePersonalGemini,
     personalOpenAIModel,
     personalGeminiModel,
   } = payload.providerOptions;
-
-  const list: { id: string; apiKey: string; modelId: string }[] = [];
 
   const personalConfig =
     (global as any).__aiPersonalConfig ??
@@ -82,51 +92,38 @@ function getProvidersToRun(
       ? (global as any).getAiPersonalConfig()
       : null);
 
-  const openaiEnvKey = process.env.OPENAI_API_KEY;
-  const geminiEnvKey = process.env.GEMINI_API_KEY;
-
-  if (mode === "openai" || mode === "both") {
-    let apiKey: string | undefined;
+  if (mode === "openai") {
     let modelId = openaiModel;
 
     const personal = personalConfig?.openai as
       | { apiKey?: string; defaultModel?: string | null }
       | undefined;
 
-    if (usePersonalOpenAI && personal?.apiKey) {
-      apiKey = personal.apiKey;
-      modelId =
-        personalOpenAIModel || personal.defaultModel || openaiModel;
-    } else if (openaiEnvKey) {
-      apiKey = openaiEnvKey;
+    if (personal?.apiKey) {
+      modelId = personalOpenAIModel || personal.defaultModel || openaiModel;
+      return { id: "openai", apiKey: personal.apiKey, modelId };
     }
-
-    if (apiKey) {
-      list.push({ id: "openai", apiKey, modelId });
-    }
+    throw new Error(
+      "No hay una API key personal disponible para OpenAI. Configurala en tu perfil.",
+    );
   }
 
-  if (mode === "gemini" || mode === "both") {
-    let apiKey: string | undefined;
+  if (mode === "gemini") {
     let modelId = geminiModel;
 
     const personal = personalConfig?.gemini as
       | { apiKey?: string; defaultModel?: string | null }
       | undefined;
 
-    if (usePersonalGemini && personal?.apiKey) {
-      apiKey = personal.apiKey;
-      modelId =
-        personalGeminiModel || personal.defaultModel || geminiModel;
-    } else if (geminiEnvKey) {
-      apiKey = geminiEnvKey;
+    if (personal?.apiKey) {
+      modelId = personalGeminiModel || personal.defaultModel || geminiModel;
+      return { id: "gemini", apiKey: personal.apiKey, modelId };
     }
-
-    if (apiKey) {
-      list.push({ id: "gemini", apiKey, modelId });
-    }
+    throw new Error(
+      "No hay una API key personal disponible para Gemini. Configurala en tu perfil.",
+    );
   }
-  return list;
+  throw new Error("Proveedor de IA inválido.");
 }
 
 export async function spellCheckFileInMain(
@@ -164,18 +161,18 @@ export async function spellCheckFileInMain(
     rows.pop();
   }
 
-  const providersToRun = getProvidersToRun(payload);
-  if (!providersToRun.length) {
-    throw new Error(
-      "No hay una API key disponible para revisión con IA. Configura OPENAI_API_KEY o GEMINI_API_KEY en el entorno o una key personal en tu perfil.",
-    );
-  }
+  const providerToRun = getProvidersToRun(payload);
+  const estimateTokens = createTokenEstimator(
+    providerToRun.id,
+    providerToRun.modelId,
+  );
 
   const keyColIndex = 0;
   const sourceColIndex = 1;
   const preview: SpellCheckPreviewRow[] = [];
   let correctedRowsCount = 0;
   let totalTokensUsed = 0;
+  let estimatedTokens = 0;
 
   const workItems: {
     rowIndex: number;
@@ -214,42 +211,39 @@ export async function spellCheckFileInMain(
     batchDone++;
     sendProgress(i);
 
-    const resultsByProvider: Record<string, TranslationResultItem[]> = {};
-    for (const { id, apiKey, modelId } of providersToRun) {
-      const provider = getProvider(id);
-      if (!provider || !provider.spellCorrectBatch) continue;
-      try {
-        const batchResult = await provider.spellCorrectBatch(apiKey, modelId, {
-          languageName,
-          items: batchItems.map((it) => ({
-            id: it.id,
-            key: it.key,
-            sourceText: it.sourceText,
-          })),
-        });
-        resultsByProvider[id] = batchResult.results;
-        if (batchResult.usage?.totalTokens) {
-          totalTokensUsed += batchResult.usage.totalTokens;
-        }
-      } catch (err) {
-        console.error(`[SpellCheck AI] Provider ${id} error:`, err);
-        throw err;
-      }
+    const provider = getProvider(providerToRun.id);
+    if (!provider || !provider.spellCorrectBatch) continue;
+    const batchResult = await provider.spellCorrectBatch(
+      providerToRun.apiKey,
+      providerToRun.modelId,
+      {
+        languageName,
+        items: batchItems.map((it) => ({
+          id: it.id,
+          key: it.key,
+          sourceText: it.sourceText,
+        })),
+      },
+    );
+    const asAny: any = batchResult as any;
+    const batchResultsArray: TranslationResultItem[] = Array.isArray(asAny)
+      ? (asAny as TranslationResultItem[])
+      : asAny.results ?? [];
+    if (asAny.usage?.totalTokens) {
+      totalTokensUsed += asAny.usage.totalTokens;
+    } else {
+      estimatedTokens += batchItems.reduce(
+        (acc, curr) => acc + estimateTokens(curr.sourceText),
+        0,
+      );
+    }
+    const providerMap = new Map<string, string>();
+    for (const item of batchResultsArray) {
+      providerMap.set(item.id, item.translatedText);
     }
 
-    const openaiResults = resultsByProvider["openai"] ?? [];
-    const geminiResults = resultsByProvider["gemini"] ?? [];
-    const openaiMap = new Map<string, string>();
-    for (const item of openaiResults)
-      openaiMap.set(item.id, item.translatedText);
-    const geminiMap = new Map<string, string>();
-    for (const item of geminiResults)
-      geminiMap.set(item.id, item.translatedText);
-
     for (const item of batchItems) {
-      const openaiText = openaiMap.get(item.id);
-      const geminiText = geminiMap.get(item.id);
-      const corrected = openaiText ?? geminiText ?? item.sourceText;
+      const corrected = providerMap.get(item.id) ?? item.sourceText;
 
       if (corrected !== item.sourceText) {
         const row = rows[item.rowIndex];
@@ -299,6 +293,41 @@ export async function spellCheckFileInMain(
       totalRows: workItems.length,
       correctedRows: correctedRowsCount,
       tokensUsed: totalTokensUsed || undefined,
+      estimatedTokens: estimatedTokens || undefined,
     },
   };
+}
+
+export async function estimateSpellCheckCostInMain(
+  payload: SpellCheckPayload,
+): Promise<SpellCheckCostEstimate> {
+  const estimateTokens = createTokenEstimator(
+    payload.providerOptions.mode,
+    resolveModelIdForSpellEstimate(payload),
+  );
+  const filePath = payload.filePath;
+  const maxRows = Math.min(payload.maxRows ?? 200, 500);
+  const fileExt = path.extname(filePath).toLowerCase();
+  let rows: any[][] = [];
+  if (fileExt === ".csv") {
+    const raw = await fs.readFile(filePath, "utf8");
+    const delimiter = detectDelimiter(raw);
+    rows = csvParse(raw, { delimiter, skip_empty_lines: true });
+  } else if (fileExt === ".xlsx") {
+    const buf = await fs.readFile(filePath);
+    const workbook = XLSX.read(buf, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false }) as any[][];
+  }
+  const sourceColIndex = 1;
+  let estimatedTokens = 0;
+  const dataRowEnd = Math.min(rows.length, maxRows + 1);
+  for (let rowIndex = 1; rowIndex < dataRowEnd; rowIndex++) {
+    const row = rows[rowIndex] || [];
+    const sourceText = String(row[sourceColIndex] ?? "").trim();
+    if (!sourceText) continue;
+    estimatedTokens +=
+      estimateTokens(sourceText) + Math.ceil(estimateTokens(sourceText) * 0.25);
+  }
+  return { estimatedTokens };
 }

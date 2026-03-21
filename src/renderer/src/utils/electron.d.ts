@@ -59,21 +59,26 @@ export interface TranslateFilePayload {
   contexts: string[];
   glossaries: string[];
   providerOptions: {
-    mode: "openai" | "gemini" | "both";
+    mode: "openai" | "gemini";
     openaiModel: string;
     geminiModel: string;
-    usePersonalOpenAI?: boolean;
-    usePersonalGemini?: boolean;
     personalOpenAIModel?: string;
     personalGeminiModel?: string;
   };
   maxRowsPerBatch?: number;
   maxContextChars?: number;
+  calculateConfidence?: boolean;
+  confidenceMode?: "standard" | "standard+embeddings";
+  confidenceEmbeddingModel?: string;
 }
 
 export interface RowProviderTranslation {
   openaiText?: string;
   geminiText?: string;
+  providerText?: string;
+  roundTripText?: string;
+  textSimilarity?: number | null;
+  embeddingSimilarity?: number | null;
   mergedText: string;
   confidence: number | null;
 }
@@ -94,6 +99,7 @@ export interface TranslateFileResult {
     totalRows: number;
     translatedRows: number;
     tokensUsed?: number;
+    estimatedTokens?: number;
   };
 }
 
@@ -104,11 +110,9 @@ export interface SpellCheckPayload {
   /** If false, do not write to file (for preview/discard flow). */
   applyToFile?: boolean;
   providerOptions: {
-    mode: "openai" | "gemini" | "both";
+    mode: "openai" | "gemini";
     openaiModel: string;
     geminiModel: string;
-    usePersonalOpenAI?: boolean;
-    usePersonalGemini?: boolean;
     personalOpenAIModel?: string;
     personalGeminiModel?: string;
   };
@@ -136,7 +140,14 @@ export interface SpellCheckResult {
     totalRows: number;
     correctedRows: number;
     tokensUsed?: number;
+    estimatedTokens?: number;
   };
+}
+
+export interface RunCostEstimate {
+  translation: { estimatedTokens: number };
+  spellcheck: { estimatedTokens: number };
+  total: { estimatedTokens: number };
 }
 
 export interface UploadTranslationPayload {
@@ -167,6 +178,7 @@ export interface PersonalProviderConfigSummary {
   hasKey: boolean;
   defaultModel: string | null;
   models: ProviderModelInfo[];
+  embeddingModels: ProviderModelInfo[];
 }
 
 export interface PersonalAIConfigSummary {
@@ -196,6 +208,11 @@ export interface ElectronAPI {
     payload: TranslateFilePayload,
   ) => Promise<TranslateFileResult>;
   spellCheckFile: (payload: SpellCheckPayload) => Promise<SpellCheckResult>;
+  estimateRunCost: (payload: {
+    translationPayload: TranslateFilePayload;
+    includeSpellcheck: boolean;
+    spellcheckPayload?: SpellCheckPayload;
+  }) => Promise<RunCostEstimate>;
   uploadTranslation: (
     payload: UploadTranslationPayload,
   ) => Promise<UploadTranslationResult>;
