@@ -80,14 +80,19 @@ export interface TranslationCostEstimate {
   estimatedTokens: number;
 }
 
-function normalizeForSimilarity(text: string): string[] {
+function canonicalizeForSimilarity(text: string): string {
   return text
+    .normalize("NFKC")
     .toLowerCase()
-    .replace(/[.,!?;:()"]/g, "")
+    .replace(/[‐‑‒–—―]/g, " ")
+    .replace(/…/g, "...")
+    .replace(/[.,!?;:()"“”'‘’`´]/g, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .filter(Boolean);
+    .trim();
+}
+
+function normalizeForSimilarity(text: string): string[] {
+  return canonicalizeForSimilarity(text).split(" ").filter(Boolean);
 }
 
 function jaccardSimilarity(a: string, b: string): number {
@@ -120,9 +125,11 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 function normalizedLevenshteinSimilarity(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
+  const normA = canonicalizeForSimilarity(a);
+  const normB = canonicalizeForSimilarity(b);
+  const maxLen = Math.max(normA.length, normB.length);
   if (maxLen === 0) return 1;
-  return 1 - levenshteinDistance(a, b) / maxLen;
+  return 1 - levenshteinDistance(normA, normB) / maxLen;
 }
 
 function hybridSimilarity(a: string, b: string): number {

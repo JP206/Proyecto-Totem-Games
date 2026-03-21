@@ -214,6 +214,52 @@ describe("translateFileInMain", () => {
     expect(result.preview[0].perLanguage.es.roundTripText).toBeTruthy();
   });
 
+  it("treats unicode punctuation variants as high lexical similarity", async () => {
+    readFileMock.mockResolvedValue("Clave,Origen\n1,… Encuentra… todo");
+    const provider = {
+      translateBatch: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { id: "es:1", translatedText: "… Encuentra… todo" },
+        ])
+        .mockResolvedValueOnce([
+          { id: "es:1", translatedText: "... Encuentra... todo" },
+        ]),
+    };
+    getProviderMock.mockReturnValue(provider);
+
+    const result = await translateFileInMain({
+      ...defaultTranslationPayload,
+      calculateConfidence: true,
+    });
+
+    const score = result.preview[0].perLanguage.es.textSimilarity ?? 0;
+    expect(score).toBeGreaterThan(0.9);
+  });
+
+  it("keeps genuinely different texts at low lexical similarity", async () => {
+    readFileMock.mockResolvedValue("Clave,Origen\n1,… Encuentra… todo");
+    const provider = {
+      translateBatch: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { id: "es:1", translatedText: "… Encuentra… todo" },
+        ])
+        .mockResolvedValueOnce([
+          { id: "es:1", translatedText: "Abrir opciones avanzadas" },
+        ]),
+    };
+    getProviderMock.mockReturnValue(provider);
+
+    const result = await translateFileInMain({
+      ...defaultTranslationPayload,
+      calculateConfidence: true,
+    });
+
+    const score = result.preview[0].perLanguage.es.textSimilarity ?? 0;
+    expect(score).toBeLessThan(0.6);
+  });
+
   it("supports multiple target languages in one run", async () => {
     const provider = {
       translateBatch: jest.fn().mockResolvedValue([

@@ -149,6 +149,15 @@ const TranslationPreview: React.FC = () => {
     message: string;
   } | null>(null);
   const [showRoundTripCheck, setShowRoundTripCheck] = useState(false);
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [wordsMin, setWordsMin] = useState(0);
+  const [wordsMax, setWordsMax] = useState(100);
+  const [meaningMin, setMeaningMin] = useState(0);
+  const [meaningMax, setMeaningMax] = useState(100);
+  const [appliedWordsMin, setAppliedWordsMin] = useState(0);
+  const [appliedWordsMax, setAppliedWordsMax] = useState(100);
+  const [appliedMeaningMin, setAppliedMeaningMin] = useState(0);
+  const [appliedMeaningMax, setAppliedMeaningMax] = useState(100);
   const [rowModal, setRowModal] = useState<
     | null
     | {
@@ -180,6 +189,7 @@ const TranslationPreview: React.FC = () => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
   };
+  const clampPct = (value: number): number => Math.min(100, Math.max(0, value));
 
   const { header, keyCol, sourceCol, langCodeToColIndex } = useMemo(() => {
     const targetLangs =
@@ -249,15 +259,6 @@ const TranslationPreview: React.FC = () => {
     return indices;
   }, [editableRows, keyCol, sourceCol, spellCheckOnly]);
 
-  const totalDataRows = dataRowIndices.length;
-  const totalPages = Math.max(1, Math.ceil(totalDataRows / ROWS_PER_PAGE));
-  const effectiveTotalPages = totalPages;
-
-  useEffect(() => {
-    const maxPage = Math.max(0, effectiveTotalPages - 1);
-    if (currentPage > maxPage) setCurrentPage(maxPage);
-  }, [effectiveTotalPages, currentPage]);
-
   useEffect(() => {
     if (!rowModal) return;
     const onKey = (e: KeyboardEvent) => {
@@ -267,16 +268,13 @@ const TranslationPreview: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [rowModal]);
 
-  if (!state?.fileInfo || (!hasTranslationData && !hasSpellCheckData)) {
-    navigate("/landing", { replace: true });
-    return null;
-  }
-
-  const { fileInfo, repoPath, providerMode } = state;
-  const previewData = state.previewData;
-  const sourceLabel = state.sourceLanguageName || SOURCE_LANG_NAME;
+  const fileInfo = state?.fileInfo;
+  const repoPath = state?.repoPath || "";
+  const providerMode = state?.providerMode || "openai";
+  const previewData = state?.previewData;
+  const sourceLabel = state?.sourceLanguageName || SOURCE_LANG_NAME;
   const targetLangs =
-    previewData?.targetLanguages || state.targetLanguages || [];
+    previewData?.targetLanguages || state?.targetLanguages || [];
   const languageOptions: { code: string; name: string }[] = [
     { code: SOURCE_LANG_CODE, name: sourceLabel },
     ...targetLangs,
@@ -286,12 +284,69 @@ const TranslationPreview: React.FC = () => {
     (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
   const isSourceView = effectiveLangCode === SOURCE_LANG_CODE;
   const previewRows = previewData?.preview || [];
+  const hasMeaningScoresForSelectedLanguage =
+    !isSourceView &&
+    previewRows.some(
+      (row: any) =>
+        row?.perLanguage?.[effectiveLangCode]?.embeddingSimilarity != null,
+    );
+  const hasWordScoresForSelectedLanguage =
+    !isSourceView &&
+    previewRows.some(
+      (row: any) => row?.perLanguage?.[effectiveLangCode]?.textSimilarity != null,
+    );
+  const filteredDataRowIndices = useMemo(() => {
+    if (spellCheckOnly || isSourceView) return dataRowIndices;
+    return dataRowIndices.filter((rowIndex) => {
+      const langData = previewRows.find((pr: any) => pr.rowIndex === rowIndex)
+        ?.perLanguage?.[effectiveLangCode];
+      const words = langData?.textSimilarity;
+      if (words != null) {
+        const wordsPct = Math.round(words * 100);
+        if (wordsPct < appliedWordsMin || wordsPct > appliedWordsMax) return false;
+      }
+      if (hasMeaningScoresForSelectedLanguage) {
+        const meaning = langData?.embeddingSimilarity;
+        if (meaning != null) {
+          const meaningPct = Math.round(meaning * 100);
+          if (meaningPct < appliedMeaningMin || meaningPct > appliedMeaningMax)
+            return false;
+        }
+      }
+      return true;
+    });
+  }, [
+    spellCheckOnly,
+    isSourceView,
+    dataRowIndices,
+    previewRows,
+    effectiveLangCode,
+    appliedWordsMin,
+    appliedWordsMax,
+    appliedMeaningMin,
+    appliedMeaningMax,
+    hasMeaningScoresForSelectedLanguage,
+  ]);
+  const totalDataRows = filteredDataRowIndices.length;
+  const totalPages = Math.max(1, Math.ceil(totalDataRows / ROWS_PER_PAGE));
+  const effectiveTotalPages = totalPages;
+
+  useEffect(() => {
+    const maxPage = Math.max(0, effectiveTotalPages - 1);
+    if (currentPage > maxPage) setCurrentPage(maxPage);
+  }, [effectiveTotalPages, currentPage]);
+
+  if (!fileInfo || (!hasTranslationData && !hasSpellCheckData)) {
+    navigate("/landing", { replace: true });
+    return null;
+  }
+
   const hasRoundTripDataForSelectedLanguage =
     !isSourceView &&
     previewRows.some(
       (row: any) => !!row?.perLanguage?.[effectiveLangCode]?.roundTripText,
     );
-  const pageRowIndices = dataRowIndices.slice(
+  const pageRowIndices = filteredDataRowIndices.slice(
     currentPage * ROWS_PER_PAGE,
     (currentPage + 1) * ROWS_PER_PAGE,
   );
@@ -515,6 +570,26 @@ const TranslationPreview: React.FC = () => {
   const renderSimpleScore = (score: number | null | undefined) => {
     if (score == null) return <span className={getConfidenceClass(null)}>-</span>;
     return <span className={getConfidenceClass(score)}>{Math.round(score * 100)}%</span>;
+  };
+
+  const applyFilters = () => {
+    setAppliedWordsMin(wordsMin);
+    setAppliedWordsMax(wordsMax);
+    setAppliedMeaningMin(meaningMin);
+    setAppliedMeaningMax(meaningMax);
+    setCurrentPage(0);
+  };
+
+  const clearFilters = () => {
+    setWordsMin(0);
+    setWordsMax(100);
+    setMeaningMin(0);
+    setMeaningMax(100);
+    setAppliedWordsMin(0);
+    setAppliedWordsMax(100);
+    setAppliedMeaningMin(0);
+    setAppliedMeaningMax(100);
+    setCurrentPage(0);
   };
 
   /** Translation column text for editing (not the round-trip view). */
@@ -745,6 +820,129 @@ const TranslationPreview: React.FC = () => {
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {!spellCheckOnly && !isSourceView && (
+          <div className="translation-preview-filter-panel-wrap">
+            <button
+              type="button"
+              className={
+                "translation-preview-filter-panel-toggle" +
+                (showFiltersPanel ? " active" : "")
+              }
+              onClick={() => setShowFiltersPanel((v) => !v)}
+            >
+              Filtros de confianza
+            </button>
+            {showFiltersPanel && (
+              <div className="translation-preview-confidence-filters">
+                <div className="translation-preview-filter-group">
+                  <span className="translation-preview-filter-label">
+                    Similitud de palabras
+                  </span>
+                  <div className="translation-preview-filter-slider-wrap">
+                    <div className="translation-preview-filter-track" />
+                    <div
+                      className="translation-preview-filter-track-active"
+                      style={{
+                        left: `${wordsMin}%`,
+                        width: `${Math.max(0, wordsMax - wordsMin)}%`,
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={wordsMin}
+                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
+                      disabled={!hasWordScoresForSelectedLanguage}
+                      onChange={(e) => {
+                        const next = clampPct(Number(e.target.value) || 0);
+                        setWordsMin(Math.min(next, wordsMax));
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={wordsMax}
+                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
+                      disabled={!hasWordScoresForSelectedLanguage}
+                      onChange={(e) => {
+                        const next = clampPct(Number(e.target.value) || 0);
+                        setWordsMax(Math.max(next, wordsMin));
+                      }}
+                    />
+                  </div>
+                  <div className="translation-preview-filter-range-text">
+                    {wordsMin}% - {wordsMax}%
+                  </div>
+                </div>
+                <div className="translation-preview-filter-group">
+                  <span className="translation-preview-filter-label">
+                    Similitud de significado
+                  </span>
+                  <div className="translation-preview-filter-slider-wrap">
+                    <div className="translation-preview-filter-track" />
+                    <div
+                      className="translation-preview-filter-track-active"
+                      style={{
+                        left: `${meaningMin}%`,
+                        width: `${Math.max(0, meaningMax - meaningMin)}%`,
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={meaningMin}
+                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
+                      disabled={!hasMeaningScoresForSelectedLanguage}
+                      onChange={(e) => {
+                        const next = clampPct(Number(e.target.value) || 0);
+                        setMeaningMin(Math.min(next, meaningMax));
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={meaningMax}
+                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
+                      disabled={!hasMeaningScoresForSelectedLanguage}
+                      onChange={(e) => {
+                        const next = clampPct(Number(e.target.value) || 0);
+                        setMeaningMax(Math.max(next, meaningMin));
+                      }}
+                    />
+                  </div>
+                  <div className="translation-preview-filter-range-text">
+                    {meaningMin}% - {meaningMax}%
+                  </div>
+                </div>
+                <div className="translation-preview-filter-actions">
+                  <button
+                    type="button"
+                    className="translation-preview-btn translation-preview-btn-download"
+                    onClick={applyFilters}
+                  >
+                    Aplicar
+                  </button>
+                  <button
+                    type="button"
+                    className="translation-preview-btn translation-preview-btn-rollback"
+                    onClick={clearFilters}
+                  >
+                    Quitar filtros
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
