@@ -112,10 +112,12 @@ export const geminiProvider: ITranslationProvider = {
               (um.promptTokenCount ?? 0) + (um.candidatesTokenCount ?? 0),
           }
         : undefined;
+    const logKind =
+      request.phase === "backTranslation" ? "Back-translation" : "Translation";
     console.log(
-      "[Gemini] Parsed",
+      `[Gemini] ${logKind}: parsed`,
       results.length,
-      "translations for",
+      "/",
       request.items.length,
       "items",
       usage ? `| tokens: ${usage.totalTokens}` : "",

@@ -760,6 +760,101 @@
   font-style: italic;
 }
 
+.landing-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--color-neutral-light);
+  cursor: help;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.landing-help-trigger:hover,
+.landing-help-trigger:focus-visible {
+  color: var(--color-secondary-cyan);
+  outline: none;
+}
+
+.landing-help-floating {
+  padding: 10px 12px;
+  background: var(--color-neutral-darker);
+  color: var(--color-neutral-lighter);
+  border: 1px solid var(--color-secondary-cyan);
+  border-radius: 8px;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.landing-token-estimate {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--color-secondary-pink);
+  background: linear-gradient(
+    135deg,
+    rgba(180, 90, 211, 0.18) 0%,
+    rgba(90, 206, 229, 0.12) 100%
+  );
+  box-shadow: 0 4px 20px rgba(180, 90, 211, 0.2);
+}
+
+.landing-token-estimate--loading {
+  border-color: var(--color-secondary-cyan);
+  background: linear-gradient(
+    135deg,
+    rgba(90, 206, 229, 0.15) 0%,
+    rgba(0, 120, 140, 0.1) 100%
+  );
+}
+
+.landing-token-estimate-icon {
+  flex-shrink: 0;
+  color: var(--color-secondary-cyan);
+  filter: drop-shadow(0 0 6px rgba(90, 206, 229, 0.45));
+}
+
+.landing-token-estimate-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.landing-token-estimate-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-secondary-pink);
+  margin-bottom: 4px;
+}
+
+.landing-token-estimate--loading .landing-token-estimate-label {
+  color: var(--color-secondary-cyan);
+}
+
+.landing-token-estimate-value {
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-white);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.landing-token-estimate-hint {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-neutral-light);
+  line-height: 1.35;
+}
+
 .action-section {
   margin-top: auto;
   padding-top: 20px;

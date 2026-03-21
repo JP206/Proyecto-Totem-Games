@@ -21,12 +21,17 @@ export interface TranslationBatchResult {
   usage?: ProviderUsage;
 }
 
+/** forward = normal translate; backTranslation = round-trip / confidence pass */
+export type TranslationRequestPhase = "forward" | "backTranslation";
+
 export interface TranslationBatchRequest {
   contextSnippet: string;
   glossarySnippet: string;
   sourceLanguageName: string;
   targetLanguage: { code: string; name: string };
   items: { id: string; key: string; sourceText: string }[];
+  /** For logging / diagnostics; omit for forward */
+  phase?: TranslationRequestPhase;
 }
 
 /** Request for spell/grammar correction (same language). */
