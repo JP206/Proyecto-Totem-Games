@@ -12,6 +12,7 @@ import {
   Calendar,
   CheckCircle,
   AlertCircle,
+  User,
 } from "lucide-react";
 import "../styles/issues.css";
 
@@ -119,6 +120,7 @@ export default function Issues() {
           description: issue.body,
           date: new Date(issue.created_at).toLocaleDateString(),
           status: issue.state,
+          assignee: issue.assignee?.login || "Sin asignar",
         }));
 
       setIssues(formattedIssues);
@@ -378,6 +380,11 @@ export default function Issues() {
                     <span className="issue-date">
                       <Calendar size={12} />
                       {issue.date}
+                    </span>
+
+                    <span className="issue-assignee">
+                      <User size={12} />
+                      {issue.assignee}
                     </span>
 
                     <span className={`issue-status ${issue.status}`}>

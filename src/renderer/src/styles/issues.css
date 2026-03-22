@@ -589,3 +589,18 @@
   color: var(--color-white);
   margin-top: 20px;
 }
+
+.issue-assignee {
+  font-size: var(--text-xs);
+  color: var(--color-secondary-cyan);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.issue-assignee svg {
+  width: 12px;
+  height: 12px;
+  color: var(--color-secondary-pink);
+}
