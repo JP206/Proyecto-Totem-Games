@@ -411,7 +411,7 @@ ipcMain.handle(
   },
 );
 
-// OBTENER ISSUES GIT
+// OBTENER ISSUES GIT (devuelve todos los issues abiertos segun label)
 ipcMain.handle(
   "git-get-issues",
   async (event: any, data: RepoInformation, label: string) => {
@@ -440,6 +440,52 @@ ipcMain.handle(
       throw new Error(`Error clonando repositorio: ${errorMessage}`);
     }
   },
+);
+
+// OBTENER ISSUES CON PARAMETROS VARIABLES
+ipcMain.handle(
+  "git-get-issues-variable",
+  async (
+    event: any,
+    data: RepoInformation,
+    params?: {
+      assignee?: string;    // user name, none (issues sin assignees), * (todos)
+      state?: string;       // open, closed, all
+      label?: string;       // bug (issue), documentation (nota) 
+    }
+  ) => {
+    try {
+      const baseUrl = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/issues`;
+
+      const url = new URL(baseUrl);
+
+      Object.entries(params || {}).forEach(([k, v]) => {
+        if (v) url.searchParams.append(k, v);
+      });
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+
+      console.error("Error en git-get-issues:", errorMessage);
+
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error obteniendo issues: ${errorMessage}`);
+    }
+  }
 );
 
 // MARCAR ISSUE COMO RESUELTO

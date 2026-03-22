@@ -154,6 +154,10 @@ class DesktopManager {
     return await this.electron.getIssues(data, label);
   }
 
+  async getIssuesVariable(data: RepoInformation, params: any) {
+    return await this.electron.getIssuesVariable(data, params);
+  }
+
   async markIssueAsResolved(issueId: number, repoInfo: RepoInformation) {
     return await this.electron.markIssueAsResolved(issueId, repoInfo);
   }

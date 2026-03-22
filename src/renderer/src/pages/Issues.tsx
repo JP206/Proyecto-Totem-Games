@@ -78,15 +78,34 @@ export default function Issues() {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
 
-      const data = await desktop.getIssues(
+      const dataAssignedToSelf = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
-        "bug",
+        {
+          assignee: "JP206",
+          state: "open",
+          label: "bug",
+        }
       );
 
+      const dataNoAssignees = await desktop.getIssuesVariable(
+        {
+          repoName: project.repoName,
+          repoOwner: project.repoOwner,
+          token,
+        },
+        {
+          assignee: "none",
+          state: "open",
+          label: "bug",
+        }
+      );
+
+      const data = [...dataAssignedToSelf, ...dataNoAssignees];
+      
       const formattedIssues = data
         .filter((issue: any) => !issue.pull_request)
         .map((issue: any) => ({
