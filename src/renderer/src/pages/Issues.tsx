@@ -24,6 +24,8 @@ export default function Issues() {
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+  const [syncing, setSyncing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>("");
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -54,6 +56,9 @@ export default function Issues() {
         setTimeout(() => navigate("/login"), 2000);
         return;
       }
+
+      const user = await desktop.getConfig("github_user");
+      setCurrentUser(user?.login || "Desconocido");
 
       const project = await desktop.getConfig("current_project");
       if (!project?.repoName || !project?.repoOwner) {
@@ -105,7 +110,7 @@ export default function Issues() {
       );
 
       const data = [...dataAssignedToSelf, ...dataNoAssignees];
-      
+
       const formattedIssues = data
         .filter((issue: any) => !issue.pull_request)
         .map((issue: any) => ({
@@ -121,6 +126,54 @@ export default function Issues() {
       showNotification("error", error.message || "Error al cargar los issues");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const waitForIssue = async (
+    project: { repoName: string; repoOwner: string },
+    token: string,
+    title: string,
+    attempts = 0
+  ): Promise<boolean> => {
+    const maxAttempts = 10;
+
+    if (attempts >= maxAttempts) {
+      setSyncing(false);
+      return false;
+    }
+
+    try {
+      const desktop = DesktopManager.getInstance();
+
+      const data = await desktop.getIssuesVariable(
+        {
+          repoName: project.repoName,
+          repoOwner: project.repoOwner,
+          token,
+        },
+        {
+          state: "open",
+          label: "bug",
+        }
+      );
+
+      const exists = data.some((issue: any) => issue.title === title);
+
+      if (exists) {
+        setSyncing(false);
+        await loadIssues(project, token);
+        return true;
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(waitForIssue(project, token, title, attempts + 1));
+        }, 500);
+      });
+    } catch (error) {
+      console.error("Error en waitForIssue:", error);
+      setSyncing(false);
+      return false;
     }
   };
 
@@ -172,6 +225,14 @@ export default function Issues() {
         if (response) {
           showNotification("success", "Issue creado exitosamente");
         }
+
+        setIsModalOpen(false);
+        setSelectedIssue(null);
+        setEditedTitle("");
+        setEditedDescription("");
+        setSyncing(true);
+
+        waitForIssue(currentProject, token, editedTitle).catch(console.error);
       } else {
         let issueData: IssueData = {
           title: editedTitle,
@@ -250,6 +311,15 @@ export default function Issues() {
           </div>
         )}
 
+        {syncing && (
+          <div className="syncing-overlay">
+            <div className="syncing-content">
+              <div className="spinner-large" />
+              <p>Sincronizando issue con GitHub...</p>
+            </div>
+          </div>
+        )}
+
         <div className="issues-header">
           <h2>
             <Flag size={24} />
@@ -288,33 +358,28 @@ export default function Issues() {
             <p>Cargando issues...</p>
           </div>
         ) : (
-          <div className="issues-table">
-            <div className="table-header">
-              <span>Issue</span>
-              <span>Descripción</span>
-              <span>Fecha</span>
-              <span>Estado</span>
-            </div>
+          <div className="issues-grid">
+            {filteredIssues.length > 0 ? (
+              filteredIssues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className={`issue-card ${selectedIssue?.id === issue.id ? "selected" : ""}`}
+                  onClick={() => openEditIssueModal(issue)}
+                >
+                  <h3 className="issue-title">
+                    #{issue.id} - {issue.title}
+                  </h3>
 
-            <div className="table-body">
-              {filteredIssues.length > 0 ? (
-                filteredIssues.map((issue) => (
-                  <div
-                    key={issue.id}
-                    className="issue-row"
-                    onClick={() => openEditIssueModal(issue)}
-                  >
-                    <span className="issue-title">
-                      #{issue.id} - {issue.title}
-                    </span>
-                    <span className="issue-description">
-                      {issue.description?.substring(0, 100)}
-                      {issue.description?.length > 100 ? "..." : ""}
-                    </span>
+                  <p className="issue-description">
+                    {issue.description || "Sin descripción"}
+                  </p>
+
+                  <div className="issue-footer">
                     <span className="issue-date">
-                      <Calendar size={14} />
+                      <Calendar size={12} />
                       {issue.date}
                     </span>
+
                     <span className={`issue-status ${issue.status}`}>
                       {issue.status === "open" ? (
                         <>
@@ -327,18 +392,18 @@ export default function Issues() {
                       )}
                     </span>
                   </div>
-                ))
-              ) : (
-                <div className="empty-state">
-                  <Flag size={48} />
-                  <p>No hay issues disponibles para este proyecto</p>
-                  <button className="add-btn" onClick={openNewIssueModal}>
-                    <Plus size={16} />
-                    Crear primer issue
-                  </button>
                 </div>
-              )}
-            </div>
+              ))
+            ) : (
+              <div className="empty-issues">
+                <Flag size={48} />
+                <p>No hay issues disponibles</p>
+                <button className="add-btn" onClick={openNewIssueModal}>
+                  <Plus size={16} />
+                  Crear primer issue
+                </button>
+              </div>
+            )}
           </div>
         )}
 
