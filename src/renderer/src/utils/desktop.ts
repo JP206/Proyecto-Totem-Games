@@ -90,6 +90,16 @@ class DesktopManager {
     }
   }
 
+  async createFolder(folderPath: string): Promise<boolean> {
+    try {
+      const result = await this.electron.createFolder(folderPath);
+      return result.success;
+    } catch (error) {
+      console.error("Error creando carpeta:", error);
+      return false;
+    }
+  }
+
   async ensureDir(dirPath: string): Promise<boolean> {
     try {
       // Verificamos si existe, si no, creamos un archivo temporal
