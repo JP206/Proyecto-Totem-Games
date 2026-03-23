@@ -83,6 +83,17 @@ const Dashboard: React.FC = () => {
       if (res.ok) setGithubRepos(await res.json());
     }
     setLoading(d => ({ ...d, github: false }));
+
+    /* ASI SERIA UTILIZANDO LA ORGANIZACION
+    setLoading(d => ({ ...d, github: true }));
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
+    if (token) {
+      const res = await desktop.getOrgRepos("Proyecto-Final-de-Grado", token);
+      if (res) setGithubRepos(res);
+    }
+    setLoading(d => ({ ...d, github: false }));
+    */
   };
 
   const refreshAll = async () => {

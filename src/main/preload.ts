@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-create-issue", issueData, repoInfo),
 
+  getOrgRepos: (organization: string, token: string) =>
+    ipcRenderer.invoke("git-get-org-repos", organization, token),
+
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
 

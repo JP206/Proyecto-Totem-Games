@@ -186,6 +186,10 @@ class DesktopManager {
     return await this.electron.getDiff(base, head, repoInfo);
   }
 
+  async getOrgRepos(organization: string, token: string) {
+    return await this.electron.getOrgRepos(organization, token);
+  }
+
   async gitCommand(data: GitCommandData): Promise<string> {
     return await this.electron.gitCommand(data);
   }

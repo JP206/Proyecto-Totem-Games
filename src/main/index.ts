@@ -699,6 +699,28 @@ ipcMain.handle(
   },
 );
 
+// OBTENER REPOSITORIOS DE UNA ORGANIZACION
+ipcMain.handle("git-get-org-repos", async (event: any, organization: string, token: string) => {
+  try {
+    const url: string = `https://api.github.com/orgs/${organization}/repos`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2026-03-10",
+      },
+    });
+
+    return response.json();
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+    console.error("Error obteniendo cambios:", errorMessage);
+  }
+});
+
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(
   "git-command",

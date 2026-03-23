@@ -261,6 +261,8 @@ export interface ElectronAPI {
     repoInfo: RepoInformation,
   ) => Promise<any>;
 
+  getOrgRepos: (organization: string, token: string) => Promise<any[]>;
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;
