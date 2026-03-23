@@ -625,27 +625,6 @@
   word-break: break-all;
 }
 
-.clear-btn {
-  background-color: transparent;
-  border: 1px solid var(--color-neutral-medium);
-  border-radius: 6px;
-  color: var(--color-neutral-light);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.clear-btn:hover {
-  background-color: var(--color-error);
-  border-color: var(--color-error);
-  color: var(--color-white);
-}
-
 /* Drop area unificada */
 .drop-area {
   flex: 1;
@@ -686,7 +665,6 @@
 .drop-icon svg {
   width: 48px;
   height: 48px;
-  margin: 0 -8px;
   transition: all 0.2s ease;
 }
 
@@ -898,167 +876,7 @@
   stroke-width: 1.5;
 }
 
-/* Upload Popup */
-.upload-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-}
-
-.upload-popup {
-  background-color: var(--color-neutral-darker);
-  border-radius: 12px;
-  padding: 28px;
-  width: 90%;
-  max-width: 500px;
-  position: relative;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  border: 2px solid var(--color-primary-main);
-  animation: popupFadeIn 0.2s ease-out;
-}
-
-.upload-popup-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: transparent;
-  border: 1px solid var(--color-neutral-medium);
-  font-size: 20px;
-  cursor: pointer;
-  color: var(--color-neutral-light);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  line-height: 1;
-}
-
-.upload-popup-close:hover {
-  background-color: var(--color-neutral-medium);
-  border-color: var(--color-primary-main);
-  color: var(--color-white);
-}
-
-.upload-popup-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.upload-popup-header h3 {
-  margin: 0;
-  color: var(--color-white);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  font-family: var(--font-title);
-}
-
-.popup-icon {
-  color: var(--color-secondary-pink);
-}
-
-.upload-popup-filename {
-  background-color: var(--color-neutral-dark);
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  word-break: break-all;
-  border: 1px solid var(--color-neutral-medium);
-}
-
-.upload-popup-filename strong {
-  color: var(--color-white);
-  font-size: var(--text-sm);
-  font-family: monospace;
-}
-
-.upload-popup-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.upload-popup-btn {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background-color: var(--color-neutral-dark);
-  border: 1px solid var(--color-neutral-medium);
-  border-radius: 8px;
-  color: var(--color-white);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-  text-align: left;
-}
-
-.upload-popup-btn:hover {
-  background-color: var(--color-neutral-medium);
-  border-color: var(--color-primary-main);
-  transform: translateY(-2px);
-}
-
-.upload-popup-btn.context:hover {
-  border-color: var(--color-secondary-cyan);
-}
-
-.upload-popup-btn.glossary:hover {
-  border-color: var(--color-success);
-}
-
-.upload-popup-btn.localize:hover {
-  border-color: var(--color-secondary-pink);
-}
-
-.upload-popup-btn svg {
-  flex-shrink: 0;
-}
-
-.upload-popup-btn div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.upload-popup-btn strong {
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-white);
-}
-
-.upload-popup-btn small {
-  font-size: var(--text-xs);
-  color: var(--color-neutral-light);
-}
-
-.upload-popup-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background-color: rgba(255, 191, 0, 0.1);
-  border-radius: 6px;
-  color: var(--color-warning);
-  font-size: var(--text-xs);
-  margin: 0;
-  border: 1px solid var(--color-warning);
-}
-
-/* Modal de error para archivos duplicados */
+/* Modal de error para archivos duplicados y errores */
 .error-modal-overlay {
   position: fixed;
   top: 0;
@@ -1372,11 +1190,6 @@ body {
   .drop-title {
     font-size: var(--text-base);
   }
-
-  .upload-popup {
-    width: 95%;
-    padding: 20px;
-  }
 }
 
 /* Celulares pequeños */
@@ -1503,11 +1316,6 @@ body {
     font-size: var(--text-2xs);
   }
 
-  .clear-btn {
-    width: 28px;
-    height: 28px;
-  }
-
   .drop-area {
     min-height: 160px;
     padding: 16px;
@@ -1517,7 +1325,6 @@ body {
   .drop-icon svg {
     width: 32px;
     height: 32px;
-    margin: 0 -4px;
   }
 
   .drop-title {
@@ -1555,52 +1362,6 @@ body {
   .info-note svg {
     width: 14px;
     height: 14px;
-  }
-
-  .upload-popup {
-    padding: 16px;
-    width: 95%;
-  }
-
-  .upload-popup-header {
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .upload-popup-header h3 {
-    font-size: var(--text-base);
-  }
-
-  .popup-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .upload-popup-filename {
-    padding: 12px;
-    margin-bottom: 16px;
-  }
-
-  .upload-popup-filename strong {
-    font-size: var(--text-xs);
-  }
-
-  .upload-popup-btn {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .upload-popup-btn strong {
-    font-size: var(--text-sm);
-  }
-
-  .upload-popup-btn small {
-    font-size: var(--text-2xs);
-  }
-
-  .upload-popup-note {
-    padding: 8px 10px;
-    font-size: var(--text-2xs);
   }
 
   .error-modal {

@@ -283,44 +283,46 @@ export default function Notes() {
           </div>
         )}
 
-        <div className="notes-header">
-          <div className="notes-header-left">
-            <h2>
-              <FileText size={24} />
-              Notas del Proyecto
-            </h2>
-          </div>
-          
-          <div className="notes-header-right">
-            <div className="search-container">
-              <Search size={16} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Buscar por título o autor..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              {searchTerm && (
-                <button 
-                  className="search-clear"
-                  onClick={() => setSearchTerm("")}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-            
-            <button
-              className="add-note-btn"
-              onClick={openNewNoteModal}
-              disabled={syncing}
-            >
-              <Plus size={16} />
-              Nueva Nota
-            </button>
+      <div className="notes-header">
+        <div className="notes-header-left">
+          <h2>
+            <FileText size={24} />
+            Notas del Proyecto
+          </h2>
+        </div>
+        
+        <div className="notes-header-center">
+          <div className="search-container">
+            <Search size={16} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar por título o autor..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button 
+                className="search-clear"
+                onClick={() => setSearchTerm("")}
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
+
+        <div className="notes-header-right">
+          <button
+            className="add-note-btn"
+            onClick={openNewNoteModal}
+            disabled={syncing}
+          >
+            <Plus size={16} />
+            Nueva Nota
+          </button>
+        </div>
+      </div>
 
         {searchTerm && (
           <div className="search-results-info">

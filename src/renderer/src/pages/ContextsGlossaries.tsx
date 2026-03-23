@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Eye,
   Table,
+  RefreshCw,
 } from "lucide-react";
 import "../styles/contextsGlossaries.css";
 
@@ -47,6 +48,7 @@ const ContextsGlossaries: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [updatingGeneral, setUpdatingGeneral] = useState(false);
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
@@ -106,6 +108,8 @@ const ContextsGlossaries: React.FC = () => {
     } catch (error: any) {
       showNotification("error", error.message);
       setTimeout(() => navigate("/dashboard"), 2000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,10 +128,6 @@ const ContextsGlossaries: React.FC = () => {
           destination: generalPath,
           token,
         });
-      } else {
-        console.log("ensureGeneralRepo generalPath:", generalPath);
-        await desktop.gitCommand({ command: "git fetch origin", cwd: generalPath }).catch(() => {});
-        await desktop.gitCommand({ command: "git reset --hard origin/main", cwd: generalPath }).catch(() => {});
       }
       return generalPath;
     } catch (error) {
@@ -166,7 +166,7 @@ const ContextsGlossaries: React.FC = () => {
       if (!exists) return [];
 
       const files = await desktop.readFolder(contextsPath);
-      const txtFiles = files.filter((f: any) => f.isFile && f.name.endsWith(".txt"));
+      const txtFiles = files.filter((f: any) => f.isFile && f.name.toLowerCase().endsWith(".txt"));
 
       const items: ContextGlossaryFile[] = [];
       for (const f of txtFiles) {
@@ -194,7 +194,7 @@ const ContextsGlossaries: React.FC = () => {
       if (!exists) return [];
 
       const files = await desktop.readFolder(glossariesPath);
-      const csvFiles = files.filter((f: any) => f.isFile && f.name.endsWith(".csv"));
+      const csvFiles = files.filter((f: any) => f.isFile && f.name.toLowerCase().endsWith(".csv"));
 
       const items: ContextGlossaryFile[] = [];
       for (const f of csvFiles) {
@@ -224,7 +224,7 @@ const ContextsGlossaries: React.FC = () => {
       if (!exists) return [];
 
       const files = await desktop.readFolder(contextsPath);
-      const txtFiles = files.filter((f: any) => f.isFile && f.name.endsWith(".txt"));
+      const txtFiles = files.filter((f: any) => f.isFile && f.name.toLowerCase().endsWith(".txt"));
 
       const items: ContextGlossaryFile[] = [];
       for (const f of txtFiles) {
@@ -254,7 +254,7 @@ const ContextsGlossaries: React.FC = () => {
       if (!exists) return [];
 
       const files = await desktop.readFolder(glossariesPath);
-      const csvFiles = files.filter((f: any) => f.isFile && f.name.endsWith(".csv"));
+      const csvFiles = files.filter((f: any) => f.isFile && f.name.toLowerCase().endsWith(".csv"));
 
       const items: ContextGlossaryFile[] = [];
       for (const f of csvFiles) {
@@ -299,27 +299,6 @@ const ContextsGlossaries: React.FC = () => {
     return [headerLine, ...rowLines].join('\n');
   };
 
-  const gitPush = async (filePath: string, repoPath: string, message: string) => {
-    try {
-      const desktop = DesktopManager.getInstance();
-      await desktop.gitCommand({ command: `git add "${filePath}"`, cwd: repoPath });
-      await desktop.gitCommand({ command: `git commit -m "${message}"`, cwd: repoPath }).catch(() => {});
-      await desktop.gitCommand({ command: "git push origin main", cwd: repoPath });
-    } catch (error) {
-      console.error("Error en git push:", error);
-    }
-  };
-
-  const filteredItems = items.filter(
-    (item) =>
-      item.type === (activeTab === "contexts" ? "context" : "glossary") &&
-      (item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.content.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
-
-  const generalItems = filteredItems.filter(item => item.specificity === "general");
-  const specificItems = filteredItems.filter(item => item.specificity === "specific");
-
   const handleAddNew = () => {
     setSelectedItem(null);
     setEditedTitle("");
@@ -359,33 +338,48 @@ const ContextsGlossaries: React.FC = () => {
   };
 
   const confirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !currentProject) return;
 
     try {
+      setSyncing(true);
       const desktop = DesktopManager.getInstance();
+      
       await desktop.deleteFile(itemToDelete.path);
-      setItems(items.filter((i) => i.path !== itemToDelete.path));
-      showNotification("success", `"${itemToDelete.name}" eliminado`);
+      
+      await desktop.gitCommand({ 
+        command: `git rm "${itemToDelete.path}"`, 
+        cwd: currentProject.repoPath 
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: `git commit -m "Delete ${itemToDelete.name}"`, 
+        cwd: currentProject.repoPath 
+      });
+      await desktop.gitCommand({ 
+        command: "git push origin main", 
+        cwd: currentProject.repoPath 
+      });
+      
+      await loadData(currentProject, generalRepoPath);
+      
+      showNotification("success", `"${itemToDelete.name}" eliminado correctamente`);
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
     } catch (error: any) {
       showNotification("error", error.message);
+    } finally {
+      setSyncing(false);
     }
   };
 
-  const handleRowChange = (rowIndex: number, header: string, value: string) => {
+  const handleRowChange = (rowIndex: number, value: string) => {
     const newRows = [...editedRows];
-    newRows[rowIndex][header] = value;
+    newRows[rowIndex]["Palabra"] = value;
     setEditedRows(newRows);
     setHasChanges(true);
   };
 
   const handleAddRow = () => {
-    const newRow: CsvRow = {};
-    csvHeaders.forEach(header => {
-      newRow[header] = '';
-    });
-    setEditedRows([...editedRows, newRow]);
+    setEditedRows([...editedRows, { Palabra: "" }]);
     setHasChanges(true);
   };
 
@@ -400,70 +394,111 @@ const ContextsGlossaries: React.FC = () => {
   };
 
   const saveItem = async () => {
-    if (!editedTitle.trim()) return;
+    if (!editedTitle.trim() || !currentProject) return;
+    if (activeTab === "contexts" && !editedContent.trim()) return;
 
     try {
+      setSyncing(true);
       const desktop = DesktopManager.getInstance();
       
       let contentToSave = editedContent;
       if (activeTab === "glossaries") {
-        contentToSave = stringifyCSV(csvHeaders, editedRows);
+        const headers = ["Palabra"];
+        const rows = editedRows.map(row => ({ Palabra: row.Palabra || "" }));
+        contentToSave = stringifyCSV(headers, rows);
       }
 
       const extension = activeTab === "contexts" ? ".txt" : ".csv";
       const targetFolder = activeTab === "contexts"
-        ? `${currentProject?.repoPath}/Localizacion/contextos_especificos`
-        : `${currentProject?.repoPath}/Localizacion/glosarios_especificos`;
+        ? `${currentProject.repoPath}/Localizacion/contextos_especificos`
+        : `${currentProject.repoPath}/Localizacion/glosarios_especificos`;
 
       const folderExists = await desktop.fileExists(targetFolder).catch(() => false);
       if (!folderExists) {
-        const testFile = `${targetFolder}/.keep`;
-        await desktop.writeFile(testFile, "");
-        await desktop.deleteFile(testFile);
+        await desktop.createFolder(targetFolder);
       }
 
+      const newPath = `${targetFolder}/${editedTitle}${extension}`;
+      const normalizePath = (path: string) => path.replace(/\\/g, '/');
+      
       if (selectedItem) {
         const oldPath = selectedItem.path;
-        const newPath = `${targetFolder}/${editedTitle}${extension}`;
+        const isSamePath = normalizePath(oldPath) === normalizePath(newPath);
         
-        if (oldPath !== newPath) {
+        if (!isSamePath) {
           await desktop.writeFile(newPath, contentToSave);
           await desktop.deleteFile(oldPath);
+          
+          await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: `git rm "${oldPath}"`, cwd: currentProject.repoPath }).catch(() => {});
+          await desktop.gitCommand({ command: `git commit -m "Rename ${selectedItem.name} to ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
         } else {
           await desktop.writeFile(oldPath, contentToSave);
+          
+          await desktop.gitCommand({ command: `git add "${oldPath}"`, cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: `git commit -m "Update ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
         }
-        
-        await gitPush(newPath, currentProject?.repoPath || "", `Update ${editedTitle}${extension}`);
-        
-        setItems(items.map(item => 
-          item.path === selectedItem.path 
-            ? { ...item, name: editedTitle + extension, path: newPath, content: contentToSave }
-            : item
-        ));
-        showNotification("success", "Actualizado correctamente");
       } else {
-        const newPath = `${targetFolder}/${editedTitle}${extension}`;
         await desktop.writeFile(newPath, contentToSave);
         
-        await gitPush(newPath, currentProject?.repoPath || "", `Add ${editedTitle}${extension}`);
-        
-        setItems([...items, {
-          name: editedTitle + extension,
-          path: newPath,
-          content: contentToSave,
-          type: activeTab === "contexts" ? "context" : "glossary",
-          specificity: "specific",
-          recommended: false,
-        }]);
-        showNotification("success", "Creado correctamente");
+        await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: currentProject.repoPath });
+        await desktop.gitCommand({ command: `git commit -m "Add ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
+        await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadData(currentProject, generalRepoPath);
 
       setIsModalOpen(false);
       setSelectedItem(null);
+      setEditedTitle("");
+      setEditedContent("");
+      setEditedRows([]);
+      setCsvHeaders([]);
+      setHasChanges(false);
+      showNotification("success", `"${editedTitle}${extension}" guardado correctamente`);
+      
     } catch (error: any) {
+      console.error("Error al guardar:", error);
       showNotification("error", error.message);
+    } finally {
+      setSyncing(false);
     }
   };
+
+  const refreshData = async () => {
+    if (!currentProject) return;
+    
+    try {
+      setLoading(true);
+      const desktop = DesktopManager.getInstance();
+      
+      await desktop.gitCommand({ command: "git pull origin main", cwd: currentProject.repoPath }).catch(() => {});
+      
+      if (generalRepoPath) {
+        await desktop.gitCommand({ command: "git pull origin main", cwd: generalRepoPath }).catch(() => {});
+      }
+      
+      await loadData(currentProject, generalRepoPath);
+      showNotification("success", "Datos actualizados correctamente");
+    } catch (error) {
+      showNotification("error", "Error al actualizar datos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredItems = items.filter(
+    (item) =>
+      item.type === (activeTab === "contexts" ? "context" : "glossary") &&
+      (item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.content.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const generalItems = filteredItems.filter(item => item.specificity === "general");
+  const specificItems = filteredItems.filter(item => item.specificity === "specific");
 
   const renderGeneralSection = () => (
     <div className="items-section">
@@ -479,7 +514,7 @@ const ContextsGlossaries: React.FC = () => {
               <p className="item-content">
                 {item.type === "context" 
                   ? item.content.substring(0, 150) + (item.content.length > 150 ? "..." : "")
-                  : "📊 Glosario"
+                  : `${item.type === "glossary" ? "Glosario" : ""}`
                 }
               </p>
               <div className="item-footer">
@@ -514,21 +549,45 @@ const ContextsGlossaries: React.FC = () => {
       <div className="items-grid">
         {specificItems.length > 0 ? (
           specificItems.map((item) => (
-            <div key={item.path} className={`item-card specific`} onClick={() => handleView(item)}>
-              <h4 className="item-title">{item.name.replace(/\.(txt|csv)$/, "")}</h4>
-              <p className="item-content">
-                {item.type === "context" 
-                  ? item.content.substring(0, 150) + (item.content.length > 150 ? "..." : "")
-                  : "📊 Glosario"
-                }
-              </p>
-              <div className="item-footer">
-                <span className="item-specificity">
-                  <Lock size={12} /> Específico
-                </span>
-                {item.recommended && (
-                  <span className="recommended-badge">✨ recomendado</span>
-                )}
+            <div key={item.path} className={`item-card specific`}>
+              <div className="item-actions">
+                <button 
+                  className="item-action-btn edit" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(item);
+                  }}
+                  title="Editar"
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button 
+                  className="item-action-btn delete" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(item);
+                  }}
+                  title="Eliminar"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div onClick={() => handleView(item)}>
+                <h4 className="item-title">{item.name.replace(/\.(txt|csv)$/, "")}</h4>
+                <p className="item-content">
+                  {item.type === "context" 
+                    ? item.content.substring(0, 150) + (item.content.length > 150 ? "..." : "")
+                    : `${item.type === "glossary" ? "Glosario" : ""}`
+                  }
+                </p>
+                <div className="item-footer">
+                  <span className="item-specificity">
+                    <Lock size={12} /> Específico
+                  </span>
+                  {item.recommended && (
+                    <span className="recommended-badge">✨ recomendado</span>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -545,34 +604,27 @@ const ContextsGlossaries: React.FC = () => {
     </div>
   );
 
-  const renderTableView = (rows: CsvRow[], headers: string[], isEditing: boolean = false) => (
+  const renderTableView = (rows: CsvRow[], isEditing: boolean = false) => (
     <div className="table-container">
       <table className="csv-table">
         <thead>
           <tr>
-            {headers.map(header => (
-              <th key={header}>{header}</th>
-            ))}
+            <th>Palabra / Frase</th>
             {isEditing && <th className="actions-header">Acciones</th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-              {headers.map(header => (
-                <td key={`${rowIndex}-${header}`}>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={row[header] || ''}
-                      onChange={(e) => handleRowChange(rowIndex, header, e.target.value)}
-                      className="table-input"
-                    />
-                  ) : (
-                    row[header] || ''
-                  )}
-                </td>
-              ))}
+              <td>
+                <input
+                  type="text"
+                  value={row.Palabra || ''}
+                  onChange={(e) => handleRowChange(rowIndex, e.target.value)}
+                  className="table-input"
+                  placeholder="Escribe una palabra o frase..."
+                />
+              </td>
               {isEditing && (
                 <td className="actions-cell">
                   <button
@@ -590,7 +642,7 @@ const ContextsGlossaries: React.FC = () => {
       </table>
       {isEditing && (
         <button className="add-row-btn" onClick={handleAddRow}>
-          <Plus size={14} /> Añadir fila
+          <Plus size={14} /> Añadir palabra
         </button>
       )}
     </div>
@@ -614,6 +666,15 @@ const ContextsGlossaries: React.FC = () => {
     <>
       <Navbar />
       <div className="contexts-container">
+        {syncing && (
+          <div className="syncing-overlay">
+            <div className="syncing-content">
+              <div className="spinner-large" />
+              <p>Sincronizando con GitHub...</p>
+            </div>
+          </div>
+        )}
+
         {updatingGeneral && (
           <div className="general-update-notification">
             <div className="spinner-small" />
@@ -635,10 +696,16 @@ const ContextsGlossaries: React.FC = () => {
             <BookOpen size={24} />
             Contextos y Glosarios
           </h2>
-          <button className="add-btn" onClick={handleAddNew}>
-            <Plus size={16} />
-            NUEVO ESPECÍFICO
-          </button>
+          <div className="header-actions">
+            <button className="refresh-btn" onClick={refreshData} disabled={syncing}>
+              <RefreshCw size={16} />
+              Actualizar
+            </button>
+            <button className="add-btn" onClick={handleAddNew} disabled={syncing}>
+              <Plus size={16} />
+              NUEVO ESPECÍFICO
+            </button>
+          </div>
         </div>
 
         <div className="contexts-tabs">
@@ -714,7 +781,7 @@ const ContextsGlossaries: React.FC = () => {
                 {viewItem.type === "context" ? (
                   <div className="view-field content">{viewItem.content}</div>
                 ) : (
-                  renderTableView(editedRows, csvHeaders, false)
+                  renderTableView(editedRows, false)
                 )}
               </div>
             </div>
@@ -759,7 +826,7 @@ const ContextsGlossaries: React.FC = () => {
                     placeholder="Describe el contexto..."
                   />
                 ) : (
-                  renderTableView(editedRows, csvHeaders, true)
+                  renderTableView(editedRows, true)
                 )}
               </div>
             </div>
@@ -767,7 +834,11 @@ const ContextsGlossaries: React.FC = () => {
               <button 
                 className="save-btn" 
                 onClick={saveItem} 
-                disabled={!editedTitle.trim() || (activeTab === "contexts" ? !editedContent.trim() : editedRows.length === 0) || !hasChanges}
+                disabled={
+                  !editedTitle.trim() || 
+                  (activeTab === "contexts" ? !editedContent.trim() : false) ||
+                  !hasChanges
+                }
               >
                 <Upload size={14} /> {selectedItem ? "Actualizar" : "Crear"}
               </button>
@@ -781,20 +852,14 @@ const ContextsGlossaries: React.FC = () => {
 
       {/* Modal de eliminación */}
       {isDeleteModalOpen && itemToDelete && (
-        <div className="modal-overlay" onClick={() => {
-          setIsDeleteModalOpen(false);
-          setItemToDelete(null);
-        }}>
+        <div className="modal-overlay" onClick={() => setIsDeleteModalOpen(false)}>
           <div className="modal small" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
                 <AlertTriangle size={20} className="warning-icon" />
                 ¿Eliminar?
               </h3>
-              <button className="modal-close" onClick={() => {
-                setIsDeleteModalOpen(false);
-                setItemToDelete(null);
-              }}>
+              <button className="modal-close" onClick={() => setIsDeleteModalOpen(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -806,10 +871,7 @@ const ContextsGlossaries: React.FC = () => {
               <button className="delete-btn" onClick={confirmDelete}>
                 <Trash2 size={14} /> Eliminar
               </button>
-              <button className="cancel-btn" onClick={() => {
-                setIsDeleteModalOpen(false);
-                setItemToDelete(null);
-              }}>
+              <button className="cancel-btn" onClick={() => setIsDeleteModalOpen(false)}>
                 Cancelar
               </button>
             </div>

@@ -11,7 +11,7 @@
   overflow: hidden;
 }
 
-/* Header con buscador */
+/* Header */
 .notes-header {
   display: flex;
   justify-content: space-between;
@@ -21,19 +21,25 @@
   padding: 20px;
   border-radius: 12px;
   border: 2px solid var(--color-neutral-medium);
+  gap: 20px;
   flex-wrap: wrap;
-  gap: 16px;
 }
 
 .notes-header-left {
-  flex: 1;
+  flex: 0 0 auto;
+}
+
+.notes-header-center {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+  min-width: 200px;
 }
 
 .notes-header-right {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
 }
 
 .notes-header h2 {
@@ -45,6 +51,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
 }
 
 .notes-header h2 svg {
@@ -54,7 +61,8 @@
 /* Buscador */
 .search-container {
   position: relative;
-  width: 300px;
+  width: 400px;
+  max-width: 100%;
 }
 
 .search-icon {
@@ -161,7 +169,7 @@
   cursor: not-allowed;
 }
 
-/* Grid de notas - TAMAÑO FIJO QUE SE ADAPTA */
+/* Grid de notas */
 .notes-grid {
   flex: 1;
   display: grid;
@@ -688,7 +696,7 @@
   background: var(--color-neutral-light);
 }
 
-/* Responsive - SÓLO CUANDO ES NECESARIO */
+/* Responsive */
 @media (max-width: 1200px) {
   .notes-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

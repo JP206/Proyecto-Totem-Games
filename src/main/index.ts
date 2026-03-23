@@ -224,21 +224,28 @@ ipcMain.handle("select-folder", async (): Promise<string | null> => {
 // 2. LEER CONTENIDO DE CARPETA
 ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
   try {
-    const files = await fs.readdir(folderPath, { withFileTypes: true });
+    const files = await fs.readdir(folderPath);
+    const results = [];
 
-    const filePromises = files.map(async (file) => {
-      const filePath = path.join(folderPath, file.name);
-      let size = 0;
+    for (const fileName of files) {
+      const filePath = path.join(folderPath, fileName);
+      let stats;
+      
+      try {
+        stats = await fs.stat(filePath);
+      } catch (err) {
+        console.error(`Error reading stats for ${filePath}:`, err);
+        continue;
+      }
+
+      const isDirectory = stats.isDirectory();
+      const isFile = stats.isFile();
       let isGitRepo = false;
+      let size = 0;
 
-      if (file.isFile()) {
-        try {
-          const stats = await fs.stat(filePath);
-          size = stats.size;
-        } catch {
-          size = 0;
-        }
-      } else if (file.isDirectory()) {
+      if (isFile) {
+        size = stats.size;
+      } else if (isDirectory) {
         // Verificar si es un repositorio git
         const gitPath = path.join(filePath, ".git");
         try {
@@ -249,17 +256,17 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
         }
       }
 
-      return {
-        name: file.name,
+      results.push({
+        name: fileName,
         path: filePath,
-        isDirectory: file.isDirectory(),
-        isFile: file.isFile(),
+        isDirectory,
+        isFile,
         isGitRepo,
         size,
-      };
-    });
+      });
+    }
 
-    return await Promise.all(filePromises);
+    return results;
   } catch (error: unknown) {
     const errorMessage =
       error instanceof Error ? error.message : "Error desconocido";
@@ -927,6 +934,17 @@ ipcMain.handle("read-file", async (event: any, filePath: string) => {
   } catch (error: any) {
     console.error("Error leyendo archivo:", error);
     throw new Error(`Error leyendo archivo: ${error.message}`);
+  }
+});
+
+// 11d. CREAR CARPETA
+ipcMain.handle("create-folder", async (event: any, folderPath: string) => {
+  try {
+    await fs.mkdir(folderPath, { recursive: true });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error creando carpeta:", error);
+    return { success: false, error: error.message };
   }
 });
 

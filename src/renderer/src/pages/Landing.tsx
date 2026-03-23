@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import Navbar from "../components/Navbar";
 import LanguageSelector from "../components/LanguageSelector";
-import UploadPopup from "../components/UploadPopup";
 import {
   FileText, BookOpen, Layers, AlertCircle, Download,
   FileSpreadsheet, X, CheckSquare, Square, ChevronDown,
@@ -98,8 +97,7 @@ const Landing: React.FC = () => {
     repoPath: "", repoName: "", generalRepoPath: "", loading: true, updatingGeneral: false,
     selectedFile: null as FileItem | null, targetLanguages: [] as Language[],
     contextFiles: [] as ContextFile[], glossaryFiles: [] as ContextFile[],
-    showContexts: false, showGlossaries: false, showUploadPopup: false,
-    pendingFile: null as { file: File; extension: string } | null,
+    showContexts: false, showGlossaries: false,
     translating: false, progressPercent: 0, providerMode: null as "openai" | "gemini" | null,
     spellCheck: false, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash",
     spellCheckBeforeTranslate: false, tokensToday: 0,
@@ -111,7 +109,9 @@ const Landing: React.FC = () => {
     confidenceMode: "standard" as "standard" | "standard+embeddings",
     confidenceEmbeddingModel: "",
     estimatingCost: false,
-    estimatedTokens: 0
+    estimatedTokens: 0,
+    showOverwriteConfirm: false,
+    pendingFile: null as File | null
   });
 
   const [errorModal, setErrorModal] = useState({ show: false, message: "", filename: "" });
@@ -480,112 +480,74 @@ const Landing: React.FC = () => {
     setFiles(newFiles);
   };
 
-  // Manejador de subida de archivos
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Manejador de subida de archivo a localizar
+  const handleFileUpload = async (file: File) => {
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-    if (![".txt", ".csv", ".xlsx"].includes(ext)) {
-      console.error("Formato no válido. Solo se permiten archivos .txt, .csv o .xlsx");
+    if (![".csv", ".xlsx"].includes(ext)) {
+      console.error("Formato no válido. Solo se permiten archivos .csv o .xlsx para localización");
+      setErrorModal({
+        show: true,
+        message: "Formato no válido. Solo se permiten archivos .csv o .xlsx para localización.",
+        filename: file.name
+      });
       return;
     }
-    setState(prev => ({ ...prev, pendingFile: { file, extension: ext }, showUploadPopup: true }));
-    e.target.value = "";
+
+    // Si ya existe un archivo, mostrar confirmación
+    if (state.selectedFile) {
+      setState(prev => ({ ...prev, showOverwriteConfirm: true, pendingFile: file }));
+    } else {
+      // Si no existe, subir directamente
+      await uploadLocalizeFile(file);
+    }
   };
 
-  const processFileUpload = async (type: "context" | "glossary" | "localize") => {
-    if (!state.pendingFile || !state.repoPath || !state.repoName) return;
-    const { file } = state.pendingFile;
+  const uploadLocalizeFile = async (file: File) => {
+    if (!state.repoPath || !state.repoName) return;
+    
     const desktop = DesktopManager.getInstance();
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-
+    const targetFolder = `${state.repoPath}/Localizacion`;
+    const fileName = `${state.repoName}_localizar${ext}`;
+    const finalPath = `${targetFolder}/${fileName}`;
+    
     try {
-      let targetFolder = "", fileName = "", finalPath = "";
-      
-      switch (type) {
-        case "context":
-          targetFolder = `${state.repoPath}/Localizacion/contextos_especificos`;
-          fileName = file.name.endsWith(".txt") ? file.name : `${file.name.split(".")[0]}.txt`;
-          
-          // Verificar duplicados
-          if (state.contextFiles.some(f => f.name === fileName)) {
-            setErrorModal({
-              show: true,
-              message: `El archivo ya existe en contextos.`,
-              filename: fileName
-            });
-            setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }));
-            return;
-          }
-          
-          finalPath = `${targetFolder}/${fileName}`;
-          await desktop.saveFile(file, finalPath);
-          
-          setState(prev => {
-            const newFile = { 
-              name: fileName, path: finalPath, priority: prev.contextFiles.length + 1, 
-              selected: true, isGlobal: false, isNew: true
-            };
-            // Los nuevos archivos van al final (prioridad más baja)
-            const newList = [...prev.contextFiles, newFile];
-            return { ...prev, contextFiles: newList };
-          });
-          break;
-          
-        case "glossary":
-          targetFolder = `${state.repoPath}/Localizacion/glosarios_especificos`;
-          fileName = file.name;
-          
-          // Verificar duplicados
-          if (state.glossaryFiles.some(f => f.name === fileName)) {
-            setErrorModal({
-              show: true,
-              message: `El archivo ya existe en glosarios.`,
-              filename: fileName
-            });
-            setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }));
-            return;
-          }
-          
-          finalPath = `${targetFolder}/${fileName}`;
-          await desktop.saveFile(file, finalPath);
-          
-          setState(prev => {
-            const newFile = { 
-              name: fileName, path: finalPath, priority: prev.glossaryFiles.length + 1, 
-              selected: true, isGlobal: false, isNew: true
-            };
-            const newList = [...prev.glossaryFiles, newFile];
-            return { ...prev, glossaryFiles: newList };
-          });
-          break;
-          
-        case "localize":
-          targetFolder = `${state.repoPath}/Localizacion`;
-          fileName = `${state.repoName}_localizar${ext}`;
-          finalPath = `${targetFolder}/${fileName}`;
-          if (state.selectedFile) await desktop.deleteFile(state.selectedFile.path);
-          await desktop.saveFile(file, finalPath);
-          setState(prev => ({ 
-            ...prev, 
-            selectedFile: { name: fileName, path: finalPath, isFile: true, isDirectory: false } 
-          }));
-          break;
+      // Si ya existe, lo eliminamos primero
+      if (state.selectedFile) {
+        await desktop.deleteFile(state.selectedFile.path);
       }
+      
+      await desktop.saveFile(file, finalPath);
+      
+      setState(prev => ({ 
+        ...prev, 
+        selectedFile: { 
+          name: fileName, 
+          path: finalPath, 
+          isFile: true, 
+          isDirectory: false 
+        },
+        showOverwriteConfirm: false,
+        pendingFile: null
+      }));
     } catch (error: any) {
       console.error("Error subiendo archivo:", error);
+      setErrorModal({
+        show: true,
+        message: "Error al subir el archivo: " + error.message,
+        filename: fileName
+      });
     }
-    setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }));
   };
 
-  const removeSelectedFile = async () => {
-    if (!state.selectedFile) return;
-    try {
-      await DesktopManager.getInstance().deleteFile(state.selectedFile.path);
-      setState(prev => ({ ...prev, selectedFile: null }));
-    } catch (error: any) {
-      console.error("Error eliminando archivo:", error);
+  const handleOverwriteConfirm = async () => {
+    if (state.pendingFile) {
+      await uploadLocalizeFile(state.pendingFile);
     }
+  };
+
+  const handleOverwriteCancel = () => {
+    setState(prev => ({ ...prev, showOverwriteConfirm: false, pendingFile: null }));
   };
 
   // Idiomas
@@ -759,10 +721,36 @@ const Landing: React.FC = () => {
           <div className="error-modal-icon">
             <AlertCircle size={32} />
           </div>
-          <h3>Archivo duplicado</h3>
+          <h3>Error</h3>
           <p>{message}</p>
-          <div className="error-filename">{filename}</div>
+          {filename && <div className="error-filename">{filename}</div>}
           <button onClick={onClose}>Entendido</button>
+        </div>
+      </div>
+    );
+  };
+
+  // Componente para modal de confirmación de sobrescritura
+  const OverwriteConfirmModal = ({ show, onConfirm, onCancel, fileName }: any) => {
+    if (!show) return null;
+    
+    return (
+      <div className="error-modal-overlay" onClick={onCancel}>
+        <div className="error-modal" onClick={e => e.stopPropagation()}>
+          <div className="error-modal-icon" style={{ borderColor: "#FFB800", background: "rgba(255, 184, 0, 0.1)" }}>
+            <AlertCircle size={32} color="#FFB800" />
+          </div>
+          <h3>Sobrescribir archivo existente</h3>
+          <p>Ya existe un archivo a localizar. ¿Deseas sobrescribirlo?</p>
+          <div className="error-filename">{fileName}</div>
+          <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+            <button onClick={onConfirm} style={{ flex: 1, background: "linear-gradient(135deg, #B45AD3 0%, #9B4BC0 100%)" }}>
+              Sí, sobrescribir
+            </button>
+            <button onClick={onCancel} style={{ flex: 1, background: "var(--color-neutral-medium)" }}>
+              Cancelar
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -854,14 +842,13 @@ const Landing: React.FC = () => {
         onClose={() => setErrorModal({ show: false, message: "", filename: "" })}
       />
 
-      <UploadPopup
-        isOpen={state.showUploadPopup}
-        onClose={() => setState(prev => ({ ...prev, showUploadPopup: false, pendingFile: null }))}
-        onConfirm={processFileUpload}
-        fileName={state.pendingFile?.file.name || ""}
-        fileExtension={state.pendingFile?.extension || ""}
-        repoName={state.repoName}
+      <OverwriteConfirmModal
+        show={state.showOverwriteConfirm}
+        onConfirm={handleOverwriteConfirm}
+        onCancel={handleOverwriteCancel}
+        fileName={state.pendingFile?.name || ""}
       />
+
       <div className="landing-container">
         <div className="landing-content">
           <div className="config-panel">
@@ -1002,20 +989,23 @@ const Landing: React.FC = () => {
           </div>
           <div className="work-panel">
             <div className="work-header">
-              <h3>Subir archivos</h3>
+              <h3>Subir archivo a localizar</h3>
               {state.selectedFile && (
                 <div className="selected-file-info">
                   <FileSpreadsheet size={20} />
                   <div><strong>Archivo:</strong> <small>{state.selectedFile.name}</small></div>
-                  <button className="clear-btn" onClick={removeSelectedFile}><X size={16} /></button>
                 </div>
               )}
             </div>
-            <div className="drop-area unified" onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }} onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); }} onDrop={async (e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); const file = e.dataTransfer.files[0]; if (file) await handleFileUpload({ target: { files: [file] } } as any); }} onClick={() => document.getElementById("file-upload")?.click()}>
-              <div className="drop-icon"><FileSpreadsheet size={48} /><FileText size={48} style={{ marginLeft: -20 }} /><BookOpen size={48} style={{ marginLeft: -20 }} /></div>
+            <div className="drop-area unified" onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }} onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); }} onDrop={async (e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); const file = e.dataTransfer.files[0]; if (file) await handleFileUpload(file); }} onClick={() => document.getElementById("file-upload")?.click()}>
+              <div className="drop-icon"><FileSpreadsheet size={48} /></div>
               <p className="drop-title">Arrastra o haz click</p>
-              <p className="drop-description">.txt para contextos • .csv/.xlsx para glosarios o archivo a localizar</p>
-              <input id="file-upload" type="file" accept=".txt,.csv,.xlsx" onChange={handleFileUpload} style={{ display: "none" }} />
+              <p className="drop-description">Archivo a localizar (.csv o .xlsx)</p>
+              <input id="file-upload" type="file" accept=".csv,.xlsx" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = "";
+              }} style={{ display: "none" }} />
             </div>
             <div className="spellcheck-option">
               <label className="spellcheck-label">
