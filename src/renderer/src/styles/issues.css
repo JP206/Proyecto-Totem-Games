@@ -613,3 +613,21 @@
 .modal-row .modal-field {
   flex: 1;
 }
+
+.modal-field select {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--color-neutral-dark);
+  border: 1px solid var(--color-neutral-medium);
+  border-radius: 8px;
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.modal-field select:focus {
+  outline: none;
+  border-color: var(--color-secondary-cyan);
+  box-shadow: 0 0 0 3px rgba(90, 206, 229, 0.1);
+}

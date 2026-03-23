@@ -28,6 +28,7 @@ export default function Issues() {
   const [syncing, setSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("");
   const [editedAssignee, setEditedAssignee] = useState("");
+  const [contributors, setContributors] = useState<any[]>([]);
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -37,6 +38,8 @@ export default function Issues() {
     repoName: string;
     repoOwner: string;
   } | null>(null);
+
+  let user: any = "Desconocido";
 
   useEffect(() => {
     loadProjectAndIssues();
@@ -59,7 +62,7 @@ export default function Issues() {
         return;
       }
 
-      const user = await desktop.getConfig("github_user");
+      user = await desktop.getConfig("github_user");
       setCurrentUser(user?.login || "Desconocido");
 
       const project = await desktop.getConfig("current_project");
@@ -68,6 +71,13 @@ export default function Issues() {
         setTimeout(() => navigate("/dashboard"), 2000);
         return;
       }
+
+      const contributors = await desktop.getContributors({
+        repoName: project.repoName,
+        repoOwner: project.repoOwner,
+        token,
+      });
+      setContributors(contributors);
 
       setCurrentProject(project);
       await loadIssues(project, token);
@@ -87,6 +97,83 @@ export default function Issues() {
 
       const user = await desktop.getConfig("github_user");
       setCurrentUser(user?.login || "Desconocido");
+
+      // 3 requests because GitHub doesn't allow to filter all these at the same time
+      const dataAssignedToSelf = await desktop.getIssuesVariable(
+        {
+          repoName: project.repoName,
+          repoOwner: project.repoOwner,
+          token,
+        },
+        {
+          assignee: user.login,
+          state: "open",
+          labels: "bug",
+        }
+      );
+
+      const dataNoAssignees = await desktop.getIssuesVariable(
+        {
+          repoName: project.repoName,
+          repoOwner: project.repoOwner,
+          token,
+        },
+        {
+          assignee: "none",
+          state: "open",
+          labels: "bug",
+        }
+      );
+
+      const dataClosed = await desktop.getIssuesVariable(
+        {
+          repoName: project.repoName,
+          repoOwner: project.repoOwner,
+          token,
+        },
+        {
+          assignee: "*",
+          state: "closed",
+          labels: "bug",
+        }
+      );
+
+      const data = [...dataAssignedToSelf, ...dataNoAssignees, ...dataClosed];
+
+      const formattedIssues = data
+        .filter((issue: any) => !issue.pull_request)
+        .map((issue: any) => ({
+          id: issue.number,
+          title: issue.title,
+          description: issue.body,
+          date: new Date(issue.created_at).toLocaleDateString(),
+          status: issue.state,
+          assignee: issue.assignee?.login || "",
+        }));
+
+      setIssues(formattedIssues);
+    } catch (error: any) {
+      showNotification("error", error.message || "Error al cargar los issues");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const waitForIssue = async (
+    project: { repoName: string; repoOwner: string },
+    token: string,
+    title: string,
+    attempts = 0
+  ): Promise<boolean> => {
+    const maxAttempts = 10;
+
+    if (attempts >= maxAttempts) {
+      setSyncing(false);
+      return false;
+    }
+
+    try {
+      const desktop = DesktopManager.getInstance();
 
       const dataAssignedToSelf = await desktop.getIssuesVariable(
         {
@@ -114,54 +201,20 @@ export default function Issues() {
         }
       );
 
-      const data = [...dataAssignedToSelf, ...dataNoAssignees];
-
-      const formattedIssues = data
-        .filter((issue: any) => !issue.pull_request)
-        .map((issue: any) => ({
-          id: issue.number,
-          title: issue.title,
-          description: issue.body,
-          date: new Date(issue.created_at).toLocaleDateString(),
-          status: issue.state,
-          assignee: issue.assignee?.login || "Sin asignar",
-        }));
-
-      setIssues(formattedIssues);
-    } catch (error: any) {
-      showNotification("error", error.message || "Error al cargar los issues");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const waitForIssue = async (
-    project: { repoName: string; repoOwner: string },
-    token: string,
-    title: string,
-    attempts = 0
-  ): Promise<boolean> => {
-    const maxAttempts = 10;
-
-    if (attempts >= maxAttempts) {
-      setSyncing(false);
-      return false;
-    }
-
-    try {
-      const desktop = DesktopManager.getInstance();
-
-      const data = await desktop.getIssuesVariable(
+      const dataClosed = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
         {
-          state: "open",
-          label: "bug",
+          assignee: "*",
+          state: "closed",
+          labels: "bug",
         }
       );
+
+      const data = [...dataAssignedToSelf, ...dataNoAssignees, ...dataClosed];
 
       const exists = data.some((issue: any) => issue.title === title);
 
@@ -218,7 +271,7 @@ export default function Issues() {
           title: editedTitle,
           description: editedDescription,
           id: null,
-          assignees: null,
+          assignees: editedAssignee ? [editedAssignee] : null,
           labels: ["bug"],
         };
 
@@ -458,6 +511,24 @@ export default function Issues() {
                 />
               </div>
 
+              {!selectedIssue && (
+                <div className="modal-field">
+                  <label>Asignado a:</label>
+                  <select
+                    value={editedAssignee}
+                    onChange={(e) => setEditedAssignee(e.target.value)}
+                  >
+                    <option value="">Sin asignar</option>
+
+                    {contributors.map((contributor) => (
+                      <option key={contributor.login} value={contributor.login}>
+                        {contributor.login}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {selectedIssue && (
                 <div className="modal-row">
                   <div className="modal-field">
@@ -477,12 +548,18 @@ export default function Issues() {
 
                   <div className="modal-field">
                     <label>Asignado a:</label>
-                    <input
-                      type="text"
+                    <select
                       value={editedAssignee}
                       onChange={(e) => setEditedAssignee(e.target.value)}
-                      placeholder="Usuario de GitHub"
-                    />
+                    >
+                      <option value="">Sin asignar</option>
+
+                      {contributors.map((contributor) => (
+                        <option key={contributor.login} value={contributor.login}>
+                          {contributor.login}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}

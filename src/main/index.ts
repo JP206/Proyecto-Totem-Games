@@ -623,6 +623,37 @@ ipcMain.handle("git-get-notes", async (event: any, data: RepoInformation) => {
     }
 });
 
+// OBTENER CONTRIBUTORS
+ipcMain.handle(
+  "git-get-contributors",
+  async (event: any, data: RepoInformation) => {
+    try {
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/contributors`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${data.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error en git-get-contributors:", errorMessage);
+
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error obteniendo contributors: ${errorMessage}`);
+    }
+  },
+);
+
 // OBTENER CAMBIOS EN REPOSITORIO
 ipcMain.handle("git-get-changes", async (event: any, data: RepoInformation) => {
   try {

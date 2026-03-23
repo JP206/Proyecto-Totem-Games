@@ -162,6 +162,10 @@ class DesktopManager {
     return await this.electron.markIssueAsResolved(issueId, repoInfo);
   }
 
+  async getContributors(repoInfo: RepoInformation) {
+    return await this.electron.getContributors(repoInfo);
+  }
+
   async editIssue(issueData: IssueData, repoInfo: RepoInformation) {
     return await this.electron.editIssue(issueData, repoInfo);
   }
