@@ -27,6 +27,7 @@ export default function Issues() {
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [syncing, setSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("");
+  const [editedAssignee, setEditedAssignee] = useState("");
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -84,6 +85,9 @@ export default function Issues() {
       setLoading(true);
       const desktop = DesktopManager.getInstance();
 
+      const user = await desktop.getConfig("github_user");
+      setCurrentUser(user?.login || "Desconocido");
+
       const dataAssignedToSelf = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
@@ -91,9 +95,9 @@ export default function Issues() {
           token,
         },
         {
-          assignee: "JP206",
+          assignee: user.login,
           state: "open",
-          label: "bug",
+          labels: "bug",
         }
       );
 
@@ -106,7 +110,7 @@ export default function Issues() {
         {
           assignee: "none",
           state: "open",
-          label: "bug",
+          labels: "bug",
         }
       );
 
@@ -240,7 +244,7 @@ export default function Issues() {
           title: editedTitle,
           description: editedDescription,
           id: selectedIssue.id,
-          assignees: null,
+          assignees: [editedAssignee],
           labels: null,
         };
 
@@ -255,13 +259,13 @@ export default function Issues() {
         }
       }
 
-      if (response) {
-        await loadIssues(currentProject, token);
-        setIsModalOpen(false);
-        setSelectedIssue(null);
-        setEditedTitle("");
-        setEditedDescription("");
-      }
+      setIsModalOpen(false);
+      setSelectedIssue(null);
+      setEditedTitle("");
+      setEditedDescription("");
+      setSyncing(true);
+
+      waitForIssue(currentProject, token, editedTitle).catch(console.error);
     } catch (error: any) {
       showNotification("error", error.message || "Error al guardar el issue");
     }
@@ -271,6 +275,7 @@ export default function Issues() {
     setSelectedIssue(null);
     setEditedTitle("");
     setEditedDescription("");
+    setEditedAssignee("");
     setIsModalOpen(true);
   };
 
@@ -278,6 +283,7 @@ export default function Issues() {
     setSelectedIssue(issue);
     setEditedTitle(issue.title);
     setEditedDescription(issue.description);
+    setEditedAssignee(issue.assignee || "");
     setIsModalOpen(true);
   };
 
@@ -453,18 +459,30 @@ export default function Issues() {
               </div>
 
               {selectedIssue && (
-                <div className="modal-field">
-                  <label>Estado actual</label>
-                  <div className={`status-badge ${selectedIssue.status}`}>
-                    {selectedIssue.status === "open" ? (
-                      <>
-                        <AlertCircle size={12} /> Abierto
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={12} /> Cerrado
-                      </>
-                    )}
+                <div className="modal-row">
+                  <div className="modal-field">
+                    <label>Estado actual</label>
+                    <div className={`status-badge ${selectedIssue.status}`}>
+                      {selectedIssue.status === "open" ? (
+                        <>
+                          <AlertCircle size={12} /> Abierto
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={12} /> Cerrado
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="modal-field">
+                    <label>Asignado a:</label>
+                    <input
+                      type="text"
+                      value={editedAssignee}
+                      onChange={(e) => setEditedAssignee(e.target.value)}
+                      placeholder="Usuario de GitHub"
+                    />
                   </div>
                 </div>
               )}

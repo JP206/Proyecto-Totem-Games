@@ -604,3 +604,12 @@
   height: 12px;
   color: var(--color-secondary-pink);
 }
+
+.modal-row {
+  display: flex;
+  gap: 16px;
+}
+
+.modal-row .modal-field {
+  flex: 1;
+}

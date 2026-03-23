@@ -451,7 +451,7 @@ ipcMain.handle(
     params?: {
       assignee?: string;    // user name, none (issues sin assignees), * (todos)
       state?: string;       // open, closed, all
-      label?: string;       // bug (issue), documentation (nota) 
+      labels?: string;      // bug (issue), documentation (nota) 
     }
   ) => {
     try {
@@ -473,7 +473,7 @@ ipcMain.handle(
       });
 
       return response.json();
-    } catch (error: unknown) {
+    }catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
 
@@ -539,9 +539,7 @@ ipcMain.handle(
         body: JSON.stringify({
           ...(issueData.title != null && { title: issueData.title }),
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && {
-            assignees: issueData.assignees,
-          }),
+          ...(issueData.assignees != null && { assignees: issueData.assignees }),
         }),
       });
 
