@@ -235,6 +235,10 @@ export interface ElectronAPI {
 
   getIssues: (data: RepoInformation, label: string) => Promise<IssueData[]>;
 
+  getIssuesVariable: (data: RepoInformation, params: any) => Promise<IssueData[]>;
+
+  getContributors: (data: RepoInformation) => Promise<any[]>;
+
   markIssueAsResolved: (
     issueId: number,
     repoInfo: RepoInformation,
