@@ -194,11 +194,16 @@
 /* Empty */
 .empty-issues {
   grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 60px;
   background-color: var(--color-neutral-dark);
   border-radius: 12px;
   border: 2px dashed var(--color-neutral-medium);
+  gap: 20px;
 }
 
 /* Estados vacíos */
