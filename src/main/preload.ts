@@ -25,8 +25,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-mark-issue-as-resolved", issueId, repoInfo),
 
-  getContributors: (data: RepoInformation) =>
-    ipcRenderer.invoke("git-get-contributors", data),
+  getCollaborators: (data: RepoInformation) =>
+    ipcRenderer.invoke("git-get-collaborators", data),
 
   editIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-edit-issue", issueData, repoInfo),

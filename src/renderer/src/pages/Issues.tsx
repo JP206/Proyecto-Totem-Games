@@ -28,7 +28,7 @@ export default function Issues() {
   const [syncing, setSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("");
   const [editedAssignee, setEditedAssignee] = useState("");
-  const [contributors, setContributors] = useState<any[]>([]);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -72,12 +72,12 @@ export default function Issues() {
         return;
       }
 
-      const contributors = await desktop.getContributors({
+      const collaborators = await desktop.getCollaborators({
         repoName: project.repoName,
         repoOwner: project.repoOwner,
         token,
       });
-      setContributors(contributors);
+      setCollaborators(collaborators);
 
       setCurrentProject(project);
       await loadIssues(project, token);
@@ -520,7 +520,7 @@ export default function Issues() {
                   >
                     <option value="">Sin asignar</option>
 
-                    {contributors.map((contributor) => (
+                    {collaborators.map((contributor) => (
                       <option key={contributor.login} value={contributor.login}>
                         {contributor.login}
                       </option>
@@ -554,7 +554,7 @@ export default function Issues() {
                     >
                       <option value="">Sin asignar</option>
 
-                      {contributors.map((contributor) => (
+                      {collaborators.map((contributor) => (
                         <option key={contributor.login} value={contributor.login}>
                           {contributor.login}
                         </option>

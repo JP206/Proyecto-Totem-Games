@@ -623,12 +623,12 @@ ipcMain.handle("git-get-notes", async (event: any, data: RepoInformation) => {
     }
 });
 
-// OBTENER CONTRIBUTORS
+// OBTENER COLLABORATORS
 ipcMain.handle(
-  "git-get-contributors",
+  "git-get-collaborators",
   async (event: any, data: RepoInformation) => {
     try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/contributors`;
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/collaborators`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -643,7 +643,7 @@ ipcMain.handle(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error en git-get-contributors:", errorMessage);
+      console.error("Error en git-get-collaborators:", errorMessage);
 
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
