@@ -277,6 +277,9 @@ export interface ElectronAPI {
   onMenuSelectFolder: (callback: () => void) => void;
   onMenuRefreshRepos: (callback: () => void) => void;
   onMenuLogout: (callback: () => void) => void;
+
+  // Administrador o Desarrollador
+  verifyUserRole: (data: { token: string; username: string }) => Promise<{ role: "administrador" | "desarrollador"; error?: string }>;
 }
 
 declare global {

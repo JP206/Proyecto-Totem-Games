@@ -21,7 +21,6 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verificar si ya hay token guardado
     const checkSavedToken = async () => {
       try {
         const desktop = DesktopManager.getInstance();
@@ -50,6 +49,8 @@ const Login: React.FC = () => {
     setSuccess(false);
 
     try {
+      const desktop = DesktopManager.getInstance();
+      
       // Verificar token con GitHub API
       const response = await fetch("https://api.github.com/user", {
         headers: {
@@ -60,15 +61,17 @@ const Login: React.FC = () => {
 
       if (response.ok) {
         const userData = await response.json();
-
+        
+        // Verificar rol del usuario (administrador o desarrollador)
+        const roleResult = await desktop.verifyUserRole(token, userData.login);
+        
         // Guardar en configuración
-        const desktop = DesktopManager.getInstance();
         await desktop.setConfig("github_token", token);
         await desktop.setConfig("github_user", userData);
+        await desktop.setConfig("user_role", roleResult.role);
 
         setSuccess(true);
         
-        // Pequeña pausa para mostrar el mensaje de éxito antes de redirigir
         setTimeout(() => {
           navigate("/dashboard");
         }, 1000);
@@ -172,7 +175,6 @@ const Login: React.FC = () => {
               deseada.
             </li>
             <li>
-              {" "}
               Marca
               <code className="code-tag">repo</code> y
               <code className="code-tag">user</code>
@@ -186,4 +188,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Login; 

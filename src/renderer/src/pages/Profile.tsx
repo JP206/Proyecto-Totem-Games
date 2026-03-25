@@ -1,8 +1,9 @@
+// src/renderer/src/pages/Profile.tsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
 import "../styles/profile.css";
-import { CheckCircle, Loader2, KeyRound, Shield, ArrowLeft } from "lucide-react";
+import { CheckCircle, Loader2, KeyRound, Shield, ArrowLeft, LogOut } from "lucide-react";
 
 type ProviderId = "openai" | "gemini";
 
@@ -51,31 +52,29 @@ const initialProviderState: ProviderLocalState = {
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation() as any;
-  const fromPath: string | null =
-    (location.state && typeof location.state.from === "string"
-      ? location.state.from
-      : null) || null;
+  const location = useLocation();
+  const fromPage = (location.state as any)?.from || null;
+  
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>("desarrollador");
   const [loading, setLoading] = useState(true);
   const [hasProject, setHasProject] = useState(false);
-  const [openaiState, setOpenaiState] =
-    useState<ProviderLocalState>(initialProviderState);
-  const [geminiState, setGeminiState] =
-    useState<ProviderLocalState>(initialProviderState);
+  const [openaiState, setOpenaiState] = useState<ProviderLocalState>(initialProviderState);
+  const [geminiState, setGeminiState] = useState<ProviderLocalState>(initialProviderState);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const desktop = DesktopManager.getInstance();
         const userData = await desktop.getConfig("github_user");
+        const role = await desktop.getConfig("user_role");
         setUser(userData);
+        setUserRole(role || "desarrollador");
 
         const currentProject = await desktop.getConfig("current_project");
         setHasProject(!!currentProject?.repoPath && !!currentProject?.repoName);
 
-        const aiConfig =
-          (await window.electronAPI.getPersonalAIConfig()) as PersonalAIConfigSummary;
+        const aiConfig = await window.electronAPI.getPersonalAIConfig() as PersonalAIConfigSummary;
 
         setOpenaiState((prev) => ({
           ...prev,
@@ -206,6 +205,37 @@ const Profile: React.FC = () => {
         error: error?.message || String(error),
       }));
     }
+  };
+
+  const handleBack = () => {
+    // Si venimos de dashboard, volvemos a dashboard
+    if (fromPage === "dashboard") {
+      navigate("/dashboard");
+      return;
+    }
+    
+    // Si venimos de landing, volvemos a landing (si hay proyecto)
+    if (fromPage === "landing" && hasProject) {
+      navigate("/landing");
+      return;
+    }
+    
+    // Si hay proyecto seleccionado (ej: entraron desde un enlace interno), ir a landing
+    if (hasProject) {
+      navigate("/landing");
+      return;
+    }
+    
+    // Si no hay proyecto, ir a dashboard
+    navigate("/dashboard");
+  };
+
+  const handleLogout = async () => {
+    const desktop = DesktopManager.getInstance();
+    await desktop.setConfig("github_token", null);
+    await desktop.setConfig("github_user", null);
+    await desktop.setConfig("user_role", null);
+    navigate("/");
   };
 
   const renderProviderCard = (
@@ -352,16 +382,18 @@ const Profile: React.FC = () => {
         <button
           type="button"
           className="profile-back-btn"
-          onClick={() => {
-            if (fromPath) {
-              navigate(fromPath);
-              return;
-            }
-            navigate(hasProject ? "/landing" : "/dashboard");
-          }}
+          onClick={handleBack}
         >
           <ArrowLeft size={18} />
           <span>Volver</span>
+        </button>
+        <button
+          type="button"
+          className="profile-logout-btn"
+          onClick={handleLogout}
+        >
+          <LogOut size={18} />
+          <span>Cerrar Sesión</span>
         </button>
       </div>
 
@@ -378,7 +410,7 @@ const Profile: React.FC = () => {
           <p className="profile-username">@{user?.login}</p>
           <div className="profile-role">
             <Shield size={14} />
-            <span>Desarrollador</span>
+            <span>{userRole === "administrador" ? "Administrador" : "Desarrollador"}</span>
           </div>
         </div>
       </div>
@@ -404,4 +436,3 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-

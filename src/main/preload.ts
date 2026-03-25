@@ -133,4 +133,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // 11d. Crear carpeta
   createFolder: (folderPath: string) => ipcRenderer.invoke("create-folder", folderPath),
+
+  // Administrador o Desarrollador
+  verifyUserRole: (data: { token: string; username: string }) =>
+  ipcRenderer.invoke("verify-user-role", data),
 });

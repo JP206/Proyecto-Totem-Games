@@ -8,13 +8,13 @@ import LanguageSelector from "../components/LanguageSelector";
 import {
   FileText, BookOpen, Layers, AlertCircle, Download,
   FileSpreadsheet, X, CheckSquare, Square, ChevronDown,
-  CheckCircle, Globe, Trash2, Sparkles, Coins, CircleHelp, Binary
+  CheckCircle, Globe, Sparkles, Coins, CircleHelp, Binary
 } from "lucide-react";
 import { getTokensToday, addTokensToday } from "../utils/tokenUsage";
 import "../styles/landing.css";
 
 interface FileItem { name: string; path: string; isDirectory: boolean; isFile: boolean; }
-interface ContextFile { name: string; path: string; priority: number; selected: boolean; isGlobal?: boolean; isNew?: boolean; }
+interface ContextFile { name: string; path: string; priority: number; selected: boolean; isGlobal?: boolean; }
 interface Language { id: string; name: string; code: string; region?: string; country?: string; }
 
 /** Portal + fixed position so help is not clipped by the config panel (overflow). */
@@ -89,7 +89,7 @@ function LandingFloatingHelp({ text }: { text: string }) {
   );
 }
 
-const GENERAL_REPO = { name: "repo-general-totem-games", owner: "biancaluzz" };
+const GENERAL_REPO = { name: "repo-general-totem-games", owner: "Proyecto-Final-de-Grado" };
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -208,7 +208,6 @@ const Landing: React.FC = () => {
         }));
       } catch {
         if (cancelled) return;
-        // Missing/renamed file or transient estimate failures should not block UX.
         setState(prev => ({
           ...prev,
           estimatingCost: false,
@@ -384,7 +383,7 @@ const Landing: React.FC = () => {
       return files.filter((f: any) => f.isFile && f.name.endsWith(".txt"))
         .map((f: any) => ({ 
           name: f.name, path: f.path, priority: 0, 
-          selected: true, isGlobal: false, isNew: false
+          selected: true, isGlobal: false
         }));
     } catch { return []; }
   };
@@ -397,7 +396,7 @@ const Landing: React.FC = () => {
       return files.filter((f: any) => f.isFile && (f.name.endsWith(".csv") || f.name.endsWith(".xlsx")))
         .map((f: any) => ({ 
           name: f.name, path: f.path, priority: 0, 
-          selected: true, isGlobal: false, isNew: false
+          selected: true, isGlobal: false
         }));
     } catch { return []; }
   };
@@ -411,7 +410,7 @@ const Landing: React.FC = () => {
       return files.filter((f: any) => f.isFile && f.name.endsWith(".txt"))
         .map((f: any) => ({ 
           name: f.name, path: f.path, priority: 0, 
-          selected: true, isGlobal: true, isNew: false
+          selected: true, isGlobal: true
         }));
     } catch { return []; }
   };
@@ -425,36 +424,9 @@ const Landing: React.FC = () => {
       return files.filter((f: any) => f.isFile && (f.name.endsWith(".csv") || f.name.endsWith(".xlsx")))
         .map((f: any) => ({ 
           name: f.name, path: f.path, priority: 0, 
-          selected: true, isGlobal: true, isNew: false
+          selected: true, isGlobal: true
         }));
     } catch { return []; }
-  };
-
-  // Eliminar archivo específico
-  const deleteSpecificFile = async (file: ContextFile, type: "context" | "glossary") => {
-    if (!file.isNew) return;
-    
-    try {
-      await DesktopManager.getInstance().deleteFile(file.path);
-      
-      if (type === "context") {
-        setState(prev => {
-          const filtered = prev.contextFiles.filter(f => f.path !== file.path);
-          // Reindexar prioridades
-          const reindexed = filtered.map((f, idx) => ({ ...f, priority: idx + 1 }));
-          return { ...prev, contextFiles: reindexed };
-        });
-      } else {
-        setState(prev => {
-          const filtered = prev.glossaryFiles.filter(f => f.path !== file.path);
-          // Reindexar prioridades
-          const reindexed = filtered.map((f, idx) => ({ ...f, priority: idx + 1 }));
-          return { ...prev, glossaryFiles: reindexed };
-        });
-      }
-    } catch (error) {
-      console.error("Error eliminando archivo:", error);
-    }
   };
 
   // Manejadores de listas
@@ -786,7 +758,7 @@ const Landing: React.FC = () => {
           {files.length > 0 ? (
             <div className="priority-list">
               {files.map((file: ContextFile, idx: number) => (
-                <div key={idx} className={`priority-item ${file.isGlobal ? "global" : ""} ${file.isNew ? "new" : ""}`}>
+                <div key={idx} className={`priority-item ${file.isGlobal ? "global" : ""}`}>
                   <button className="select-toggle" onClick={() => toggleSelection(files, (newFiles: any) => setState(prev => ({ ...prev, [type]: newFiles })), idx)}>
                     {file.selected ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
@@ -795,15 +767,6 @@ const Landing: React.FC = () => {
                     {file.isGlobal && <Globe size={14} className="global-icon" />}
                     {file.name}
                   </span>
-                  {file.isNew && (
-                    <button 
-                      className="priority-delete-btn" 
-                      onClick={() => deleteSpecificFile(file, type === "contextFiles" ? "context" : "glossary")}
-                      title="Eliminar archivo"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
                   <div className="priority-controls">
                     <button className="priority-btn" onClick={() => moveItem(files, (newFiles: any) => setState(prev => ({ ...prev, [type]: newFiles })), idx, "up")} disabled={idx === 0}>↑</button>
                     <button className="priority-btn" onClick={() => moveItem(files, (newFiles: any) => setState(prev => ({ ...prev, [type]: newFiles })), idx, "down")} disabled={idx === files.length - 1}>↓</button>
@@ -979,7 +942,7 @@ const Landing: React.FC = () => {
                   <div className="info-note" style={{ marginTop: 12 }}>
                     <AlertCircle size={16} />
                     <span>¿Querés usar tu propia API key? Configurala en tu perfil o{" "}
-                      <button type="button" className="landing-link-button" onClick={() => navigate("/profile", { state: { from: "/landing" } })}>clickeando aquí</button>.
+                      <button type="button" className="landing-link-button" onClick={() => navigate("/profile", { state: { from: "landing" } })}>clickeando aquí</button>.
                     </span>
                   </div>
                 </div>
