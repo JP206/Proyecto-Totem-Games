@@ -172,8 +172,16 @@ class DesktopManager {
     return await this.electron.markIssueAsResolved(issueId, repoInfo);
   }
 
-  async getContributors(repoInfo: RepoInformation) {
-    return await this.electron.getContributors(repoInfo);
+  async getCollaborators(repoInfo: RepoInformation) {
+    return await this.electron.getCollaborators(repoInfo);
+  }
+
+  async inviteToOrg(organization: string, token: string, mail: string) {
+    return await this.electron.inviteToOrg(organization, token, mail);
+  }
+
+  async getOrgMembers(organization: string, token: string) {
+    return await this.electron.getOrgMembers(organization, token);
   }
 
   async editIssue(issueData: IssueData, repoInfo: RepoInformation) {
@@ -194,6 +202,10 @@ class DesktopManager {
     repoInfo: RepoInformation,
   ): Promise<any> {
     return await this.electron.getDiff(base, head, repoInfo);
+  }
+
+  async getOrgRepos(organization: string, token: string) {
+    return await this.electron.getOrgRepos(organization, token);
   }
 
   async gitCommand(data: GitCommandData): Promise<string> {

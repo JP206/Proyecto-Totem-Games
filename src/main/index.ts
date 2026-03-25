@@ -630,12 +630,12 @@ ipcMain.handle("git-get-notes", async (event: any, data: RepoInformation) => {
     }
 });
 
-// OBTENER CONTRIBUTORS
+// OBTENER COLLABORATORS DE UN REPOSITORIO
 ipcMain.handle(
-  "git-get-contributors",
+  "git-get-collaborators",
   async (event: any, data: RepoInformation) => {
     try {
-      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/contributors`;
+      const url: string = `https://api.github.com/repos/${data.repoOwner}/${data.repoName}/collaborators`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -650,13 +650,78 @@ ipcMain.handle(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error en git-get-contributors:", errorMessage);
+      console.error("Error en git-get-collaborators:", errorMessage);
 
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
 
       throw new Error(`Error obteniendo contributors: ${errorMessage}`);
+    }
+  },
+);
+
+// INVITAR A ORGANIZATION (***solo el creador de la organizacion puede hacerlo)
+ipcMain.handle(
+  "git-invite-org",
+  async (event: any, organization: string, mail: string, token: string) => {
+    try {
+      const url: string = `https://api.github.com/orgs/${organization}/invitations`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+        body: JSON.stringify({
+            "email": mail,
+            "role": "direct_member"
+        }),
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error invitando a organizacion:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error invitando a organizacion: ${errorMessage}`);
+    }
+  },
+);
+
+// OBTENER MIEMBROS DE UNA ORGANIZACION (para invitaciones de admin)
+ipcMain.handle(
+  "git-get-org-members",
+  async (event: any, token: string, organization: string) => {
+    try {
+      const url: string = `https://api.github.com/orgs/${organization}/members`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error al obtener miembros de la organizacion:", errorMessage);
+
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error al obtener miembros de la organizacion: ${errorMessage}`);
     }
   },
 );
@@ -705,6 +770,28 @@ ipcMain.handle(
     }
   },
 );
+
+// OBTENER REPOSITORIOS DE UNA ORGANIZACION
+ipcMain.handle("git-get-org-repos", async (event: any, organization: string, token: string) => {
+  try {
+    const url: string = `https://api.github.com/orgs/${organization}/repos`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2026-03-10",
+      },
+    });
+
+    return response.json();
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+    console.error("Error obteniendo cambios:", errorMessage);
+  }
+});
 
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(

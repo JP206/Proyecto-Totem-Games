@@ -237,7 +237,7 @@ export interface ElectronAPI {
 
   getIssuesVariable: (data: RepoInformation, params: any) => Promise<IssueData[]>;
 
-  getContributors: (data: RepoInformation) => Promise<any[]>;
+  getCollaborators: (data: RepoInformation) => Promise<any[]>;
 
   markIssueAsResolved: (
     issueId: number,
@@ -261,6 +261,12 @@ export interface ElectronAPI {
     head: string,
     repoInfo: RepoInformation,
   ) => Promise<any>;
+
+  getOrgRepos: (organization: string, token: string) => Promise<any[]>;
+
+  inviteToOrg: (organization: string, token: string, mail: string) => Promise<any[]>;
+
+  getOrgMembers: (organization: string, token: string) => Promise<any[]>;
 
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;

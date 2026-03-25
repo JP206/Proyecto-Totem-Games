@@ -25,14 +25,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   markIssueAsResolved: (issueId: number, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-mark-issue-as-resolved", issueId, repoInfo),
 
-  getContributors: (data: RepoInformation) =>
-    ipcRenderer.invoke("git-get-contributors", data),
+  getCollaborators: (data: RepoInformation) =>
+    ipcRenderer.invoke("git-get-collaborators", data),
 
   editIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-edit-issue", issueData, repoInfo),
 
   createIssue: (issueData: IssueData, repoInfo: RepoInformation) =>
     ipcRenderer.invoke("git-create-issue", issueData, repoInfo),
+
+  getOrgRepos: (organization: string, token: string) =>
+    ipcRenderer.invoke("git-get-org-repos", organization, token),
+
+  inviteToOrg: (organization: string, token: string, mail: string) =>
+    ipcRenderer.invoke("git-invite-org", organization, token, mail),
+
+  getOrgMembers: (organization: string, token: string) =>
+    ipcRenderer.invoke("git-get-org-members", organization, token),
 
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
