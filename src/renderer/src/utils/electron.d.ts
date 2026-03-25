@@ -263,6 +263,10 @@ export interface ElectronAPI {
 
   getOrgRepos: (organization: string, token: string) => Promise<any[]>;
 
+  inviteToOrg: (organization: string, token: string, mail: string) => Promise<any[]>;
+
+  getOrgMembers: (organization: string, token: string) => Promise<any[]>;
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;

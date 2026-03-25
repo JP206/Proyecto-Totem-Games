@@ -37,6 +37,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getOrgRepos: (organization: string, token: string) =>
     ipcRenderer.invoke("git-get-org-repos", organization, token),
 
+  inviteToOrg: (organization: string, token: string, mail: string) =>
+    ipcRenderer.invoke("git-invite-org", organization, token, mail),
+
+  getOrgMembers: (organization: string, token: string) =>
+    ipcRenderer.invoke("git-get-org-members", organization, token),
+
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
 

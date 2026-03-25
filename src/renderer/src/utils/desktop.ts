@@ -166,6 +166,14 @@ class DesktopManager {
     return await this.electron.getCollaborators(repoInfo);
   }
 
+  async inviteToOrg(organization: string, token: string, mail: string) {
+    return await this.electron.inviteToOrg(organization, token, mail);
+  }
+
+  async getOrgMembers(organization: string, token: string) {
+    return await this.electron.getOrgMembers(organization, token);
+  }
+
   async editIssue(issueData: IssueData, repoInfo: RepoInformation) {
     return await this.electron.editIssue(issueData, repoInfo);
   }

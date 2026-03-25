@@ -74,17 +74,15 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchGithub = async () => {
-    setLoading(d => ({ ...d, github: true }));
-    const token = await DesktopManager.getInstance().getConfig("github_token");
-    if (token) {
-      const res = await fetch("https://api.github.com/user/repos", {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
-      });
-      if (res.ok) setGithubRepos(await res.json());
-    }
-    setLoading(d => ({ ...d, github: false }));
-
-    /* ASI SERIA UTILIZANDO LA ORGANIZACION
+    // setLoading(d => ({ ...d, github: true }));
+    // const token = await DesktopManager.getInstance().getConfig("github_token");
+    // if (token) {
+    //   const res = await fetch("https://api.github.com/user/repos", {
+    //     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
+    //   });
+    //   if (res.ok) setGithubRepos(await res.json());
+    // }
+    // setLoading(d => ({ ...d, github: false }));
     setLoading(d => ({ ...d, github: true }));
     const desktop = DesktopManager.getInstance();
     const token = await desktop.getConfig("github_token");
@@ -93,7 +91,6 @@ const Dashboard: React.FC = () => {
       if (res) setGithubRepos(res);
     }
     setLoading(d => ({ ...d, github: false }));
-    */
   };
 
   const refreshAll = async () => {
