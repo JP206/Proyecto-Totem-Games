@@ -1170,16 +1170,16 @@ ipcMain.handle(
   },
 );
 
-// Verificar membresía de organización
+// Verificar rol de usuario basado en si es owner de la organización
 ipcMain.handle(
   "verify-user-role",
   async (event: any, data: { token: string; username: string }) => {
     try {
       const { token, username } = data;
-      const repoOwner = "biancaluzz";
-      const repoName = "repo-general-totem-games";
+      const orgName = "Proyecto-Final-de-Grado";
       
-      const url = `https://api.github.com/repos/${repoOwner}/${repoName}/collaborators/${username}`;
+      // Verificar si es owner de la organización
+      const url = `https://api.github.com/orgs/${orgName}/memberships/${username}`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -1189,18 +1189,25 @@ ipcMain.handle(
         },
       });
       
-      // Si la respuesta es 200, el usuario es colaborador (administrador)
-      if (response.status === 204 || response.status === 200) {
-        return { role: "administrador" };
+      if (response.status === 404) {
+        // No es miembro de la organización
+        return { role: "sin-acceso", error: "No eres miembro de la organización" };
       }
       
-      // Si es 404, no es colaborador
-      if (response.status === 404) {
+      if (response.ok) {
+        const membership = await response.json();
+        
+        // Si es owner (admin) de la organización
+        if (membership.role === "admin") {
+          return { role: "administrador" };
+        }
+        
+        // Si es miembro normal
         return { role: "desarrollador" };
       }
       
-      // Otro error
-      return { role: "desarrollador", error: `Error ${response.status}` };
+      // Por defecto
+      return { role: "desarrollador" };
     } catch (error: any) {
       console.error("Error verificando rol:", error);
       return { role: "desarrollador", error: error.message };
