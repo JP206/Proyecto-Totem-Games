@@ -1,3 +1,4 @@
+/* src/renderer/src/styles/profile.css */
 .profile-container {
   min-height: 100vh;
   width: 100vw;
@@ -30,7 +31,10 @@
 
 .profile-header-bar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .profile-back-btn {
@@ -38,12 +42,39 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid var(--color-neutral-medium);
   background-color: var(--color-neutral-dark);
   color: var(--color-neutral-lighter);
   font-size: var(--text-sm);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-back-btn:hover {
+  background-color: var(--color-neutral-medium);
+  border-color: var(--color-secondary-cyan);
+  transform: translateY(-2px);
+}
+
+.profile-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, var(--color-error), #e74c3c);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
 }
 
 .profile-avatar {
@@ -187,6 +218,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.profile-save-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-light);
+  transform: translateY(-1px);
 }
 
 .profile-delete-btn {
@@ -197,6 +234,12 @@
   color: var(--color-error);
   font-size: var(--text-xs);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-delete-btn:hover:not(:disabled) {
+  background-color: rgba(231, 76, 60, 0.1);
+  transform: translateY(-1px);
 }
 
 .profile-delete-btn:disabled {
@@ -253,9 +296,35 @@
   font-size: var(--text-sm);
 }
 
+.profile-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .profile-providers-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
+@media (max-width: 480px) {
+  .profile-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .profile-back-btn,
+  .profile-logout-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .profile-header-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .profile-role {
+    align-self: center;
+  }
+}

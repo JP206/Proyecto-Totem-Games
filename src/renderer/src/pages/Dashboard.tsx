@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Folder, Monitor, MapPin, Download, RefreshCw, Calendar,
   DownloadCloud, Github, CheckCircle, AlertCircle, Clock,
-  Search, LogOut, Shield, Trash2, AlertTriangle, RefreshCwOff
+  Search, Trash2, AlertTriangle, RefreshCwOff
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
@@ -17,7 +17,6 @@ const Dashboard: React.FC = () => {
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [showProfile, setShowProfile] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPullModal, setShowPullModal] = useState(false);
   const [repoToPull, setRepoToPull] = useState<{ path: string; name: string } | null>(null);
@@ -180,19 +179,16 @@ const Dashboard: React.FC = () => {
     setRepoToDelete(null);
   };
 
-  const handleLogout = async () => {
-    const d = DesktopManager.getInstance();
-    await d.setConfig("github_token", null);
-    await d.setConfig("github_user", null);
-    navigate("/");
-  };
-
   const navigateToProject = async (path: string, name: string) => {
     const githubRepo = githubRepos.find(r => r.name === name);
     await DesktopManager.getInstance().setConfig("current_project", {
       repoPath: path, repoName: name, repoOwner: githubRepo?.owner?.login || ""
     });
     navigate("/landing");
+  };
+
+  const navigateToProfile = () => {
+    navigate("/profile", { state: { from: "dashboard" } });
   };
 
   const isRepoCloned = (repoName: string) => localRepos.some(r => r.name === repoName);
@@ -234,7 +230,7 @@ const Dashboard: React.FC = () => {
       {globalLoading && <GlobalLoadingOverlay />}
 
       <div className="dashboard-header">
-        <div className="user-info" onClick={() => setShowProfile(true)}>
+        <div className="user-info" onClick={navigateToProfile}>
           {user?.avatar_url && <img src={user.avatar_url} alt={user.login} className="user-avatar" />}
           <div>
             <h3>{user?.name || user?.login}</h3>
@@ -351,21 +347,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <Modal show={showProfile} onClose={() => setShowProfile(false)} className="profile-modal">
-        <div className="profile-header">
-          {user?.avatar_url && <img src={user.avatar_url} alt={user.login} className="profile-avatar" />}
-          <div>
-            <h4>{user?.name || user?.login}</h4>
-            <p>@{user?.login}</p>
-            <span className="profile-role"><Shield size={14} /> Desarrollador</span>
-          </div>
-        </div>
-        <div className="profile-popup-actions">
-          <button onClick={() => { setShowProfile(false); navigate("/profile", { state: { from: "/dashboard" } }); }} className="profile-popup-logout profile-popup-secondary">Ver perfil completo</button>
-          <button onClick={handleLogout} className="profile-popup-logout"><LogOut size={16} /> Cerrar Sesión</button>
-        </div>
-      </Modal>
 
       <Modal show={showPullModal} onClose={() => setShowPullModal(false)} className="pull-modal">
         <div className="pull-header">

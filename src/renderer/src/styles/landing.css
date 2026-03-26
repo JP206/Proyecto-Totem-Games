@@ -357,30 +357,6 @@
   cursor: not-allowed;
 }
 
-/* Botón de eliminar */
-.priority-delete-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid var(--color-error);
-  background-color: rgba(248, 81, 73, 0.1);
-  color: var(--color-error);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-
-.priority-delete-btn:hover {
-  background-color: var(--color-error);
-  border-color: var(--color-error);
-  color: white;
-  transform: scale(1.05);
-}
-
 /* Icono global - MÁS LLAMATIVO */
 .global-icon {
   color: var(--color-secondary-cyan);
@@ -401,16 +377,6 @@
   color: white;
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(90, 206, 229, 0.3);
-}
-
-/* Archivos nuevos (subidos en esta sesión) */
-.priority-item.new {
-  border-left: 4px solid var(--color-success);
-  background-color: rgba(46, 164, 79, 0.05);
-}
-
-.priority-item.new:hover {
-  background-color: rgba(46, 164, 79, 0.1);
 }
 
 /* Select toggle */

@@ -1170,6 +1170,44 @@ ipcMain.handle(
   },
 );
 
+// Verificar membresía de organización
+ipcMain.handle(
+  "verify-user-role",
+  async (event: any, data: { token: string; username: string }) => {
+    try {
+      const { token, username } = data;
+      const repoOwner = "biancaluzz";
+      const repoName = "repo-general-totem-games";
+      
+      const url = `https://api.github.com/repos/${repoOwner}/${repoName}/collaborators/${username}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      // Si la respuesta es 200, el usuario es colaborador (administrador)
+      if (response.status === 204 || response.status === 200) {
+        return { role: "administrador" };
+      }
+      
+      // Si es 404, no es colaborador
+      if (response.status === 404) {
+        return { role: "desarrollador" };
+      }
+      
+      // Otro error
+      return { role: "desarrollador", error: `Error ${response.status}` };
+    } catch (error: any) {
+      console.error("Error verificando rol:", error);
+      return { role: "desarrollador", error: error.message };
+    }
+  }
+);
+
 // ========== INICIALIZACIÓN ==========
 app.whenReady().then(() => {
   createWindow();

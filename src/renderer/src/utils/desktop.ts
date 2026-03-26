@@ -230,6 +230,11 @@ class DesktopManager {
     await this.electron.openExternal(url);
   }
 
+  // Administrador o Desarrollador
+  async verifyUserRole(token: string, username: string): Promise<{ role: "administrador" | "desarrollador"; error?: string }> {
+    return await this.electron.verifyUserRole({ token, username });
+  }
+
   // AI Translation
   async translateFile(
     payload: TranslateFilePayload,

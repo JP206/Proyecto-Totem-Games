@@ -36,7 +36,7 @@ interface CsvRow {
   [key: string]: string;
 }
 
-const GENERAL_REPO = { name: "repo-general-totem-games", owner: "biancaluzz" };
+const GENERAL_REPO = { name: "repo-general-totem-games", owner: "Proyecto-Final-de-Grado" };
 
 const ContextsGlossaries: React.FC = () => {
   const navigate = useNavigate();
