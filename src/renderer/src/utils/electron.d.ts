@@ -270,6 +270,8 @@ export interface ElectronAPI {
 
   createOrgRepo: (organization: string, template: string, token: string, repoName: string, description: string ) => Promise<any>;
 
+  removeUser: (organization: string, token: string, username: string) => Promise<any>;
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;

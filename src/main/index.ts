@@ -819,12 +819,42 @@ ipcMain.handle(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error invitando a organizacion:", errorMessage);
+      console.error("Error creando repositorio:", errorMessage);
       if (errorMessage.includes("Authentication")) {
         throw new Error("Token de GitHub inválido o expirado");
       }
 
-      throw new Error(`Error invitando a organizacion: ${errorMessage}`);
+      throw new Error(`Error creando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// ELIMINAR USUARIO DE LA ORGANIZACION
+ipcMain.handle(
+  "git-remove-user",
+  async (event: any, organization: string, user: string, token: string) => {
+    try {
+      const url: string = `https://api.github.com/orgs/${organization}/members/${user}`;
+
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+      });
+
+      return response.status === 204; // devuelve true si se elimino
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error eliminando de organizacion:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error eliminando de organizacion: ${errorMessage}`);
     }
   },
 );
