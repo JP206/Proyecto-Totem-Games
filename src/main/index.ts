@@ -793,6 +793,42 @@ ipcMain.handle("git-get-org-repos", async (event: any, organization: string, tok
   }
 });
 
+// CREAR UN REPOSITORIO A PARTIR DE UN TEMPLATE
+ipcMain.handle(
+  "git-create-org-repo",
+  async (event: any, organization: string, template: string, token: string, repoName: string, description: string) => {
+    try {
+      const url: string = `https://api.github.com/repos/${organization}/${template}/generate`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+        body: JSON.stringify({
+            "owner": organization,
+            "name": repoName,
+            ...{ description: description || ""},
+            "private": true
+        }),
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error invitando a organizacion:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error invitando a organizacion: ${errorMessage}`);
+    }
+  },
+);
+
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(
   "git-command",

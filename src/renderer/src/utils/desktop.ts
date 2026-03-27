@@ -208,6 +208,10 @@ class DesktopManager {
     return await this.electron.getOrgRepos(organization, token);
   }
 
+  async createOrgRepo(organization: string, template: string, token: string, repoName: string, description: string) {
+    return await this.electron.createOrgRepo(organization, template, token, repoName, description);
+  }
+
   async gitCommand(data: GitCommandData): Promise<string> {
     return await this.electron.gitCommand(data);
   }
