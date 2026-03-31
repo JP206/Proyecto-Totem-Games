@@ -664,7 +664,7 @@ ipcMain.handle(
 // INVITAR A ORGANIZATION (***solo el creador de la organizacion puede hacerlo)
 ipcMain.handle(
   "git-invite-org",
-  async (event: any, organization: string, mail: string, token: string) => {
+  async (event: any, organization: string, token: string, mail: string) => {
     try {
       const url: string = `https://api.github.com/orgs/${organization}/invitations`;
 
@@ -698,7 +698,7 @@ ipcMain.handle(
 // OBTENER MIEMBROS DE UNA ORGANIZACION (para invitaciones de admin)
 ipcMain.handle(
   "git-get-org-members",
-  async (event: any, token: string, organization: string) => {
+  async (event: any, organization: string, token: string) => {
     try {
       const url: string = `https://api.github.com/orgs/${organization}/members`;
 
@@ -832,7 +832,7 @@ ipcMain.handle(
 // ELIMINAR USUARIO DE LA ORGANIZACION
 ipcMain.handle(
   "git-remove-user",
-  async (event: any, organization: string, user: string, token: string) => {
+  async (event: any, organization: string, token: string, user: string) => {
     try {
       const url: string = `https://api.github.com/orgs/${organization}/members/${user}`;
 

@@ -16,6 +16,7 @@ import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
 import ContextsGlossaries from "./pages/ContextsGlossaries";
 import Profile from "./pages/Profile";
+import Users from "./pages/Users";
 
 function App() {
   useEffect(() => {
@@ -26,7 +27,7 @@ function App() {
     <Router>
       <Routes>
         {/* Por defecto va a Login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Navigate to="/users" />} />
 
         {/* Ruta para Login */}
         <Route path="/login" element={<Login />} />
@@ -54,6 +55,9 @@ function App() {
       
         {/* Ruta para Perfil */}
         <Route path="/profile" element={<Profile />} />
+
+        {/* Ruta para Usuarios */}
+        <Route path="/users" element={<Users />} />
       </Routes>
     </Router>
   );
