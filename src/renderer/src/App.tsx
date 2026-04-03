@@ -16,6 +16,7 @@ import Notes from "./pages/Notes";
 import Changes from "./pages/ChangeHistory";
 import ContextsGlossaries from "./pages/ContextsGlossaries";
 import Profile from "./pages/Profile";
+import Users from "./pages/Users";
 
 function App() {
   useEffect(() => {
@@ -54,6 +55,9 @@ function App() {
       
         {/* Ruta para Perfil */}
         <Route path="/profile" element={<Profile />} />
+
+        {/* Ruta para Usuarios */}
+        <Route path="/users" element={<Users />} />
       </Routes>
     </Router>
   );

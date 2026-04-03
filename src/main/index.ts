@@ -458,7 +458,7 @@ ipcMain.handle(
     params?: {
       assignee?: string;    // user name, none (issues sin assignees), * (todos)
       state?: string;       // open, closed, all
-      labels?: string;      // bug (issue), documentation (nota) 
+      labels?: string;      // bug (issue), documentation (nota), reporte (enhancement)
     }
   ) => {
     try {
@@ -664,7 +664,7 @@ ipcMain.handle(
 // INVITAR A ORGANIZATION (***solo el creador de la organizacion puede hacerlo)
 ipcMain.handle(
   "git-invite-org",
-  async (event: any, organization: string, mail: string, token: string) => {
+  async (event: any, organization: string, token: string, mail: string) => {
     try {
       const url: string = `https://api.github.com/orgs/${organization}/invitations`;
 
@@ -698,7 +698,7 @@ ipcMain.handle(
 // OBTENER MIEMBROS DE UNA ORGANIZACION (para invitaciones de admin)
 ipcMain.handle(
   "git-get-org-members",
-  async (event: any, token: string, organization: string) => {
+  async (event: any, organization: string, token: string) => {
     try {
       const url: string = `https://api.github.com/orgs/${organization}/members`;
 
@@ -792,6 +792,72 @@ ipcMain.handle("git-get-org-repos", async (event: any, organization: string, tok
     console.error("Error obteniendo cambios:", errorMessage);
   }
 });
+
+// CREAR UN REPOSITORIO A PARTIR DE UN TEMPLATE
+ipcMain.handle(
+  "git-create-org-repo",
+  async (event: any, organization: string, template: string, token: string, repoName: string, description: string) => {
+    try {
+      const url: string = `https://api.github.com/repos/${organization}/${template}/generate`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+        body: JSON.stringify({
+            "owner": organization,
+            "name": repoName,
+            ...{ description: description || ""},
+            "private": true
+        }),
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error creando repositorio:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error creando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// ELIMINAR USUARIO DE LA ORGANIZACION
+ipcMain.handle(
+  "git-remove-user",
+  async (event: any, organization: string, token: string, user: string) => {
+    try {
+      const url: string = `https://api.github.com/orgs/${organization}/members/${user}`;
+
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+      });
+
+      return response.status === 204; // devuelve true si se elimino
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error eliminando de organizacion:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error eliminando de organizacion: ${errorMessage}`);
+    }
+  },
+);
 
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(

@@ -98,47 +98,31 @@ export default function Issues() {
       const user = await desktop.getConfig("github_user");
       setCurrentUser(user?.login || "Desconocido");
 
-      // 3 requests because GitHub doesn't allow to filter all these at the same time
-      const dataAssignedToSelf = await desktop.getIssuesVariable(
+      const dataIssues = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
         {
-          assignee: user.login,
-          state: "open",
+          state: "all",
           labels: "bug",
         }
       );
 
-      const dataNoAssignees = await desktop.getIssuesVariable(
+      const dataReports = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
         {
-          assignee: "none",
-          state: "open",
-          labels: "bug",
+          state: "all",
+          labels: "enhancement",
         }
       );
 
-      const dataClosed = await desktop.getIssuesVariable(
-        {
-          repoName: project.repoName,
-          repoOwner: project.repoOwner,
-          token,
-        },
-        {
-          assignee: "*",
-          state: "closed",
-          labels: "bug",
-        }
-      );
-
-      const data = [...dataAssignedToSelf, ...dataNoAssignees, ...dataClosed];
+      const data = [...dataIssues, ...dataReports];
 
       const formattedIssues = data
         .filter((issue: any) => !issue.pull_request)
@@ -175,46 +159,31 @@ export default function Issues() {
     try {
       const desktop = DesktopManager.getInstance();
 
-      const dataAssignedToSelf = await desktop.getIssuesVariable(
+      const dataIssues = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
         {
-          assignee: user.login,
-          state: "open",
+          state: "all",
           labels: "bug",
         }
       );
 
-      const dataNoAssignees = await desktop.getIssuesVariable(
+      const dataReports = await desktop.getIssuesVariable(
         {
           repoName: project.repoName,
           repoOwner: project.repoOwner,
           token,
         },
         {
-          assignee: "none",
-          state: "open",
-          labels: "bug",
+          state: "all",
+          labels: "enhancement",
         }
       );
 
-      const dataClosed = await desktop.getIssuesVariable(
-        {
-          repoName: project.repoName,
-          repoOwner: project.repoOwner,
-          token,
-        },
-        {
-          assignee: "*",
-          state: "closed",
-          labels: "bug",
-        }
-      );
-
-      const data = [...dataAssignedToSelf, ...dataNoAssignees, ...dataClosed];
+      const data = [...dataIssues, ...dataReports];
 
       const exists = data.some((issue: any) => issue.title === title);
 

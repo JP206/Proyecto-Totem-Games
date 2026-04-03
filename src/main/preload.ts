@@ -43,6 +43,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getOrgMembers: (organization: string, token: string) =>
     ipcRenderer.invoke("git-get-org-members", organization, token),
 
+  createOrgRepo: (organization: string, template: string, token: string, repoName: string, description: string ) =>
+    ipcRenderer.invoke("git-create-org-repo",),
+
+  removeUser: (organization: string, token: string, username: string) =>
+    ipcRenderer.invoke("git-remove-user", organization, token, username),
+
   gitCommand: (data: { command: string; cwd: string }) =>
     ipcRenderer.invoke("git-command", data),
 
