@@ -458,7 +458,7 @@ ipcMain.handle(
     params?: {
       assignee?: string;    // user name, none (issues sin assignees), * (todos)
       state?: string;       // open, closed, all
-      labels?: string;      // bug (issue), documentation (nota) 
+      labels?: string;      // bug (issue), documentation (nota), reporte (enhancement)
     }
   ) => {
     try {
