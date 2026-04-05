@@ -67,8 +67,12 @@ export interface TranslateFilePayload {
   };
   maxRowsPerBatch?: number;
   maxContextChars?: number;
+  /** @deprecated Use `confidenceTextSimilarity` / `confidenceEmbeddingSimilarity`. */
   calculateConfidence?: boolean;
+  /** @deprecated Use explicit flags below. */
   confidenceMode?: "standard" | "standard+embeddings";
+  confidenceTextSimilarity?: boolean;
+  confidenceEmbeddingSimilarity?: boolean;
   confidenceEmbeddingModel?: string;
 }
 

@@ -37,9 +37,48 @@ export interface TranslateFilePayload {
   providerOptions: ProviderOptions;
   maxRowsPerBatch?: number;
   maxContextChars?: number;
+  /** @deprecated Prefer `confidenceTextSimilarity` / `confidenceEmbeddingSimilarity`. */
   calculateConfidence?: boolean;
+  /** @deprecated Prefer explicit flags below. */
   confidenceMode?: "standard" | "standard+embeddings";
+  /** Lexical similarity (retraducción). Independent of embeddings. */
+  confidenceTextSimilarity?: boolean;
+  /** Embedding similarity vs source (requires `confidenceEmbeddingModel`). Independent of text similarity. */
+  confidenceEmbeddingSimilarity?: boolean;
   confidenceEmbeddingModel?: string;
+}
+
+/** Resolves legacy `calculateConfidence` + `confidenceMode` vs the newer explicit flags. */
+export function resolveConfidenceComputation(payload: TranslateFilePayload): {
+  needBackTranslation: boolean;
+  computeTextSimilarity: boolean;
+  computeEmbeddingSimilarity: boolean;
+} {
+  const hasNewFlags =
+    payload.confidenceTextSimilarity !== undefined ||
+    payload.confidenceEmbeddingSimilarity !== undefined;
+
+  if (hasNewFlags) {
+    const text = payload.confidenceTextSimilarity ?? false;
+    const wantEmb = payload.confidenceEmbeddingSimilarity ?? false;
+    const model = payload.confidenceEmbeddingModel?.trim();
+    const emb = wantEmb && !!model;
+    return {
+      needBackTranslation: text || emb,
+      computeTextSimilarity: text,
+      computeEmbeddingSimilarity: emb,
+    };
+  }
+
+  const legacy = payload.calculateConfidence ?? false;
+  const mode = payload.confidenceMode ?? "standard";
+  const model = payload.confidenceEmbeddingModel?.trim();
+  return {
+    needBackTranslation: legacy,
+    computeTextSimilarity: legacy,
+    computeEmbeddingSimilarity:
+      legacy && mode === "standard+embeddings" && !!model,
+  };
 }
 
 export type { TranslationResultItem } from "./providers";
@@ -487,6 +526,7 @@ export async function translateFileInMain(
   let translatedRowsCount = 0;
   let totalTokensUsed = 0;
   let estimatedTokens = 0;
+  const confOpts = resolveConfidenceComputation(payload);
 
   type WorkItem = {
     rowIndex: number;
@@ -524,7 +564,7 @@ export async function translateFileInMain(
     }
     const forwardBatches = Math.ceil(count / maxRowsPerBatch) || 0;
     totalBatches += forwardBatches;
-    if (payload.calculateConfidence) {
+    if (confOpts.needBackTranslation) {
       totalBatches += forwardBatches;
     }
   }
@@ -603,9 +643,8 @@ export async function translateFileInMain(
       estimatedTokens += batchEstimate.totalTokens;
 
       const backMap = new Map<string, string>();
-      const confidenceMode = payload.confidenceMode ?? "standard";
 
-      if (payload.calculateConfidence) {
+      if (confOpts.needBackTranslation) {
         const backItems: { id: string; key: string; sourceText: string }[] = [];
         const backEstimateItems: { key: string; sourceText: string }[] = [];
         for (const item of batchItems) {
@@ -684,13 +723,16 @@ export async function translateFileInMain(
         let textSimilarity: number | null = null;
         let embeddingSimilarity: number | null = null;
 
-        if (payload.calculateConfidence && mergedText) {
+        if (confOpts.needBackTranslation && mergedText) {
           const backText = backMap.get(item.id) || "";
           roundTripText = backText || undefined;
-          textSimilarity = hybridSimilarity(item.sourceText, backText);
-          confidence = textSimilarity;
+          const scoreParts: number[] = [];
+          if (confOpts.computeTextSimilarity) {
+            textSimilarity = hybridSimilarity(item.sourceText, backText);
+            scoreParts.push(textSimilarity);
+          }
           if (
-            confidenceMode === "standard+embeddings" &&
+            confOpts.computeEmbeddingSimilarity &&
             payload.confidenceEmbeddingModel &&
             backText
           ) {
@@ -710,13 +752,14 @@ export async function translateFileInMain(
             ]);
             if (originalEmbedding && backEmbedding) {
               embeddingSimilarity = cosineSimilarity(originalEmbedding, backEmbedding);
-              confidence = (confidence + embeddingSimilarity) / 2;
+              scoreParts.push(embeddingSimilarity);
             }
           }
-          if (
-            confidenceMode === "standard+embeddings" &&
-            payload.confidenceEmbeddingModel
-          ) {
+          if (scoreParts.length > 0) {
+            confidence =
+              scoreParts.reduce((acc, n) => acc + n, 0) / scoreParts.length;
+          }
+          if (confOpts.computeEmbeddingSimilarity && payload.confidenceEmbeddingModel) {
             estimatedTokens +=
               estimateTokens(item.sourceText) + estimateTokens(backText);
           }
@@ -822,6 +865,7 @@ export async function estimateTranslationCostInMain(
     payload.providerOptions.mode,
     resolveModelIdForEstimate(payload),
   );
+  const confOpts = resolveConfidenceComputation(payload);
 
   const maxRowsPerBatch = payload.maxRowsPerBatch ?? 40;
   let estimatedInputTokens = 0;
@@ -853,7 +897,7 @@ export async function estimateTranslationCostInMain(
       );
       estimatedInputTokens += batchTotals.inputTokens;
       estimatedOutputTokens += batchTotals.outputTokens;
-      if (payload.calculateConfidence) {
+      if (confOpts.needBackTranslation) {
         const backTotals = estimateBackTranslationBatchTotals(batchItems, estimateTokens);
         estimatedInputTokens += backTotals.inputTokens;
         estimatedOutputTokens += backTotals.outputTokens;
@@ -869,11 +913,7 @@ export async function estimateTranslationCostInMain(
       estimateTokens(glossarySnippet) +
       200;
   }
-  if (
-    payload.calculateConfidence &&
-    payload.confidenceMode === "standard+embeddings" &&
-    payload.confidenceEmbeddingModel
-  ) {
+  if (confOpts.computeEmbeddingSimilarity && payload.confidenceEmbeddingModel) {
     let embeddingTokenExtra = 0;
     for (const lang of payload.targetLanguages) {
       let langColIndex = -1;
