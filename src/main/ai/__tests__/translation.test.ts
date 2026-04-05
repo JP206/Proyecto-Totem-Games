@@ -1,5 +1,5 @@
 import { getProvider } from "../providers";
-import { translateFileInMain } from "../translation";
+import { translateFileInMain, resolveConfidenceComputation } from "../translation";
 import * as XLSX from "xlsx";
 import {
   CSV_MINIMAL,
@@ -17,6 +17,66 @@ jest.mock("fs/promises", () => {
 jest.mock("../providers", () => ({ getProvider: jest.fn() }));
 
 const getProviderMock = getProvider as jest.Mock;
+
+describe("resolveConfidenceComputation", () => {
+  it("legacy: standard uses text similarity only", () => {
+    expect(
+      resolveConfidenceComputation({
+        ...defaultTranslationPayload,
+        calculateConfidence: true,
+        confidenceMode: "standard",
+      }),
+    ).toEqual({
+      needBackTranslation: true,
+      computeTextSimilarity: true,
+      computeEmbeddingSimilarity: false,
+    });
+  });
+
+  it("legacy: standard+embeddings with model enables both", () => {
+    expect(
+      resolveConfidenceComputation({
+        ...defaultTranslationPayload,
+        calculateConfidence: true,
+        confidenceMode: "standard+embeddings",
+        confidenceEmbeddingModel: "text-embedding-3-small",
+      }),
+    ).toEqual({
+      needBackTranslation: true,
+      computeTextSimilarity: true,
+      computeEmbeddingSimilarity: true,
+    });
+  });
+
+  it("new flags: embeddings only with model", () => {
+    expect(
+      resolveConfidenceComputation({
+        ...defaultTranslationPayload,
+        confidenceTextSimilarity: false,
+        confidenceEmbeddingSimilarity: true,
+        confidenceEmbeddingModel: "text-embedding-3-small",
+      }),
+    ).toEqual({
+      needBackTranslation: true,
+      computeTextSimilarity: false,
+      computeEmbeddingSimilarity: true,
+    });
+  });
+
+  it("new flags: text only", () => {
+    expect(
+      resolveConfidenceComputation({
+        ...defaultTranslationPayload,
+        confidenceTextSimilarity: true,
+        confidenceEmbeddingSimilarity: false,
+      }),
+    ).toEqual({
+      needBackTranslation: true,
+      computeTextSimilarity: true,
+      computeEmbeddingSimilarity: false,
+    });
+  });
+});
 
 describe("translateFileInMain", () => {
   const originalEnv = process.env;
@@ -195,7 +255,8 @@ describe("translateFileInMain", () => {
         ...defaultTranslationPayload.providerOptions,
         mode: "openai",
       },
-      calculateConfidence: true,
+      confidenceTextSimilarity: true,
+      confidenceEmbeddingSimilarity: false,
     });
 
     expect(openaiProvider.translateBatch).toHaveBeenCalledTimes(2);
@@ -230,7 +291,8 @@ describe("translateFileInMain", () => {
 
     const result = await translateFileInMain({
       ...defaultTranslationPayload,
-      calculateConfidence: true,
+      confidenceTextSimilarity: true,
+      confidenceEmbeddingSimilarity: false,
     });
 
     const score = result.preview[0].perLanguage.es.textSimilarity ?? 0;
@@ -253,7 +315,8 @@ describe("translateFileInMain", () => {
 
     const result = await translateFileInMain({
       ...defaultTranslationPayload,
-      calculateConfidence: true,
+      confidenceTextSimilarity: true,
+      confidenceEmbeddingSimilarity: false,
     });
 
     const score = result.preview[0].perLanguage.es.textSimilarity ?? 0;

@@ -287,23 +287,82 @@
   margin-bottom: 14px;
 }
 
-.translation-preview-filter-panel-toggle {
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--color-secondary-cyan);
+.translation-preview-confidence-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.translation-preview-confidence-summary-group {
+  border: 1px solid var(--color-neutral-medium);
+  border-radius: 8px;
+  background: var(--color-neutral-dark);
+  padding: 10px 12px;
+}
+
+.translation-preview-confidence-summary-title {
+  color: var(--color-neutral-lighter);
+  font-size: var(--text-sm);
+}
+
+.translation-preview-confidence-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.translation-preview-confidence-summary-big {
+  color: var(--color-secondary-cyan);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.translation-preview-confidence-summary-big-label {
+  color: var(--color-neutral-light);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.translation-preview-confidence-summary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--color-secondary-cyan);
+  font-size: var(--text-xs);
+}
+
+.translation-preview-filter-panel-toggle-full {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--color-neutral-medium);
   background: var(--color-neutral-darker);
   color: var(--color-secondary-cyan);
   font-size: var(--text-sm);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
 }
 
-.translation-preview-filter-panel-toggle.active {
-  background: var(--color-secondary-cyan);
-  color: var(--color-white);
+.translation-preview-filter-panel-toggle-full.active {
+  border-color: var(--color-secondary-cyan);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .translation-preview-filter-panel-wrap .translation-preview-confidence-filters {
-  margin-top: 10px;
+  margin-top: 0;
+  padding: 12px;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--color-neutral-medium);
+  border-top: none;
+  background: var(--color-neutral-darker);
 }
 
 .translation-preview-filter-group {
@@ -406,6 +465,26 @@
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.translation-preview-filter-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-neutral-lighter);
+  font-size: var(--text-sm);
+}
+
+.translation-preview-filter-checkbox-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-secondary-cyan);
+}
+
+.translation-preview-filter-group--checkbox {
+  min-width: 100%;
+  flex-direction: row;
+  align-items: flex-start;
 }
 
 .translation-preview-table th.col-view,
@@ -621,6 +700,69 @@
   white-space: nowrap;
   text-align: center;
   vertical-align: middle;
+}
+
+.translation-preview-key-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.translation-preview-key-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.translation-preview-table td.col-key:has(.translation-preview-key-cell) {
+  white-space: normal;
+  max-width: 260px;
+  vertical-align: middle;
+}
+
+.translation-preview-preexisting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-neutral-lighter);
+  background: rgba(100, 116, 139, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.translation-preview-preexisting-badge-icon {
+  flex-shrink: 0;
+  opacity: 0.95;
+  color: var(--color-secondary-cyan);
+}
+
+.translation-preview-table tbody tr.translation-preview-row--preexisting {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.16) 0%,
+    rgba(148, 163, 184, 0.06) 14%,
+    transparent 42%
+  );
+  box-shadow: inset 4px 0 0 0 rgba(148, 163, 184, 0.55);
+}
+
+.translation-preview-table tbody tr.translation-preview-row--preexisting:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.22) 0%,
+    rgba(148, 163, 184, 0.1) 16%,
+    rgba(0, 0, 0, 0.06) 100%
+  );
 }
 
 .translation-preview-table th.col-confidence {

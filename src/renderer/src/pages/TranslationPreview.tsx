@@ -21,12 +21,37 @@ import {
   Coins,
   CircleHelp,
   Eye,
+  Bookmark,
 } from "lucide-react";
 import "../styles/translation-preview.css";
 import "../styles/dashboard.css";
 
 const SOURCE_LANG_CODE = "__source__";
 const SOURCE_LANG_NAME = "Origen";
+
+/**
+ * Row was not processed for this language in the last run (sheet already had text in that column).
+ * Those rows have no `perLanguage[langCode]` entry from translateFileInMain.
+ */
+function isRowPreExistingTranslation(
+  rowIndex: number,
+  langCode: string,
+  editableRows: string[][],
+  previewRows: Array<{
+    rowIndex?: number;
+    perLanguage?: Record<string, unknown>;
+  }>,
+  sourceCol: number,
+  langCol: number | undefined,
+): boolean {
+  if (langCol === undefined) return false;
+  const source = String(editableRows[rowIndex]?.[sourceCol] ?? "").trim();
+  const target = String(editableRows[rowIndex]?.[langCol] ?? "").trim();
+  if (!source || !target) return false;
+  const pr = previewRows.find((p) => p.rowIndex === rowIndex);
+  if (!pr) return false;
+  return pr.perLanguage?.[langCode] == null;
+}
 
 /** Help text in a fixed portal so it is not clipped by table overflow. */
 function FloatingHelpIcon({ text }: { text: string }) {
@@ -158,6 +183,9 @@ const TranslationPreview: React.FC = () => {
   const [appliedWordsMax, setAppliedWordsMax] = useState(100);
   const [appliedMeaningMin, setAppliedMeaningMin] = useState(0);
   const [appliedMeaningMax, setAppliedMeaningMax] = useState(100);
+  const [showOnlyCorrections, setShowOnlyCorrections] = useState(false);
+  const [appliedShowOnlyCorrections, setAppliedShowOnlyCorrections] = useState(false);
+  const [hidePreExistingTranslated, setHidePreExistingTranslated] = useState(false);
   const [rowModal, setRowModal] = useState<
     | null
     | {
@@ -190,6 +218,8 @@ const TranslationPreview: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
   const clampPct = (value: number): number => Math.min(100, Math.max(0, value));
+  const formatAvgPct = (value: number | null): string =>
+    value == null ? "-" : `${Math.round(value)}%`;
 
   const { header, keyCol, sourceCol, langCodeToColIndex } = useMemo(() => {
     const targetLangs =
@@ -283,6 +313,8 @@ const TranslationPreview: React.FC = () => {
     selectedLangCode ||
     (languageOptions.length > 0 ? languageOptions[0].code : SOURCE_LANG_CODE);
   const isSourceView = effectiveLangCode === SOURCE_LANG_CODE;
+  const effectiveLangName =
+    languageOptions.find((l) => l.code === effectiveLangCode)?.name || "Idioma";
   const previewRows = previewData?.preview || [];
   const hasMeaningScoresForSelectedLanguage =
     !isSourceView &&
@@ -295,9 +327,93 @@ const TranslationPreview: React.FC = () => {
     previewRows.some(
       (row: any) => row?.perLanguage?.[effectiveLangCode]?.textSimilarity != null,
     );
+  const confidenceAverages = useMemo(() => {
+    const computeAverages = (
+      items: Array<{
+        textSimilarity?: number | null;
+        embeddingSimilarity?: number | null;
+        confidence?: number | null;
+      }>,
+    ) => {
+      let wordsSum = 0;
+      let wordsCount = 0;
+      let meaningSum = 0;
+      let meaningCount = 0;
+      let overallSum = 0;
+      let overallCount = 0;
+      for (const item of items) {
+        if (item.textSimilarity != null) {
+          wordsSum += item.textSimilarity * 100;
+          wordsCount++;
+        }
+        if (item.embeddingSimilarity != null) {
+          meaningSum += item.embeddingSimilarity * 100;
+          meaningCount++;
+        }
+        const parts: number[] = [];
+        if (item.textSimilarity != null) {
+          parts.push(item.textSimilarity * 100);
+        }
+        if (item.embeddingSimilarity != null) {
+          parts.push(item.embeddingSimilarity * 100);
+        }
+        const overallPct =
+          item.confidence != null
+            ? item.confidence * 100
+            : parts.length > 0
+              ? parts.reduce((acc, cur) => acc + cur, 0) / parts.length
+              : null;
+        if (overallPct != null) {
+          overallSum += overallPct;
+          overallCount++;
+        }
+      }
+      return {
+        overall: overallCount > 0 ? overallSum / overallCount : null,
+        words: wordsCount > 0 ? wordsSum / wordsCount : null,
+        meaning: meaningCount > 0 ? meaningSum / meaningCount : null,
+      };
+    };
+
+    const sharedItems = previewRows.flatMap((row: any) =>
+      Object.values((row?.perLanguage as Record<string, any>) || {}),
+    );
+    const langItems = isSourceView
+      ? []
+      : previewRows
+          .map((row: any) => row?.perLanguage?.[effectiveLangCode])
+          .filter(Boolean);
+
+    return {
+      shared: computeAverages(sharedItems),
+      language: computeAverages(langItems as any[]),
+    };
+  }, [previewRows, effectiveLangCode, isSourceView]);
   const filteredDataRowIndices = useMemo(() => {
-    if (spellCheckOnly || isSourceView) return dataRowIndices;
+    if (spellCheckOnly) {
+      if (!appliedShowOnlyCorrections) return dataRowIndices;
+      return dataRowIndices.filter((rowIndex) => {
+        const currentSource = String(editableRows[rowIndex]?.[sourceCol] ?? "").trim();
+        const originalSource = String(originalRows[rowIndex]?.[sourceCol] ?? "").trim();
+        return currentSource !== originalSource;
+      });
+    }
+    if (isSourceView) return dataRowIndices;
+    const langCol = langCodeToColIndex[effectiveLangCode];
     return dataRowIndices.filter((rowIndex) => {
+      if (
+        hidePreExistingTranslated &&
+        isRowPreExistingTranslation(
+          rowIndex,
+          effectiveLangCode,
+          editableRows,
+          previewRows,
+          sourceCol,
+          langCol,
+        )
+      ) {
+        return false;
+      }
       const langData = previewRows.find((pr: any) => pr.rowIndex === rowIndex)
         ?.perLanguage?.[effectiveLangCode];
       const words = langData?.textSimilarity;
@@ -317,8 +433,12 @@ const TranslationPreview: React.FC = () => {
     });
   }, [
     spellCheckOnly,
+    appliedShowOnlyCorrections,
     isSourceView,
     dataRowIndices,
+    editableRows,
+    originalRows,
+    sourceCol,
     previewRows,
     effectiveLangCode,
     appliedWordsMin,
@@ -326,6 +446,8 @@ const TranslationPreview: React.FC = () => {
     appliedMeaningMin,
     appliedMeaningMax,
     hasMeaningScoresForSelectedLanguage,
+    hidePreExistingTranslated,
+    langCodeToColIndex,
   ]);
   const totalDataRows = filteredDataRowIndices.length;
   const totalPages = Math.max(1, Math.ceil(totalDataRows / ROWS_PER_PAGE));
@@ -577,6 +699,7 @@ const TranslationPreview: React.FC = () => {
     setAppliedWordsMax(wordsMax);
     setAppliedMeaningMin(meaningMin);
     setAppliedMeaningMax(meaningMax);
+    setAppliedShowOnlyCorrections(showOnlyCorrections);
     setCurrentPage(0);
   };
 
@@ -589,6 +712,9 @@ const TranslationPreview: React.FC = () => {
     setAppliedWordsMax(100);
     setAppliedMeaningMin(0);
     setAppliedMeaningMax(100);
+    setShowOnlyCorrections(false);
+    setAppliedShowOnlyCorrections(false);
+    setHidePreExistingTranslated(false);
     setCurrentPage(0);
   };
 
@@ -823,108 +949,198 @@ const TranslationPreview: React.FC = () => {
           </div>
         )}
 
-        {!spellCheckOnly && !isSourceView && (
+        {!spellCheckOnly && (
+          <div className="translation-preview-confidence-summary">
+            <div className="translation-preview-confidence-summary-group">
+              <div className="translation-preview-confidence-summary-head">
+                <div className="translation-preview-confidence-summary-title">
+                  Compartido (todas las traducciones)
+                </div>
+                <div className="translation-preview-confidence-summary-big">
+                  {formatAvgPct(confidenceAverages.shared.overall)}{" "}
+                  <span className="translation-preview-confidence-summary-big-label">
+                    Confianza
+                  </span>
+                </div>
+              </div>
+              <div className="translation-preview-confidence-summary-metrics">
+                <span>
+                  Palabras:{" "}
+                  {formatAvgPct(confidenceAverages.shared.words)}
+                </span>
+                <span>
+                  Significado:{" "}
+                  {formatAvgPct(confidenceAverages.shared.meaning)}
+                </span>
+              </div>
+            </div>
+            <div className="translation-preview-confidence-summary-group">
+              <div className="translation-preview-confidence-summary-head">
+                <div className="translation-preview-confidence-summary-title">
+                  {effectiveLangName}
+                </div>
+                <div className="translation-preview-confidence-summary-big">
+                  {formatAvgPct(confidenceAverages.language.overall)}{" "}
+                  <span className="translation-preview-confidence-summary-big-label">
+                    Confianza
+                  </span>
+                </div>
+              </div>
+              <div className="translation-preview-confidence-summary-metrics">
+                <span>
+                  Palabras:{" "}
+                  {formatAvgPct(confidenceAverages.language.words)}
+                </span>
+                <span>
+                  Significado:{" "}
+                  {formatAvgPct(confidenceAverages.language.meaning)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(!isSourceView || spellCheckOnly) && (
           <div className="translation-preview-filter-panel-wrap">
             <button
               type="button"
+              aria-label="Desplegar filtros"
               className={
-                "translation-preview-filter-panel-toggle" +
+                "translation-preview-filter-panel-toggle-full" +
                 (showFiltersPanel ? " active" : "")
               }
               onClick={() => setShowFiltersPanel((v) => !v)}
             >
-              Filtros de confianza
+              <span>Filtros</span>
+              <span>{showFiltersPanel ? "Ocultar" : "Mostrar"}</span>
             </button>
             {showFiltersPanel && (
               <div className="translation-preview-confidence-filters">
-                <div className="translation-preview-filter-group">
-                  <span className="translation-preview-filter-label">
-                    Similitud de palabras
-                  </span>
-                  <div className="translation-preview-filter-slider-wrap">
-                    <div className="translation-preview-filter-track" />
-                    <div
-                      className="translation-preview-filter-track-active"
-                      style={{
-                        left: `${wordsMin}%`,
-                        width: `${Math.max(0, wordsMax - wordsMin)}%`,
-                      }}
-                    />
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={wordsMin}
-                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
-                      disabled={!hasWordScoresForSelectedLanguage}
-                      onChange={(e) => {
-                        const next = clampPct(Number(e.target.value) || 0);
-                        setWordsMin(Math.min(next, wordsMax));
-                      }}
-                    />
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={wordsMax}
-                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
-                      disabled={!hasWordScoresForSelectedLanguage}
-                      onChange={(e) => {
-                        const next = clampPct(Number(e.target.value) || 0);
-                        setWordsMax(Math.max(next, wordsMin));
-                      }}
-                    />
+                {!spellCheckOnly && !isSourceView && (
+                  <>
+                    <div className="translation-preview-filter-group">
+                      <span className="translation-preview-filter-label">
+                        Similitud de palabras
+                      </span>
+                      <div className="translation-preview-filter-slider-wrap">
+                        <div className="translation-preview-filter-track" />
+                        <div
+                          className="translation-preview-filter-track-active"
+                          style={{
+                            left: `${wordsMin}%`,
+                            width: `${Math.max(0, wordsMax - wordsMin)}%`,
+                          }}
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={wordsMin}
+                          className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
+                          disabled={!hasWordScoresForSelectedLanguage}
+                          onChange={(e) => {
+                            const next = clampPct(Number(e.target.value) || 0);
+                            setWordsMin(Math.min(next, wordsMax));
+                          }}
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={wordsMax}
+                          className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
+                          disabled={!hasWordScoresForSelectedLanguage}
+                          onChange={(e) => {
+                            const next = clampPct(Number(e.target.value) || 0);
+                            setWordsMax(Math.max(next, wordsMin));
+                          }}
+                        />
+                      </div>
+                      <div className="translation-preview-filter-range-text">
+                        {wordsMin}% - {wordsMax}%
+                      </div>
+                    </div>
+                    <div className="translation-preview-filter-group">
+                      <span className="translation-preview-filter-label">
+                        Similitud de significado
+                      </span>
+                      <div className="translation-preview-filter-slider-wrap">
+                        <div className="translation-preview-filter-track" />
+                        <div
+                          className="translation-preview-filter-track-active"
+                          style={{
+                            left: `${meaningMin}%`,
+                            width: `${Math.max(0, meaningMax - meaningMin)}%`,
+                          }}
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={meaningMin}
+                          className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
+                          disabled={!hasMeaningScoresForSelectedLanguage}
+                          onChange={(e) => {
+                            const next = clampPct(Number(e.target.value) || 0);
+                            setMeaningMin(Math.min(next, meaningMax));
+                          }}
+                        />
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={meaningMax}
+                          className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
+                          disabled={!hasMeaningScoresForSelectedLanguage}
+                          onChange={(e) => {
+                            const next = clampPct(Number(e.target.value) || 0);
+                            setMeaningMax(Math.max(next, meaningMin));
+                          }}
+                        />
+                      </div>
+                      <div className="translation-preview-filter-range-text">
+                        {meaningMin}% - {meaningMax}%
+                      </div>
+                    </div>
+                    <div className="translation-preview-filter-group translation-preview-filter-group--checkbox">
+                      <label className="translation-preview-filter-checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={hidePreExistingTranslated}
+                          onChange={(e) =>
+                            setHidePreExistingTranslated(e.target.checked)
+                          }
+                        />
+                        <span>Ocultar filas ya traducidas</span>
+                        <span
+                          style={{
+                            marginLeft: 4,
+                            display: "inline-flex",
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          <FloatingHelpIcon text="Para el idioma que estás viendo: filas que ya tenían texto en esa columna y no se volvieron a traducir en esta ejecución. Las filas visibles muestran una etiqueta y un estilo distintivo." />
+                        </span>
+                      </label>
+                    </div>
+                  </>
+                )}
+                {spellCheckOnly && (
+                  <div className="translation-preview-filter-group">
+                    <label className="translation-preview-filter-checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={showOnlyCorrections}
+                        onChange={(e) => setShowOnlyCorrections(e.target.checked)}
+                      />
+                      <span>Mostrar solo correcciones</span>
+                    </label>
                   </div>
-                  <div className="translation-preview-filter-range-text">
-                    {wordsMin}% - {wordsMax}%
-                  </div>
-                </div>
-                <div className="translation-preview-filter-group">
-                  <span className="translation-preview-filter-label">
-                    Similitud de significado
-                  </span>
-                  <div className="translation-preview-filter-slider-wrap">
-                    <div className="translation-preview-filter-track" />
-                    <div
-                      className="translation-preview-filter-track-active"
-                      style={{
-                        left: `${meaningMin}%`,
-                        width: `${Math.max(0, meaningMax - meaningMin)}%`,
-                      }}
-                    />
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={meaningMin}
-                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-min"
-                      disabled={!hasMeaningScoresForSelectedLanguage}
-                      onChange={(e) => {
-                        const next = clampPct(Number(e.target.value) || 0);
-                        setMeaningMin(Math.min(next, meaningMax));
-                      }}
-                    />
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={meaningMax}
-                      className="translation-preview-filter-slider-thumb translation-preview-filter-slider-thumb-max"
-                      disabled={!hasMeaningScoresForSelectedLanguage}
-                      onChange={(e) => {
-                        const next = clampPct(Number(e.target.value) || 0);
-                        setMeaningMax(Math.max(next, meaningMin));
-                      }}
-                    />
-                  </div>
-                  <div className="translation-preview-filter-range-text">
-                    {meaningMin}% - {meaningMax}%
-                  </div>
-                </div>
+                )}
                 <div className="translation-preview-filter-actions">
                   <button
                     type="button"
@@ -1261,9 +1477,47 @@ const TranslationPreview: React.FC = () => {
                           </tr>
                         );
                       }
+                      const langColForRow = langCodeToColIndex[effectiveLangCode];
+                      const isPreExistingRow =
+                        !isSourceView &&
+                        !spellCheckOnly &&
+                        isRowPreExistingTranslation(
+                          dataRowIndex,
+                          effectiveLangCode,
+                          editableRows,
+                          previewRows,
+                          sourceCol,
+                          langColForRow,
+                        );
                       return (
-                        <tr key={key + String(dataRowIndex)}>
-                          <td className="col-key">{key}</td>
+                        <tr
+                          key={key + String(dataRowIndex)}
+                          className={
+                            isPreExistingRow
+                              ? "translation-preview-row--preexisting"
+                              : undefined
+                          }
+                        >
+                          <td className="col-key">
+                            <div className="translation-preview-key-cell">
+                              <span className="translation-preview-key-text">
+                                {key}
+                              </span>
+                              {isPreExistingRow && (
+                                <span
+                                  className="translation-preview-preexisting-badge"
+                                  title="Esta celda ya tenía traducción; no se regeneró en esta ejecución."
+                                >
+                                  <Bookmark
+                                    size={11}
+                                    aria-hidden
+                                    className="translation-preview-preexisting-badge-icon"
+                                  />
+                                  Ya existía
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="col-view">
                             <button
                               type="button"

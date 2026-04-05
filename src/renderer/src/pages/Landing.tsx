@@ -105,8 +105,9 @@ const Landing: React.FC = () => {
     hasPersonalOpenAI: false, hasPersonalGemini: false,
     openaiModels: [] as string[], geminiModels: [] as string[],
     openaiEmbeddingModels: [] as string[], geminiEmbeddingModels: [] as string[],
-    showProviderConfig: false, calculateConfidence: false,
-    confidenceMode: "standard" as "standard" | "standard+embeddings",
+    showProviderConfig: false,
+    confidenceTextSimilarity: false,
+    confidenceEmbeddingSimilarity: false,
     confidenceEmbeddingModel: "",
     estimatingCost: false,
     estimatedTokens: 0,
@@ -182,10 +183,10 @@ const Landing: React.FC = () => {
             personalOpenAIModel: state.personalOpenaiModel || undefined,
             personalGeminiModel: state.personalGeminiModel || undefined,
           },
-          calculateConfidence: state.calculateConfidence,
-          confidenceMode: state.confidenceMode,
+          confidenceTextSimilarity: state.confidenceTextSimilarity,
+          confidenceEmbeddingSimilarity: state.confidenceEmbeddingSimilarity,
           confidenceEmbeddingModel:
-            state.confidenceMode === "standard+embeddings"
+            state.confidenceEmbeddingSimilarity
               ? state.confidenceEmbeddingModel || undefined
               : undefined,
         };
@@ -232,8 +233,8 @@ const Landing: React.FC = () => {
     state.geminiModel,
     state.personalOpenaiModel,
     state.personalGeminiModel,
-    state.calculateConfidence,
-    state.confidenceMode,
+    state.confidenceTextSimilarity,
+    state.confidenceEmbeddingSimilarity,
     state.confidenceEmbeddingModel,
     state.hasPersonalOpenAI,
     state.hasPersonalGemini,
@@ -599,11 +600,10 @@ const Landing: React.FC = () => {
       return;
     }
     if (
-      state.calculateConfidence &&
-      state.confidenceMode === "standard+embeddings" &&
+      state.confidenceEmbeddingSimilarity &&
       !state.confidenceEmbeddingModel
     ) {
-      alert("Selecciona un modelo de embeddings para usar confianza con embeddings.");
+      alert("Selecciona un modelo de embeddings para usar similitud por embeddings.");
       return;
     }
 
@@ -623,10 +623,10 @@ const Landing: React.FC = () => {
           personalOpenAIModel: state.personalOpenaiModel || undefined,
           personalGeminiModel: state.personalGeminiModel || undefined,
         },
-        calculateConfidence: state.calculateConfidence,
-        confidenceMode: state.confidenceMode,
+        confidenceTextSimilarity: state.confidenceTextSimilarity,
+        confidenceEmbeddingSimilarity: state.confidenceEmbeddingSimilarity,
         confidenceEmbeddingModel:
-          state.confidenceMode === "standard+embeddings"
+          state.confidenceEmbeddingSimilarity
             ? state.confidenceEmbeddingModel || undefined
             : undefined,
       };
@@ -911,69 +911,69 @@ const Landing: React.FC = () => {
                     )}
                   </div>
                   <div className="spellcheck-option" style={{ marginTop: 8 }}>
-                    <label className="spellcheck-label">
+                    <div className="profile-input-label" style={{ marginBottom: 6 }}>
+                      Confianza (retraducción, más costo)
+                    </div>
+                    <label className="spellcheck-label" style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <input
                         type="checkbox"
-                        checked={state.calculateConfidence}
+                        checked={state.confidenceTextSimilarity}
                         onChange={(e) =>
-                          setState(prev => ({
+                          setState((prev) => ({
                             ...prev,
-                            calculateConfidence: e.target.checked,
-                            confidenceMode: e.target.checked ? prev.confidenceMode : "standard",
+                            confidenceTextSimilarity: e.target.checked,
                           }))
                         }
                       />
-                      <span>Calcular confianza con retraducción (más costo)</span>
-                      <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
-                        <LandingFloatingHelp
-                          text="Estándar compara el parecido del texto al volverlo al idioma original. Estándar + embeddings también considera si el significado se mantiene aunque cambien las palabras."
-                        />
+                      <span>
+                        Similitud de texto (léxica)
+                        <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
+                          <LandingFloatingHelp text="Compara el parecido entre el original y la retraducción (palabras y forma)." />
+                        </span>
                       </span>
                     </label>
-                    {state.calculateConfidence && (
-                      <>
-                        <div className="profile-model-section" style={{ marginTop: 8 }}>
-                          <label className="profile-input-label">Modo de confianza</label>
-                          <select
-                            className="profile-select"
-                            value={state.confidenceMode}
-                            onChange={(e) =>
-                              setState(prev => ({
-                                ...prev,
-                                confidenceMode: e.target.value as "standard" | "standard+embeddings",
-                              }))
-                            }
-                          >
-                            <option value="standard">Estandar</option>
-                            <option value="standard+embeddings">Estandar + embeddings</option>
-                          </select>
-                        </div>
-                        {state.confidenceMode === "standard+embeddings" && (
-                          <div className="profile-model-section" style={{ marginTop: 8 }}>
-                            <label className="profile-input-label">Modelo de embeddings</label>
-                            <select
-                              className="profile-select"
-                              value={state.confidenceEmbeddingModel}
-                              onChange={(e) =>
-                                setState(prev => ({
-                                  ...prev,
-                                  confidenceEmbeddingModel: e.target.value,
-                                }))
-                              }
-                            >
-                              <option value="">Seleccionar modelo</option>
-                              {(state.providerMode === "openai"
-                                ? state.openaiEmbeddingModels
-                                : state.geminiEmbeddingModels
-                              ).map((id) => (
-                                <option key={id} value={id}>
-                                  {id}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </>
+                    <label className="spellcheck-label" style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={state.confidenceEmbeddingSimilarity}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            confidenceEmbeddingSimilarity: e.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        Similitud por embeddings (significado)
+                        <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
+                          <LandingFloatingHelp text="Compara vectores del original y la retraducción; puede marcar bien una traducción aunque cambien las palabras. No requiere activar similitud de texto." />
+                        </span>
+                      </span>
+                    </label>
+                    {state.confidenceEmbeddingSimilarity && (
+                      <div className="profile-model-section" style={{ marginTop: 8 }}>
+                        <label className="profile-input-label">Modelo de embeddings</label>
+                        <select
+                          className="profile-select"
+                          value={state.confidenceEmbeddingModel}
+                          onChange={(e) =>
+                            setState((prev) => ({
+                              ...prev,
+                              confidenceEmbeddingModel: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Seleccionar modelo</option>
+                          {(state.providerMode === "openai"
+                            ? state.openaiEmbeddingModels
+                            : state.geminiEmbeddingModels
+                          ).map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     )}
                   </div>
                   <div className="info-note" style={{ marginTop: 12 }}>
@@ -1057,7 +1057,7 @@ const Landing: React.FC = () => {
                   </div>
                 </div>
               )}
-              <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.calculateConfidence && state.confidenceMode === "standard+embeddings" && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || !state.providerMode || (state.providerMode === "openai" && !state.hasPersonalOpenAI) || (state.providerMode === "gemini" && !state.hasPersonalGemini) || (state.calculateConfidence && state.confidenceMode === "standard+embeddings" && !state.confidenceEmbeddingModel) || state.translating}>
+              <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || !state.providerMode || (state.providerMode === "openai" && !state.hasPersonalOpenAI) || (state.providerMode === "gemini" && !state.hasPersonalGemini) || (state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) || state.translating}>
                 {state.translating ? (
                   <>
                     <div className="spinner-small" /> 
