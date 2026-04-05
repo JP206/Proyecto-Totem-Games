@@ -1,4 +1,3 @@
-// src/renderer/src/pages/Profile.tsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
@@ -67,9 +66,14 @@ const Profile: React.FC = () => {
       try {
         const desktop = DesktopManager.getInstance();
         const userData = await desktop.getConfig("github_user");
-        const role = await desktop.getConfig("user_role");
+        const token = await desktop.getConfig("github_token");
         setUser(userData);
-        setUserRole(role || "desarrollador");
+
+        // Consultar rol directamente a GitHub
+        if (token && userData?.login) {
+          const roleResult = await desktop.verifyUserRole(token, userData.login);
+          setUserRole(roleResult.role === "administrador" ? "administrador" : "desarrollador");
+        }
 
         const currentProject = await desktop.getConfig("current_project");
         setHasProject(!!currentProject?.repoPath && !!currentProject?.repoName);
@@ -208,25 +212,21 @@ const Profile: React.FC = () => {
   };
 
   const handleBack = () => {
-    // Si venimos de dashboard, volvemos a dashboard
     if (fromPage === "dashboard") {
       navigate("/dashboard");
       return;
     }
     
-    // Si venimos de landing, volvemos a landing (si hay proyecto)
     if (fromPage === "landing" && hasProject) {
       navigate("/landing");
       return;
     }
     
-    // Si hay proyecto seleccionado (ej: entraron desde un enlace interno), ir a landing
     if (hasProject) {
       navigate("/landing");
       return;
     }
     
-    // Si no hay proyecto, ir a dashboard
     navigate("/dashboard");
   };
 
@@ -234,7 +234,6 @@ const Profile: React.FC = () => {
     const desktop = DesktopManager.getInstance();
     await desktop.setConfig("github_token", null);
     await desktop.setConfig("github_user", null);
-    await desktop.setConfig("user_role", null);
     navigate("/");
   };
 

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Folder, Monitor, MapPin, Download, RefreshCw, Calendar,
   DownloadCloud, Github, CheckCircle, AlertCircle, Clock,
-  Search, Trash2, AlertTriangle, RefreshCwOff
+  Search, Trash2, AlertTriangle, RefreshCwOff, Users
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
@@ -23,15 +23,35 @@ const Dashboard: React.FC = () => {
   const [repoToDelete, setRepoToDelete] = useState<{ path: string; name: string } | null>(null);
   const [search, setSearch] = useState({ local: "", github: "" });
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     loadUser();
+    checkAdminStatus();
     fetchGithub();
     loadFolder();
   }, []);
 
   const loadUser = async () => {
     setUser(await DesktopManager.getInstance().getConfig("github_user"));
+  };
+
+  const checkAdminStatus = async () => {
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
+    const userData = await desktop.getConfig("github_user");
+    
+    if (token && userData?.login) {
+      // Consulta a GitHub en tiempo real, no usa el rol guardado
+      const roleResult = await desktop.verifyUserRole(token, userData.login);
+      setIsAdmin(roleResult.role === "administrador");
+    } else {
+      setIsAdmin(false);
+    }
+  };
+
+  const navigateToUsers = () => {
+    navigate("/users");
   };
 
   const loadFolder = async () => {
@@ -239,6 +259,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="header-actions">
+          {isAdmin && (
+            <button onClick={navigateToUsers} className="btn-admin">
+              <Users size={16} />
+              Gestionar Usuarios
+            </button>
+          )}
           <button onClick={refreshAll} disabled={globalLoading} className="btn-refresh-all">
             {globalLoading ? <><div className="spinner-small" />Actualizando...</> : <><RefreshCw size={16} />Actualizar Todo</>}
           </button>
