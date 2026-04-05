@@ -20,6 +20,9 @@ import {
   Eye,
   Table,
   RefreshCw,
+  Shield,
+  ArrowLeftRight,
+  GitBranch,
 } from "lucide-react";
 import "../styles/contextsGlossaries.css";
 
@@ -30,10 +33,17 @@ interface ContextGlossaryFile {
   type: "context" | "glossary";
   specificity: "general" | "specific";
   recommended?: boolean;
+  repoPath?: string;
 }
 
 interface CsvRow {
   [key: string]: string;
+}
+
+interface Repo {
+  name: string;
+  full_name: string;
+  clone_url: string;
 }
 
 const GENERAL_REPO = { name: "repo-general-totem-games", owner: "Proyecto-Final-de-Grado" };
@@ -46,6 +56,8 @@ const ContextsGlossaries: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isTypeChangeModalOpen, setIsTypeChangeModalOpen] = useState(false);
+  const [isRepoSelectModalOpen, setIsRepoSelectModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -60,6 +72,12 @@ const ContextsGlossaries: React.FC = () => {
     repoOwner: string;
   } | null>(null);
   const [generalRepoPath, setGeneralRepoPath] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [availableRepos, setAvailableRepos] = useState<Repo[]>([]);
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [itemToChangeType, setItemToChangeType] = useState<ContextGlossaryFile | null>(null);
+  const [newType, setNewType] = useState<"general" | "specific">("general");
+  const [newItemSpecificity, setNewItemSpecificity] = useState<"general" | "specific">("specific");
 
   // Form state
   const [editedTitle, setEditedTitle] = useState("");
@@ -72,7 +90,19 @@ const ContextsGlossaries: React.FC = () => {
 
   useEffect(() => {
     loadProjectAndData();
+    checkAdminStatus();
   }, []);
+
+  const checkAdminStatus = async () => {
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
+    const userData = await desktop.getConfig("github_user");
+    
+    if (token && userData?.login) {
+      const roleResult = await desktop.verifyUserRole(token, userData.login);
+      setIsAdmin(roleResult.role === "administrador");
+    }
+  };
 
   const showNotification = (type: "success" | "error" | "warning", message: string) => {
     setNotification({ type, message });
@@ -104,12 +134,24 @@ const ContextsGlossaries: React.FC = () => {
       const generalPath = await ensureGeneralRepo(basePath);
       setGeneralRepoPath(generalPath);
 
+      await loadAvailableRepos();
       await loadData(project, generalPath);
     } catch (error: any) {
       showNotification("error", error.message);
       setTimeout(() => navigate("/dashboard"), 2000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAvailableRepos = async () => {
+    try {
+      const desktop = DesktopManager.getInstance();
+      const token = await desktop.getConfig("github_token");
+      const repos = await desktop.getOrgRepos("Proyecto-Final-de-Grado", token);
+      setAvailableRepos(repos.filter((repo: any) => repo.name !== GENERAL_REPO.name));
+    } catch (error) {
+      console.error("Error cargando repos:", error);
     }
   };
 
@@ -178,6 +220,7 @@ const ContextsGlossaries: React.FC = () => {
           type: "context",
           specificity: "specific",
           recommended: f.name.includes("recomendado") || f.name.includes("recommended"),
+          repoPath: repoPath,
         });
       }
       return items;
@@ -206,6 +249,7 @@ const ContextsGlossaries: React.FC = () => {
           type: "glossary",
           specificity: "specific",
           recommended: f.name.includes("recomendado") || f.name.includes("recommended"),
+          repoPath: repoPath,
         });
       }
       return items;
@@ -236,6 +280,7 @@ const ContextsGlossaries: React.FC = () => {
           type: "context",
           specificity: "general",
           recommended: f.name.includes("recomendado") || f.name.includes("recommended"),
+          repoPath: generalPath,
         });
       }
       return items;
@@ -266,6 +311,7 @@ const ContextsGlossaries: React.FC = () => {
           type: "glossary",
           specificity: "general",
           recommended: f.name.includes("recomendado") || f.name.includes("recommended"),
+          repoPath: generalPath,
         });
       }
       return items;
@@ -306,6 +352,7 @@ const ContextsGlossaries: React.FC = () => {
     setEditedRows([]);
     setCsvHeaders([]);
     setHasChanges(false);
+    setNewItemSpecificity("specific");
     setIsModalOpen(true);
   };
 
@@ -323,6 +370,7 @@ const ContextsGlossaries: React.FC = () => {
     setSelectedItem(item);
     setEditedTitle(item.name.replace(/\.(txt|csv)$/, ""));
     setEditedContent(item.content);
+    setNewItemSpecificity(item.specificity);
     if (item.type === "glossary") {
       const { headers, rows } = parseCSV(item.content);
       setCsvHeaders(headers);
@@ -337,6 +385,139 @@ const ContextsGlossaries: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
+  const handleChangeType = (item: ContextGlossaryFile) => {
+    setItemToChangeType(item);
+    setNewType(item.specificity === "general" ? "specific" : "general");
+    setIsTypeChangeModalOpen(true);
+  };
+
+  const confirmTypeChange = async () => {
+    if (!itemToChangeType) return;
+    
+    if (itemToChangeType.specificity === "general" && newType === "specific") {
+      setIsTypeChangeModalOpen(false);
+      setSelectedRepos([]);
+      setIsRepoSelectModalOpen(true);
+    } else if (itemToChangeType.specificity === "specific" && newType === "general") {
+      await moveSpecificToGeneral(itemToChangeType);
+      setIsTypeChangeModalOpen(false);
+    }
+  };
+
+  const moveSpecificToGeneral = async (item: ContextGlossaryFile) => {
+    try {
+      setSyncing(true);
+      const desktop = DesktopManager.getInstance();
+      
+      const extension = item.type === "context" ? ".txt" : ".csv";
+      const generalFolder = item.type === "context" ? "contextos_generales" : "glosarios_generales";
+      const newPath = `${generalRepoPath}/${generalFolder}/${item.name}`;
+      
+      await desktop.createFolder(`${generalRepoPath}/${generalFolder}`);
+      await desktop.writeFile(newPath, item.content);
+      await desktop.deleteFile(item.path);
+      
+      await desktop.gitCommand({ 
+        command: `git rm "${item.path}"`, 
+        cwd: currentProject?.repoPath || ""
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: `git commit -m "Move ${item.name} to general repo"`, 
+        cwd: currentProject?.repoPath || ""
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: "git push origin main", 
+        cwd: currentProject?.repoPath || ""
+      }).catch(() => {});
+      
+      await desktop.gitCommand({ 
+        command: `git add "${newPath}"`, 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: `git commit -m "Add ${item.name} from specific repo"`, 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: "git push origin main", 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      
+      await loadData(currentProject, generalRepoPath);
+      showNotification("success", `"${item.name}" movido a generales`);
+    } catch (error: any) {
+      showNotification("error", error.message);
+    } finally {
+      setSyncing(false);
+      setItemToChangeType(null);
+    }
+  };
+
+  const confirmMoveToSpecific = async () => {
+    if (!itemToChangeType || selectedRepos.length === 0) return;
+    
+    try {
+      setSyncing(true);
+      const desktop = DesktopManager.getInstance();
+      const token = await desktop.getConfig("github_token");
+      
+      const extension = itemToChangeType.type === "context" ? ".txt" : ".csv";
+      const specificFolder = itemToChangeType.type === "context" ? "contextos_especificos" : "glosarios_especificos";
+      
+      for (const repoName of selectedRepos) {
+        const repo = availableRepos.find(r => r.name === repoName);
+        if (!repo) continue;
+        
+        const lastSep = Math.max(currentProject?.repoPath?.lastIndexOf("/") || 0, currentProject?.repoPath?.lastIndexOf("\\") || 0);
+        const basePath = lastSep >= 0 ? currentProject?.repoPath?.substring(0, lastSep) : currentProject?.repoPath;
+        const repoPath = `${basePath}/${repoName}`;
+        
+        const exists = await desktop.fileExists(repoPath).catch(() => false);
+        if (!exists) {
+          await desktop.cloneRepository({
+            url: repo.clone_url,
+            destination: repoPath,
+            token,
+          });
+        }
+        
+        await desktop.createFolder(`${repoPath}/Localizacion/${specificFolder}`);
+        
+        const newPath = `${repoPath}/Localizacion/${specificFolder}/${itemToChangeType.name}`;
+        await desktop.writeFile(newPath, itemToChangeType.content);
+        
+        await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: repoPath }).catch(() => {});
+        await desktop.gitCommand({ command: `git commit -m "Add ${itemToChangeType.name} from general repo"`, cwd: repoPath }).catch(() => {});
+        await desktop.gitCommand({ command: "git push origin main", cwd: repoPath }).catch(() => {});
+      }
+      
+      await desktop.deleteFile(itemToChangeType.path);
+      
+      await desktop.gitCommand({ 
+        command: `git rm "${itemToChangeType.path}"`, 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: `git commit -m "Remove ${itemToChangeType.name} moved to specific repos"`, 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      await desktop.gitCommand({ 
+        command: "git push origin main", 
+        cwd: generalRepoPath
+      }).catch(() => {});
+      
+      await loadData(currentProject, generalRepoPath);
+      showNotification("success", `"${itemToChangeType.name}" movido a ${selectedRepos.length} repositorio(s)`);
+    } catch (error: any) {
+      showNotification("error", error.message);
+    } finally {
+      setSyncing(false);
+      setIsRepoSelectModalOpen(false);
+      setItemToChangeType(null);
+      setSelectedRepos([]);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!itemToDelete || !currentProject) return;
 
@@ -348,15 +529,15 @@ const ContextsGlossaries: React.FC = () => {
       
       await desktop.gitCommand({ 
         command: `git rm "${itemToDelete.path}"`, 
-        cwd: currentProject.repoPath 
+        cwd: itemToDelete.repoPath || currentProject.repoPath 
       }).catch(() => {});
       await desktop.gitCommand({ 
         command: `git commit -m "Delete ${itemToDelete.name}"`, 
-        cwd: currentProject.repoPath 
+        cwd: itemToDelete.repoPath || currentProject.repoPath 
       });
       await desktop.gitCommand({ 
         command: "git push origin main", 
-        cwd: currentProject.repoPath 
+        cwd: itemToDelete.repoPath || currentProject.repoPath 
       });
       
       await loadData(currentProject, generalRepoPath);
@@ -409,9 +590,18 @@ const ContextsGlossaries: React.FC = () => {
       }
 
       const extension = activeTab === "contexts" ? ".txt" : ".csv";
-      const targetFolder = activeTab === "contexts"
-        ? `${currentProject.repoPath}/Localizacion/contextos_especificos`
-        : `${currentProject.repoPath}/Localizacion/glosarios_especificos`;
+      let targetFolder: string;
+      let targetRepoPath: string;
+      
+      if (newItemSpecificity === "general" && isAdmin) {
+        targetRepoPath = generalRepoPath;
+        targetFolder = activeTab === "contexts" ? `${generalRepoPath}/contextos_generales` : `${generalRepoPath}/glosarios_generales`;
+      } else {
+        targetRepoPath = currentProject.repoPath;
+        targetFolder = activeTab === "contexts" 
+          ? `${currentProject.repoPath}/Localizacion/contextos_especificos`
+          : `${currentProject.repoPath}/Localizacion/glosarios_especificos`;
+      }
 
       const folderExists = await desktop.fileExists(targetFolder).catch(() => false);
       if (!folderExists) {
@@ -429,23 +619,23 @@ const ContextsGlossaries: React.FC = () => {
           await desktop.writeFile(newPath, contentToSave);
           await desktop.deleteFile(oldPath);
           
-          await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: currentProject.repoPath });
-          await desktop.gitCommand({ command: `git rm "${oldPath}"`, cwd: currentProject.repoPath }).catch(() => {});
-          await desktop.gitCommand({ command: `git commit -m "Rename ${selectedItem.name} to ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
-          await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: targetRepoPath });
+          await desktop.gitCommand({ command: `git rm "${oldPath}"`, cwd: selectedItem.repoPath || targetRepoPath }).catch(() => {});
+          await desktop.gitCommand({ command: `git commit -m "Rename ${selectedItem.name} to ${editedTitle}${extension}"`, cwd: targetRepoPath });
+          await desktop.gitCommand({ command: "git push origin main", cwd: targetRepoPath });
         } else {
           await desktop.writeFile(oldPath, contentToSave);
           
-          await desktop.gitCommand({ command: `git add "${oldPath}"`, cwd: currentProject.repoPath });
-          await desktop.gitCommand({ command: `git commit -m "Update ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
-          await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
+          await desktop.gitCommand({ command: `git add "${oldPath}"`, cwd: targetRepoPath });
+          await desktop.gitCommand({ command: `git commit -m "Update ${editedTitle}${extension}"`, cwd: targetRepoPath });
+          await desktop.gitCommand({ command: "git push origin main", cwd: targetRepoPath });
         }
       } else {
         await desktop.writeFile(newPath, contentToSave);
         
-        await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: currentProject.repoPath });
-        await desktop.gitCommand({ command: `git commit -m "Add ${editedTitle}${extension}"`, cwd: currentProject.repoPath });
-        await desktop.gitCommand({ command: "git push origin main", cwd: currentProject.repoPath });
+        await desktop.gitCommand({ command: `git add "${newPath}"`, cwd: targetRepoPath });
+        await desktop.gitCommand({ command: `git commit -m "Add ${editedTitle}${extension}"`, cwd: targetRepoPath });
+        await desktop.gitCommand({ command: "git push origin main", cwd: targetRepoPath });
       }
       
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -500,6 +690,14 @@ const ContextsGlossaries: React.FC = () => {
   const generalItems = filteredItems.filter(item => item.specificity === "general");
   const specificItems = filteredItems.filter(item => item.specificity === "specific");
 
+  const toggleRepoSelection = (repoName: string) => {
+    setSelectedRepos(prev =>
+      prev.includes(repoName)
+        ? prev.filter(r => r !== repoName)
+        : [...prev, repoName]
+    );
+  };
+
   const renderGeneralSection = () => (
     <div className="items-section">
       <h3 className="section-title">
@@ -509,24 +707,57 @@ const ContextsGlossaries: React.FC = () => {
       <div className="items-grid">
         {generalItems.length > 0 ? (
           generalItems.map((item) => (
-            <div key={item.path} className={`item-card general`} onClick={() => handleView(item)}>
-              <h4 className="item-title">{item.name.replace(/\.(txt|csv)$/, "")}</h4>
-              <p className="item-content">
-                {item.type === "context" 
-                  ? item.content.substring(0, 150) + (item.content.length > 150 ? "..." : "")
-                  : `${item.type === "glossary" ? "Glosario" : ""}`
-                }
-              </p>
-              <div className="item-footer">
-                <span className="item-specificity">
-                  <Globe size={12} /> General
-                </span>
-                {item.recommended && (
-                  <span className="recommended-badge">✨ recomendado</span>
-                )}
-              </div>
-              <div className="item-readonly-badge">
-                <Eye size={10} /> Solo lectura
+            <div key={item.path} className={`item-card general`}>
+              {isAdmin && (
+                <div className="item-actions">
+                  <button 
+                    className="item-action-btn edit" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(item);
+                    }}
+                    title="Editar"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button 
+                    className="item-action-btn change-type" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChangeType(item);
+                    }}
+                    title="Cambiar a específico"
+                  >
+                    <ArrowLeftRight size={14} />
+                  </button>
+                  <button 
+                    className="item-action-btn delete" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(item);
+                    }}
+                    title="Eliminar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
+              <div onClick={() => handleView(item)}>
+                <h4 className="item-title">{item.name.replace(/\.(txt|csv)$/, "")}</h4>
+                <p className="item-content">
+                  {item.type === "context" 
+                    ? item.content.substring(0, 150) + (item.content.length > 150 ? "..." : "")
+                    : `${item.type === "glossary" ? "Glosario" : ""}`
+                  }
+                </p>
+                <div className="item-footer">
+                  <span className="item-specificity">
+                    <Globe size={12} /> General
+                  </span>
+                  {item.recommended && (
+                    <span className="recommended-badge">✨ recomendado</span>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -561,6 +792,18 @@ const ContextsGlossaries: React.FC = () => {
                 >
                   <Edit2 size={14} />
                 </button>
+                {isAdmin && (
+                  <button 
+                    className="item-action-btn change-type" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChangeType(item);
+                    }}
+                    title="Cambiar a general"
+                  >
+                    <ArrowLeftRight size={14} />
+                  </button>
+                )}
                 <button 
                   className="item-action-btn delete" 
                   onClick={(e) => {
@@ -623,6 +866,7 @@ const ContextsGlossaries: React.FC = () => {
                   onChange={(e) => handleRowChange(rowIndex, e.target.value)}
                   className="table-input"
                   placeholder="Escribe una palabra o frase..."
+                  disabled={!isEditing}
                 />
               </td>
               {isEditing && (
@@ -695,6 +939,7 @@ const ContextsGlossaries: React.FC = () => {
           <h2>
             <BookOpen size={24} />
             Contextos y Glosarios
+            {isAdmin && <Shield size={16} className="admin-badge" />}
           </h2>
           <div className="header-actions">
             <button className="refresh-btn" onClick={refreshData} disabled={syncing}>
@@ -703,7 +948,7 @@ const ContextsGlossaries: React.FC = () => {
             </button>
             <button className="add-btn" onClick={handleAddNew} disabled={syncing}>
               <Plus size={16} />
-              NUEVO ESPECÍFICO
+              Nuevo
             </button>
           </div>
         </div>
@@ -750,7 +995,7 @@ const ContextsGlossaries: React.FC = () => {
                 {viewItem.type === "context" ? "Contexto" : "Glosario"} {viewItem.specificity === "general" ? "General" : "Específico"}
               </h3>
               <div className="modal-header-actions">
-                {viewItem.specificity === "specific" && (
+                {(viewItem.specificity === "specific" || (viewItem.specificity === "general" && isAdmin)) && (
                   <>
                     <button className="modal-action-btn" onClick={() => {
                       setIsViewModalOpen(false);
@@ -758,6 +1003,14 @@ const ContextsGlossaries: React.FC = () => {
                     }} title="Editar">
                       <Edit2 size={16} />
                     </button>
+                    {isAdmin && (
+                      <button className="modal-action-btn" onClick={() => {
+                        setIsViewModalOpen(false);
+                        handleChangeType(viewItem);
+                      }} title="Cambiar tipo">
+                        <ArrowLeftRight size={16} />
+                      </button>
+                    )}
                     <button className="modal-action-btn delete" onClick={() => {
                       setIsViewModalOpen(false);
                       handleDelete(viewItem);
@@ -816,6 +1069,50 @@ const ContextsGlossaries: React.FC = () => {
                   placeholder={`Título del ${activeTab === "contexts" ? "contexto" : "glosario"}`}
                 />
               </div>
+              
+              {/* Selector de tipo para administradores */}
+              {isAdmin && !selectedItem && (
+                <div className="modal-field">
+                  <label>Tipo</label>
+                  <div className="specificity-selector">
+                    <button
+                      type="button"
+                      className={`specificity-option ${newItemSpecificity === "specific" ? "active specific" : ""}`}
+                      onClick={() => setNewItemSpecificity("specific")}
+                    >
+                      <Lock size={14} />
+                      Específico (solo este proyecto)
+                    </button>
+                    <button
+                      type="button"
+                      className={`specificity-option ${newItemSpecificity === "general" ? "active general" : ""}`}
+                      onClick={() => setNewItemSpecificity("general")}
+                    >
+                      <Globe size={14} />
+                      General (todos los proyectos)
+                    </button>
+                  </div>
+                  {newItemSpecificity === "general" && (
+                    <p className="specificity-hint">Se guardará en el repositorio general y estará disponible para todos los proyectos.</p>
+                  )}
+                </div>
+              )}
+              
+              {/* Mostrar tipo actual en edición */}
+              {isAdmin && selectedItem && (
+                <div className="modal-field">
+                  <label>Tipo actual</label>
+                  <div className="view-field">
+                    {selectedItem.specificity === "general" ? (
+                      <><Globe size={14} /> General (todos los proyectos)</>
+                    ) : (
+                      <><Lock size={14} /> Específico (solo este proyecto)</>
+                    )}
+                  </div>
+                  <p className="specificity-hint">Para cambiar el tipo, usa el botón "Cambiar tipo" desde la vista principal.</p>
+                </div>
+              )}
+              
               <div className="modal-field">
                 <label>Contenido</label>
                 {activeTab === "contexts" ? (
@@ -843,6 +1140,92 @@ const ContextsGlossaries: React.FC = () => {
                 <Upload size={14} /> {selectedItem ? "Actualizar" : "Crear"}
               </button>
               <button className="cancel-btn" onClick={() => setIsModalOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de cambio de tipo */}
+      {isTypeChangeModalOpen && itemToChangeType && (
+        <div className="modal-overlay" onClick={() => setIsTypeChangeModalOpen(false)}>
+          <div className="modal small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <ArrowLeftRight size={20} className="warning-icon" />
+                Cambiar tipo
+              </h3>
+              <button className="modal-close" onClick={() => setIsTypeChangeModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-content">
+              <p>¿Cambiar <strong>"{itemToChangeType.name.replace(/\.(txt|csv)$/, "")}"</strong> de:</p>
+              <p style={{ textAlign: "center", margin: "16px 0" }}>
+                <span className="specificity-badge">{itemToChangeType.specificity === "general" ? "🌍 General" : "🔒 Específico"}</span>
+                {" → "}
+                <span className="specificity-badge">{newType === "general" ? "🌍 General" : "🔒 Específico"}</span>
+              </p>
+              {itemToChangeType.specificity === "general" && newType === "specific" && (
+                <p className="warning-text">Se copiará a los repositorios seleccionados y se eliminará del repositorio general.</p>
+              )}
+              {itemToChangeType.specificity === "specific" && newType === "general" && (
+                <p className="warning-text">Se moverá al repositorio general y se eliminará de este repositorio.</p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="save-btn" onClick={confirmTypeChange}>
+                Confirmar
+              </button>
+              <button className="cancel-btn" onClick={() => setIsTypeChangeModalOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de selección de repositorios (General -> Específico) */}
+      {isRepoSelectModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsRepoSelectModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <GitBranch size={20} />
+                Seleccionar repositorios
+              </h3>
+              <button className="modal-close" onClick={() => setIsRepoSelectModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-content">
+              <p>Selecciona los repositorios donde se copiará <strong>{itemToChangeType?.name.replace(/\.(txt|csv)$/, "")}</strong>:</p>
+              <div className="repo-list-container">
+                {availableRepos.map((repo) => (
+                  <label key={repo.name} className="repo-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedRepos.includes(repo.name)}
+                      onChange={() => toggleRepoSelection(repo.name)}
+                    />
+                    <span>{repo.name}</span>
+                  </label>
+                ))}
+              </div>
+              {selectedRepos.length === 0 && (
+                <p className="warning-text">Debes seleccionar al menos un repositorio.</p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="save-btn" 
+                onClick={confirmMoveToSpecific} 
+                disabled={selectedRepos.length === 0}
+              >
+                <Upload size={14} /> Copiar a {selectedRepos.length} repositorio(s)
+              </button>
+              <button className="cancel-btn" onClick={() => setIsRepoSelectModalOpen(false)}>
                 Cancelar
               </button>
             </div>

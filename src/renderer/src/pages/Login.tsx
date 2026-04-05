@@ -62,13 +62,9 @@ const Login: React.FC = () => {
       if (response.ok) {
         const userData = await response.json();
         
-        // Verificar rol del usuario (administrador o desarrollador)
-        const roleResult = await desktop.verifyUserRole(token, userData.login);
-        
         // Guardar en configuración
         await desktop.setConfig("github_token", token);
         await desktop.setConfig("github_user", userData);
-        await desktop.setConfig("user_role", roleResult.role);
 
         setSuccess(true);
         

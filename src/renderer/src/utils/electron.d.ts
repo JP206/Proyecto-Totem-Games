@@ -272,6 +272,8 @@ export interface ElectronAPI {
 
   removeUser: (organization: string, token: string, username: string) => Promise<any>;
 
+  setUserRole: (organization: string, token: string, username: string, role: "administrador" | "desarrollador") => Promise<{ success: boolean; data?: any; error?: string }>;
+
   // Configuración
   setConfig: (key: string, value: any) => Promise<boolean>;
   getConfig: (key: string) => Promise<any>;

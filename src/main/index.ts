@@ -695,35 +695,57 @@ ipcMain.handle(
   },
 );
 
-// OBTENER MIEMBROS DE UNA ORGANIZACION (para invitaciones de admin)
+// OBTENER MIEMBROS DE UNA ORGANIZACION CON SUS ROLES
 ipcMain.handle(
   "git-get-org-members",
   async (event: any, organization: string, token: string) => {
     try {
-      const url: string = `https://api.github.com/orgs/${organization}/members`;
-
-      const response = await fetch(url, {
+      // Primero obtener miembros (solo usuarios que aceptaron la invitación)
+      const membersUrl = `https://api.github.com/orgs/${organization}/members`;
+      const membersResponse = await fetch(membersUrl, {
         method: "GET",
         headers: {
-          Accept: "application/vnd.github+json",
+          Accept: "application/vnd.github.v3+json",
           Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2026-03-10",
         },
       });
-
-      return response.json();
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Error desconocido";
-      console.error("Error al obtener miembros de la organizacion:", errorMessage);
-
-      if (errorMessage.includes("Authentication")) {
-        throw new Error("Token de GitHub inválido o expirado");
+      
+      if (!membersResponse.ok) {
+        return [];
       }
-
-      throw new Error(`Error al obtener miembros de la organizacion: ${errorMessage}`);
+      
+      const members = await membersResponse.json();
+      
+      // Para cada miembro, obtener su rol
+      const membersWithRoles = await Promise.all(
+        members.map(async (member: any) => {
+          const membershipUrl = `https://api.github.com/orgs/${organization}/memberships/${member.login}`;
+          const membershipResponse = await fetch(membershipUrl, {
+            method: "GET",
+            headers: {
+              Accept: "application/vnd.github.v3+json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          if (membershipResponse.ok) {
+            const membership = await membershipResponse.json();
+            return {
+              ...member,
+              role: membership.role === "admin" ? "administrador" : "desarrollador",
+            };
+          }
+          
+          return { ...member, role: "desarrollador" };
+        })
+      );
+      
+      return membersWithRoles;
+    } catch (error: any) {
+      console.error("Error obteniendo miembros:", error);
+      return [];
     }
-  },
+  }
 );
 
 // OBTENER CAMBIOS EN REPOSITORIO
@@ -1277,6 +1299,40 @@ ipcMain.handle(
     } catch (error: any) {
       console.error("Error verificando rol:", error);
       return { role: "desarrollador", error: error.message };
+    }
+  }
+);
+
+// CAMBIAR ROL DE UN MIEMBRO DE LA ORGANIZACION
+ipcMain.handle(
+  "set-user-role",
+  async (event: any, data: { token: string; organization: string; username: string; role: "administrador" | "desarrollador" }) => {
+    try {
+      const { token, organization, username, role } = data;
+      // Convertir a lo que entiende GitHub
+      const githubRole = role === "administrador" ? "admin" : "member";
+      const url = `https://api.github.com/orgs/${organization}/memberships/${username}`;
+      
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: githubRole }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Error ${response.status}: ${errorText}` };
+      }
+      
+      const result = await response.json();
+      return { success: true, data: result };
+    } catch (error: any) {
+      console.error("Error cambiando rol:", error);
+      return { success: false, error: error.message };
     }
   }
 );
