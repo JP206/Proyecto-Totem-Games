@@ -4,6 +4,7 @@ import {
   MessageData,
   GitCloneData,
   RepoInformation,
+  RepoData,
   GitCommandData,
   IssueData,
   SaveFileData,
@@ -210,6 +211,14 @@ class DesktopManager {
 
   async createOrgRepo(organization: string, template: string, token: string, repoName: string, description: string) {
     return await this.electron.createOrgRepo(organization, template, token, repoName, description);
+  }
+
+  async editRepo(repoInfo: RepoInformation, repoData: RepoData) {
+    return await this.electron.editRepo(repoInfo, repoData);
+  }
+
+  async deleteRepo(repoInfo: RepoInformation) {
+    return await this.electron.deleteRepo(repoInfo);
   }
 
   async removeUser(organization: string, token: string, username: string) {

@@ -1033,6 +1033,15 @@
   border-radius: 20px;
   font-size: var(--text-sm);
   font-weight: 500;
+  color: white;
+}
+
+.arrow {
+  color: white;
+}
+
+.specificity-title {
+  color: white;
 }
 
 /* Lista de repositorios en modal */

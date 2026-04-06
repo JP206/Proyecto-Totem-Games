@@ -1,6 +1,6 @@
 // src/main/preload.ts
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import { RepoInformation } from "../renderer/src/utils/electron";
+import { RepoInformation, RepoData } from "../renderer/src/utils/electron";
 import { IssueData } from "../renderer/src/utils/electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -45,6 +45,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   createOrgRepo: (organization: string, template: string, token: string, repoName: string, description: string) =>
     ipcRenderer.invoke("git-create-org-repo", organization, template, token, repoName, description),
+
+  editRepo: (repoInfo: RepoInformation, repoData: RepoData) =>
+    ipcRenderer.invoke("git-edit-repo", repoInfo, repoData),
+
+  deleteRepo: (repoInfo: RepoInformation) =>
+    ipcRenderer.invoke("git-delete-repo", repoInfo),
 
   removeUser: (organization: string, token: string, username: string) =>
     ipcRenderer.invoke("git-remove-user", organization, token, username),

@@ -5,7 +5,7 @@ import fs from "fs/promises";
 import { exec } from "child_process";
 import { promisify } from "util";
 import Store from "electron-store";
-import { IssueData, RepoInformation } from "../renderer/src/utils/electron";
+import { IssueData, RepoInformation, RepoData } from "../renderer/src/utils/electron";
 import "dotenv/config";
 import {
   translateFileInMain,
@@ -230,7 +230,7 @@ ipcMain.handle("read-folder", async (event: any, folderPath: string) => {
     for (const fileName of files) {
       const filePath = path.join(folderPath, fileName);
       let stats;
-      
+
       try {
         stats = await fs.stat(filePath);
       } catch (err) {
@@ -279,7 +279,7 @@ ipcMain.handle("delete-folder", async (event: any, folderPath: string) => {
   try {
     const deleteRecursive = async (dirPath: string) => {
       const files = await fs.readdir(dirPath, { withFileTypes: true });
-      
+
       for (const file of files) {
         const filePath = path.join(dirPath, file.name);
         if (file.isDirectory()) {
@@ -288,7 +288,7 @@ ipcMain.handle("delete-folder", async (event: any, folderPath: string) => {
           await fs.unlink(filePath);
         }
       }
-      
+
       await fs.rmdir(dirPath);
     };
 
@@ -480,7 +480,7 @@ ipcMain.handle(
       });
 
       return response.json();
-    }catch (error: unknown) {
+    } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
 
@@ -581,9 +581,7 @@ ipcMain.handle(
         body: JSON.stringify({
           ...{ title: issueData.title },
           ...(issueData.description != null && { body: issueData.description }),
-          ...(issueData.assignees != null && {
-            assignees: issueData.assignees,
-          }),
+          ...(issueData.assignees != null && { assignees: issueData.assignees }),
           ...(issueData.labels != null && { labels: issueData.labels }),
         }),
       });
@@ -622,12 +620,12 @@ ipcMain.handle("git-get-notes", async (event: any, data: RepoInformation) => {
       error instanceof Error ? error.message : "Error desconocido";
     console.error("Error en git-clone:", errorMessage);
 
-      if (errorMessage.includes("Authentication")) {
-        throw new Error("Token de GitHub inválido o expirado");
-      }
-
-      throw new Error(`Error clonando repositorio: ${errorMessage}`);
+    if (errorMessage.includes("Authentication")) {
+      throw new Error("Token de GitHub inválido o expirado");
     }
+
+    throw new Error(`Error clonando repositorio: ${errorMessage}`);
+  }
 });
 
 // OBTENER COLLABORATORS DE UN REPOSITORIO
@@ -676,8 +674,8 @@ ipcMain.handle(
           "X-GitHub-Api-Version": "2026-03-10",
         },
         body: JSON.stringify({
-            "email": mail,
-            "role": "direct_member"
+          "email": mail,
+          "role": "direct_member"
         }),
       });
 
@@ -709,13 +707,13 @@ ipcMain.handle(
           Authorization: `Bearer ${token}`,
         },
       });
-      
+
       if (!membersResponse.ok) {
         return [];
       }
-      
+
       const members = await membersResponse.json();
-      
+
       // Para cada miembro, obtener su rol
       const membersWithRoles = await Promise.all(
         members.map(async (member: any) => {
@@ -727,7 +725,7 @@ ipcMain.handle(
               Authorization: `Bearer ${token}`,
             },
           });
-          
+
           if (membershipResponse.ok) {
             const membership = await membershipResponse.json();
             return {
@@ -735,11 +733,11 @@ ipcMain.handle(
               role: membership.role === "admin" ? "administrador" : "desarrollador",
             };
           }
-          
+
           return { ...member, role: "desarrollador" };
         })
       );
-      
+
       return membersWithRoles;
     } catch (error: any) {
       console.error("Error obteniendo miembros:", error);
@@ -830,10 +828,10 @@ ipcMain.handle(
           "X-GitHub-Api-Version": "2026-03-10",
         },
         body: JSON.stringify({
-            "owner": organization,
-            "name": repoName,
-            ...{ description: description || ""},
-            "private": true
+          "owner": organization,
+          "name": repoName,
+          ...{ description: description || "" },
+          "private": true
         }),
       });
 
@@ -850,6 +848,67 @@ ipcMain.handle(
     }
   },
 );
+
+// EDITAR UN REPOSITORIO
+ipcMain.handle(
+  "git-edit-repo",
+  async (event: any, repoInfo: RepoInformation, repoData: RepoData) => {
+    try {
+      const url: string = `https://api.github.com/repos/${repoInfo.repoOwner}/${repoInfo.repoName}`;
+
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${repoInfo.token}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+        body: JSON.stringify({
+          ...(repoData.name ? { name: repoData.name } : {}),
+          ...(repoData.description != null && { description: repoData.description }),
+        }),
+      });
+
+      return response.json();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error("Error creando repositorio:", errorMessage);
+      if (errorMessage.includes("Authentication")) {
+        throw new Error("Token de GitHub inválido o expirado");
+      }
+
+      throw new Error(`Error creando repositorio: ${errorMessage}`);
+    }
+  },
+);
+
+// BORRAR REPOSITORIO
+ipcMain.handle("git-delete-repo", async (event: any, repoInfo: RepoInformation) => {
+  try {
+    const url: string = `https://api.github.com/repos/${repoInfo.repoOwner}/${repoInfo.repoName}`;
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${repoInfo.token}`,
+        "X-GitHub-Api-Version": "2026-03-10",
+      },
+    });
+
+    if (response.status === 204) {
+      return { success: true };
+    } else {
+      const text = await response.text();
+      return { success: false, error: text };
+    }
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+    console.error("Error obteniendo cambios:", errorMessage);
+  }
+});
 
 // ELIMINAR USUARIO DE LA ORGANIZACION
 ipcMain.handle(
@@ -1265,10 +1324,10 @@ ipcMain.handle(
     try {
       const { token, username } = data;
       const orgName = "Proyecto-Final-de-Grado";
-      
+
       // Verificar si es owner de la organización
       const url = `https://api.github.com/orgs/${orgName}/memberships/${username}`;
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -1276,24 +1335,24 @@ ipcMain.handle(
           Authorization: `Bearer ${token}`,
         },
       });
-      
+
       if (response.status === 404) {
         // No es miembro de la organización
         return { role: "sin-acceso", error: "No eres miembro de la organización" };
       }
-      
+
       if (response.ok) {
         const membership = await response.json();
-        
+
         // Si es owner (admin) de la organización
         if (membership.role === "admin") {
           return { role: "administrador" };
         }
-        
+
         // Si es miembro normal
         return { role: "desarrollador" };
       }
-      
+
       // Por defecto
       return { role: "desarrollador" };
     } catch (error: any) {
@@ -1312,7 +1371,7 @@ ipcMain.handle(
       // Convertir a lo que entiende GitHub
       const githubRole = role === "administrador" ? "admin" : "member";
       const url = `https://api.github.com/orgs/${organization}/memberships/${username}`;
-      
+
       const response = await fetch(url, {
         method: "PUT",
         headers: {
@@ -1322,12 +1381,12 @@ ipcMain.handle(
         },
         body: JSON.stringify({ role: githubRole }),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         return { success: false, error: `Error ${response.status}: ${errorText}` };
       }
-      
+
       const result = await response.json();
       return { success: true, data: result };
     } catch (error: any) {

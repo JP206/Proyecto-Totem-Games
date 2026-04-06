@@ -24,7 +24,9 @@ export default function Issues() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "bug" | "enhancement">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [syncing, setSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("");
   const [editedAssignee, setEditedAssignee] = useState("");
@@ -133,6 +135,7 @@ export default function Issues() {
           date: new Date(issue.created_at).toLocaleDateString(),
           status: issue.state,
           assignee: issue.assignee?.login || "",
+          type: issue.labels?.[0]?.name || "bug",
         }));
 
       setIssues(formattedIssues);
@@ -310,8 +313,18 @@ export default function Issues() {
   };
 
   const filteredIssues = issues.filter((issue) => {
-    if (filter === "all") return true;
-    return issue.status === filter;
+    const matchesUser =
+      userFilter === "all" ||
+      (userFilter === "unassigned" && !issue.assignee) ||
+      issue.assignee === userFilter;
+
+    const matchesType =
+      typeFilter === "all" || issue.type === typeFilter;
+
+    const matchesStatus =
+      statusFilter === "all" || issue.status === statusFilter;
+
+    return matchesUser && matchesType && matchesStatus;
   });
 
   if (loading && !currentProject) {
@@ -327,7 +340,6 @@ export default function Issues() {
       </>
     );
   }
-
   return (
     <>
       <Navbar />
@@ -356,25 +368,45 @@ export default function Issues() {
             Issues del Proyecto
           </h2>
           <div className="header-actions">
-            <button
-              className="filter-btn"
-              onClick={() =>
-                setFilter(
-                  filter === "all"
-                    ? "open"
-                    : filter === "open"
-                      ? "closed"
-                      : "all",
-                )
-              }
-            >
-              <Filter size={16} />
-              {filter === "all"
-                ? "Todos"
-                : filter === "open"
-                  ? "Abiertos"
-                  : "Cerrados"}
-            </button>
+            <div className="filters-container">
+              {/* Usuario */}
+              <select
+                className="filter-select"
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+              >
+                <option value="all">Todos los usuarios</option>
+                <option value="unassigned">Sin asignar</option>
+
+                {collaborators.map((c) => (
+                  <option key={c.login} value={c.login}>
+                    {c.login}
+                  </option>
+                ))}
+              </select>
+
+              {/* Tipo */}
+              <select
+                className="filter-select"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as any)}
+              >
+                <option value="all">Todos los tipos</option>
+                <option value="bug">Issue</option>
+                <option value="enhancement">Reporte</option>
+              </select>
+
+              {/* Estado */}
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="open">Abiertos</option>
+                <option value="closed">Cerrados</option>
+              </select>
+            </div>
             <button className="add-btn" onClick={openNewIssueModal}>
               <Plus size={16} />
               Nuevo Issue
@@ -393,9 +425,16 @@ export default function Issues() {
               filteredIssues.map((issue) => (
                 <div
                   key={issue.id}
-                  className={`issue-card ${selectedIssue?.id === issue.id ? "selected" : ""}`}
+                  className={`issue-card ${selectedIssue?.id === issue.id ? "selected" : ""
+                    }`}
                   onClick={() => openEditIssueModal(issue)}
                 >
+                  <div className="issue-card-header">
+                    <span className={`issue-type-badge ${issue.type}`}>
+                      {issue.type === "enhancement" ? "📊 Reporte" : "🐞 Issue"}
+                    </span>
+                  </div>
+
                   <h3 className="issue-title">
                     #{issue.id} - {issue.title}
                   </h3>
@@ -439,123 +478,6 @@ export default function Issues() {
                 </button>
               </div>
             )}
-          </div>
-        )}
-
-        {isModalOpen && (
-          <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>
-                  <Flag size={20} />
-                  {selectedIssue
-                    ? `Editar Issue #${selectedIssue.id}`
-                    : "Nuevo Issue"}
-                </h3>
-                <button
-                  className="modal-close"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="modal-field">
-                <label>Título</label>
-                <input
-                  type="text"
-                  placeholder="Título del issue"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                />
-              </div>
-
-              <div className="modal-field">
-                <label>Descripción</label>
-                <textarea
-                  placeholder="Describe el issue detalladamente..."
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  rows={8}
-                />
-              </div>
-
-              {!selectedIssue && (
-                <div className="modal-field">
-                  <label>Asignado a:</label>
-                  <select
-                    value={editedAssignee}
-                    onChange={(e) => setEditedAssignee(e.target.value)}
-                  >
-                    <option value="">Sin asignar</option>
-
-                    {collaborators.map((contributor) => (
-                      <option key={contributor.login} value={contributor.login}>
-                        {contributor.login}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {selectedIssue && (
-                <div className="modal-row">
-                  <div className="modal-field">
-                    <label>Estado actual</label>
-                    <div className={`status-badge ${selectedIssue.status}`}>
-                      {selectedIssue.status === "open" ? (
-                        <>
-                          <AlertCircle size={12} /> Abierto
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle size={12} /> Cerrado
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="modal-field">
-                    <label>Asignado a:</label>
-                    <select
-                      value={editedAssignee}
-                      onChange={(e) => setEditedAssignee(e.target.value)}
-                    >
-                      <option value="">Sin asignar</option>
-
-                      {collaborators.map((contributor) => (
-                        <option key={contributor.login} value={contributor.login}>
-                          {contributor.login}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  className="save-btn"
-                  onClick={editIssue}
-                  disabled={!editedTitle.trim()}
-                >
-                  Guardar Cambios
-                </button>
-
-                {selectedIssue && selectedIssue.status !== "closed" && (
-                  <button className="resolve-btn" onClick={markAsResolved}>
-                    Marcar como Resuelto
-                  </button>
-                )}
-
-                <button
-                  className="cancel-btn"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>
