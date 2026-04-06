@@ -17,6 +17,7 @@ import Changes from "./pages/ChangeHistory";
 import ContextsGlossaries from "./pages/ContextsGlossaries";
 import Profile from "./pages/Profile";
 import Users from "./pages/Users";
+import Projects from "./pages/Projects";
 
 function App() {
   useEffect(() => {
@@ -58,6 +59,9 @@ function App() {
 
         {/* Ruta para Usuarios */}
         <Route path="/users" element={<Users />} />
+
+        {/* Ruta para Proyectos */}
+        <Route path="/projects" element={<Projects />} />
       </Routes>
     </Router>
   );

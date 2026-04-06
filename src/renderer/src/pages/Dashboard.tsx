@@ -40,7 +40,7 @@ const Dashboard: React.FC = () => {
     const desktop = DesktopManager.getInstance();
     const token = await desktop.getConfig("github_token");
     const userData = await desktop.getConfig("github_user");
-    
+
     if (token && userData?.login) {
       // Consulta a GitHub en tiempo real, no usa el rol guardado
       const roleResult = await desktop.verifyUserRole(token, userData.login);
@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
           const log = await desktop.gitCommand({ command: "git log -1 --format=%cd --date=iso", cwd: repo.path }).catch(() => null);
           const branchStatus = await desktop.gitCommand({ command: "git status -b --porcelain", cwd: repo.path }).catch(() => null);
           const localChanges = await desktop.gitCommand({ command: "git status --porcelain", cwd: repo.path }).catch(() => "");
-          
+
           let state = "unknown";
           if (localChanges && localChanges.trim().length > 0) {
             state = "modified";
@@ -82,7 +82,7 @@ const Dashboard: React.FC = () => {
             else if (branchStatus.includes("ahead")) state = "ahead";
             else state = "up-to-date";
           }
-          
+
           return { ...repo, status: { lastPull: log ? new Date(log.trim()) : null, status: state } };
         })
       );
@@ -153,28 +153,28 @@ const Dashboard: React.FC = () => {
     if (!repoToPull) return;
     setShowPullModal(false);
     setGlobalLoading(true);
-    
+
     try {
       const token = await DesktopManager.getInstance().getConfig("github_token");
       const githubRepo = githubRepos.find(r => r.name === repoToPull.name);
-      
+
       if (!githubRepo || !token) return;
 
       const lastSeparator = Math.max(repoToPull.path.lastIndexOf("\\"), repoToPull.path.lastIndexOf("/"));
       const parentFolder = repoToPull.path.substring(0, lastSeparator);
       const destination = `${parentFolder}\\${repoToPull.name}`;
-      
+
       await DesktopManager.getInstance().deleteFolder(repoToPull.path);
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       await DesktopManager.getInstance().cloneRepository({
         url: githubRepo.clone_url,
         destination: destination,
         token,
       });
-      
+
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (selectedFolder) {
         await loadLocalRepos(selectedFolder);
       }
@@ -209,6 +209,10 @@ const Dashboard: React.FC = () => {
 
   const navigateToProfile = () => {
     navigate("/profile", { state: { from: "dashboard" } });
+  };
+
+  const navigateToProjects = () => {
+    navigate("/projects");
   };
 
   const isRepoCloned = (repoName: string) => localRepos.some(r => r.name === repoName);
@@ -260,10 +264,17 @@ const Dashboard: React.FC = () => {
 
         <div className="header-actions">
           {isAdmin && (
-            <button onClick={navigateToUsers} className="btn-admin">
-              <Users size={16} />
-              Gestionar Usuarios
-            </button>
+            <>
+              <button onClick={navigateToProjects} className="btn-projects">
+                <Folder size={16} />
+                Proyectos
+              </button>
+
+              <button onClick={navigateToUsers} className="btn-admin">
+                <Users size={16} />
+                Gestionar Usuarios
+              </button>
+            </>
           )}
           <button onClick={refreshAll} disabled={globalLoading} className="btn-refresh-all">
             {globalLoading ? <><div className="spinner-small" />Actualizando...</> : <><RefreshCw size={16} />Actualizar Todo</>}
@@ -307,13 +318,13 @@ const Dashboard: React.FC = () => {
                             </div>
                           </div>
                           <div className="repo-actions">
-                            <button onClick={e => { e.stopPropagation(); setRepoToPull({ path: r.path, name: r.name }); setShowPullModal(true); }} 
-                              className="btn-icon btn-pull" 
+                            <button onClick={e => { e.stopPropagation(); setRepoToPull({ path: r.path, name: r.name }); setShowPullModal(true); }}
+                              className="btn-icon btn-pull"
                               disabled={r.status?.status === "up-to-date" || globalLoading}
                               title={r.status?.status === "up-to-date" ? "Repositorio al día" : "Sincronizar con remoto"}>
                               <Download size={14} />
                             </button>
-                            <button onClick={e => { e.stopPropagation(); setRepoToDelete({ path: r.path, name: r.name }); setShowDeleteModal(true); }} 
+                            <button onClick={e => { e.stopPropagation(); setRepoToDelete({ path: r.path, name: r.name }); setShowDeleteModal(true); }}
                               className="btn-icon btn-delete" disabled={loading.deleting || globalLoading}
                               title="Eliminar repositorio localmente">
                               <Trash2 size={14} />
@@ -354,8 +365,8 @@ const Dashboard: React.FC = () => {
                         {r.description && <p className="repo-desc">{r.description}</p>}
                         <span className="repo-date"><Calendar size={12} /> {new Date(r.updated_at).toLocaleDateString()}</span>
                       </div>
-                      <button 
-                        onClick={() => cloneRepo(r)} 
+                      <button
+                        onClick={() => cloneRepo(r)}
                         disabled={!selectedFolder || cloned || globalLoading}
                         className={`btn-icon btn-clone ${!selectedFolder ? "disabled" : ""} ${cloned ? "cloned" : ""}`}
                         title={!selectedFolder ? "Selecciona una carpeta primero" : cloned ? "Repositorio ya clonado" : "Clonar repositorio"}

@@ -11,6 +11,11 @@ export interface RepoInformation {
   token: string;
 }
 
+export interface RepoData {
+  name: string | null;
+  description: string | null;
+}
+
 export interface IssueData {
   title: string;
   description: string;
@@ -273,6 +278,10 @@ export interface ElectronAPI {
   getOrgMembers: (organization: string, token: string) => Promise<any[]>;
 
   createOrgRepo: (organization: string, template: string, token: string, repoName: string, description: string ) => Promise<any>;
+
+  editRepo: (repoInfo: RepoInformation, repoData: RepoData) => Promise<any>;
+
+  deleteRepo: (repoInfo: RepoInformation) => Promise<any>;
 
   removeUser: (organization: string, token: string, username: string) => Promise<any>;
 
