@@ -1161,10 +1161,10 @@ const ContextsGlossaries: React.FC = () => {
               </button>
             </div>
             <div className="modal-content">
-              <p>¿Cambiar <strong>"{itemToChangeType.name.replace(/\.(txt|csv)$/, "")}"</strong> de:</p>
+              <p className="specificity-title">¿Cambiar <strong>"{itemToChangeType.name.replace(/\.(txt|csv)$/, "")}"</strong> de:</p>
               <p style={{ textAlign: "center", margin: "16px 0" }}>
                 <span className="specificity-badge">{itemToChangeType.specificity === "general" ? "🌍 General" : "🔒 Específico"}</span>
-                {" → "}
+                <span className="arrow">→</span>
                 <span className="specificity-badge">{newType === "general" ? "🌍 General" : "🔒 Específico"}</span>
               </p>
               {itemToChangeType.specificity === "general" && newType === "specific" && (
