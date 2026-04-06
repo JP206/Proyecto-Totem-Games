@@ -24,7 +24,9 @@ export default function Issues() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "bug" | "enhancement">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [syncing, setSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>("");
   const [editedAssignee, setEditedAssignee] = useState("");
@@ -311,8 +313,18 @@ export default function Issues() {
   };
 
   const filteredIssues = issues.filter((issue) => {
-    if (filter === "all") return true;
-    return issue.status === filter;
+    const matchesUser =
+      userFilter === "all" ||
+      (userFilter === "unassigned" && !issue.assignee) ||
+      issue.assignee === userFilter;
+
+    const matchesType =
+      typeFilter === "all" || issue.type === typeFilter;
+
+    const matchesStatus =
+      statusFilter === "all" || issue.status === statusFilter;
+
+    return matchesUser && matchesType && matchesStatus;
   });
 
   if (loading && !currentProject) {
@@ -356,23 +368,45 @@ export default function Issues() {
             Issues del Proyecto
           </h2>
           <div className="header-actions">
-            <button
-              className="filter-btn"
-              onClick={() =>
-                setFilter(
-                  filter === "all" ? "open" : filter === "open"
-                        ? "closed"
-                      : "all"
-                )
-              }
-            >
-              <Filter size={16} />
-              {filter === "all"
-                ? "Todos"
-                : filter === "open"
-                  ? "Abiertos"
-                  : "Cerrados"}
-            </button>
+            <div className="filters-container">
+              {/* Usuario */}
+              <select
+                className="filter-select"
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+              >
+                <option value="all">Todos los usuarios</option>
+                <option value="unassigned">Sin asignar</option>
+
+                {collaborators.map((c) => (
+                  <option key={c.login} value={c.login}>
+                    {c.login}
+                  </option>
+                ))}
+              </select>
+
+              {/* Tipo */}
+              <select
+                className="filter-select"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as any)}
+              >
+                <option value="all">Todos los tipos</option>
+                <option value="bug">Issue</option>
+                <option value="enhancement">Reporte</option>
+              </select>
+
+              {/* Estado */}
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="open">Abiertos</option>
+                <option value="closed">Cerrados</option>
+              </select>
+            </div>
             <button className="add-btn" onClick={openNewIssueModal}>
               <Plus size={16} />
               Nuevo Issue

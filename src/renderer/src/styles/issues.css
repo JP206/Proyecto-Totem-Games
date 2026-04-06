@@ -683,3 +683,23 @@
   background-color: rgba(54, 162, 235, 0.15);
   color: #36a2eb;
 }
+
+.filters-container {
+  display: flex;
+  gap: 12px;
+}
+
+.filter-select {
+  padding: 10px 14px;
+  background-color: var(--color-primary-main);
+  color: var(--color-white);
+  border: 1px solid var(--color-neutral-medium);
+  border-radius: 8px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+  background-color: var(--color-neutral-medium);
+}
