@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DesktopManager from "../utils/desktop";
-import Navbar from "../components/Navbar";
-import { Folder, Plus, X, Trash, AlertCircle, CheckCircle } from "lucide-react";
+import { Folder, Plus, X, Trash, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import "../styles/projects.css";
 
 export default function Projects() {
@@ -137,17 +136,30 @@ export default function Projects() {
     const openEditModal = (project: any) => {
         setSelectedProject(project);
         setEditedTitle(project.name);
-        setEditedDescription(project.description);
+        setEditedDescription(project.description || "");
         setIsModalOpen(true);
     };
 
-    return (
-        <>
-            <Navbar />
+    const handleBack = () => {
+        navigate("/dashboard");
+    };
 
-            <div className="issues-container">
+    return (
+        <div className="projects-container">
+            <div className="projects-header-bar">
+                <button
+                    type="button"
+                    className="projects-back-btn"
+                    onClick={handleBack}
+                >
+                    <ArrowLeft size={18} />
+                    <span>Volver</span>
+                </button>
+            </div>
+
+            <div className="projects-content">
                 {notification && (
-                    <div className={`notification ${notification.type}`}>
+                    <div className={`projects-notification ${notification.type}`}>
                         {notification.type === "success" && <CheckCircle size={18} />}
                         {notification.type === "error" && <AlertCircle size={18} />}
                         <span>{notification.message}</span>
@@ -155,22 +167,22 @@ export default function Projects() {
                 )}
 
                 {syncing && (
-                    <div className="syncing-overlay">
-                        <div className="syncing-content">
+                    <div className="projects-syncing-overlay">
+                        <div className="projects-syncing-content">
                             <div className="spinner-large" />
                             <p>Guardando cambios...</p>
                         </div>
                     </div>
                 )}
 
-                <div className="issues-header">
+                <div className="projects-header">
                     <h2>
                         <Folder size={24} />
                         Proyectos
                     </h2>
 
-                    <div className="header-actions">
-                        <button className="add-btn" onClick={openNewModal}>
+                    <div className="projects-header-actions">
+                        <button className="projects-add-btn" onClick={openNewModal}>
                             <Plus size={16} />
                             Nuevo Proyecto
                         </button>
@@ -178,31 +190,30 @@ export default function Projects() {
                 </div>
 
                 {loading ? (
-                    <div className="loading-state">
+                    <div className="projects-loading-state">
                         <div className="spinner-large" />
                         <p>Cargando proyectos...</p>
                     </div>
                 ) : (
-                    <div className="issues-grid">
+                    <div className="projects-grid">
                         {projects.length > 0 ? (
                             projects.map((project) => (
                                 <div
                                     key={project.id}
-                                    className="issue-card"
+                                    className="projects-card"
                                     onClick={() => openEditModal(project)}
                                 >
-                                    <h3 className="issue-title">{project.name}</h3>
-
-                                    <p className="issue-description">
+                                    <h3 className="projects-title">{project.name}</h3>
+                                    <p className="projects-description">
                                         {project.description || "Sin descripción"}
                                     </p>
                                 </div>
                             ))
                         ) : (
-                            <div className="empty-issues">
+                            <div className="projects-empty">
                                 <Folder size={48} />
                                 <p>No hay proyectos</p>
-                                <button className="add-btn" onClick={openNewModal}>
+                                <button className="projects-add-btn" onClick={openNewModal}>
                                     <Plus size={16} />
                                     Crear proyecto
                                 </button>
@@ -213,14 +224,14 @@ export default function Projects() {
 
                 {isModalOpen && (
                     <div
-                        className="modal-overlay"
+                        className="projects-modal-overlay"
                         onClick={() => setIsModalOpen(false)}
                     >
                         <div
-                            className="modal"
+                            className="projects-modal"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="modal-header">
+                            <div className="projects-modal-header">
                                 <h3>
                                     <Folder size={20} />
                                     {selectedProject
@@ -229,14 +240,14 @@ export default function Projects() {
                                 </h3>
 
                                 <button
-                                    className="modal-close"
+                                    className="projects-modal-close"
                                     onClick={() => setIsModalOpen(false)}
                                 >
                                     <X size={18} />
                                 </button>
                             </div>
 
-                            <div className="modal-field">
+                            <div className="projects-modal-field">
                                 <label>Título</label>
                                 <input
                                     value={editedTitle}
@@ -244,7 +255,7 @@ export default function Projects() {
                                 />
                             </div>
 
-                            <div className="modal-field">
+                            <div className="projects-modal-field">
                                 <label>Descripción</label>
                                 <textarea
                                     value={editedDescription}
@@ -254,9 +265,9 @@ export default function Projects() {
                                 />
                             </div>
 
-                            <div className="modal-actions">
+                            <div className="projects-modal-actions">
                                 <button
-                                    className="save-btn"
+                                    className="projects-save-btn"
                                     onClick={saveProject}
                                     disabled={!editedTitle.trim()}
                                 >
@@ -266,7 +277,7 @@ export default function Projects() {
                                 {selectedProject && (
                                     <>
                                         <button
-                                            className="resolve-btn"
+                                            className="projects-delete-btn"
                                             onClick={deleteProject}
                                         >
                                             <Trash size={16} />
@@ -274,7 +285,7 @@ export default function Projects() {
                                         </button>
 
                                         <button
-                                            className="cancel-btn"
+                                            className="projects-cancel-btn"
                                             onClick={() => setIsModalOpen(false)}
                                         >
                                             Cancelar
@@ -286,6 +297,6 @@ export default function Projects() {
                     </div>
                 )}
             </div>
-        </>
+        </div>
     );
 }
