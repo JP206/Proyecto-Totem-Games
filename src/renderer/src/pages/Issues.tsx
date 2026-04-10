@@ -362,6 +362,79 @@ export default function Issues() {
           </div>
         )}
 
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3>
+                  <Flag size={18} />
+                  {selectedIssue ? "Editar Issue" : "Nuevo Issue"}
+                </h3>
+                <button
+                  className="modal-close"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-field">
+                <label>Título</label>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  placeholder="Título del issue"
+                />
+              </div>
+
+              <div className="modal-field">
+                <label>Descripción</label>
+                <textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  placeholder="Descripción del issue"
+                />
+              </div>
+
+              <div className="modal-field">
+                <label>Asignar a</label>
+                <select
+                  value={editedAssignee}
+                  onChange={(e) => setEditedAssignee(e.target.value)}
+                >
+                  <option value="">Sin asignar</option>
+                  {collaborators.map((c) => (
+                    <option key={c.login} value={c.login}>
+                      {c.login}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button className="cancel-btn" onClick={() => setIsModalOpen(false)}>
+                  Cancelar
+                </button>
+
+                <button
+                  className="save-btn"
+                  onClick={editIssue}
+                  disabled={!editedTitle}
+                >
+                  Guardar
+                </button>
+
+                {selectedIssue && selectedIssue.status === "open" && (
+                  <button className="resolve-btn" onClick={markAsResolved}>
+                    Marcar como resuelto
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="issues-header">
           <h2>
             <Flag size={24} />
