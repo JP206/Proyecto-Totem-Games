@@ -10,6 +10,7 @@ lerna-debug.log*
 src/renderer/build/
 dist/
 coverage/
+release/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

@@ -13,7 +13,8 @@
     "inicializar_proy": "npm install --legacy-peer-deps && cd src/renderer && npm install --legacy-peer-deps && cd ../.. && npm run probar",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "fix_probar": "cd src/renderer && npm run build && cd ../.. && npm start"
+    "fix_probar": "cd src/renderer && npm run build && cd ../.. && npm start",
+    "pack-win": "npm run build && electron-builder --win --publish never -c.extraMetadata.main=dist/main/index.js"
   },
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.22",
@@ -43,5 +44,35 @@
     "ts-jest": "^29.2.5",
     "typescript": "4.9.5",
     "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.totem.gamesapp",
+    "productName": "Totem Games App",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/renderer/build/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/renderer/build",
+        "to": "renderer/build"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/**/*"
+    ],
+    "extraMetadata": {
+      "main": "dist/main/index.js"
+    }
   }
 }
