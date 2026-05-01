@@ -1,0 +1,42 @@
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-syncing-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10050;
+  backdrop-filter: blur(2px);
+}
+
+.app-syncing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px;
+  background: var(--color-neutral-darker);
+  border: 2px solid var(--color-neutral-medium);
+  border-radius: 12px;
+  color: var(--color-white);
+  font-size: var(--text-sm);
+}
+
+.app-syncing-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-primary-subtle);
+  border-top-color: var(--color-secondary-cyan);
+  border-radius: 50%;
+  animation: app-spin 1s linear infinite;
+}
+
+.app-syncing-content p {
+  margin: 0;
+}

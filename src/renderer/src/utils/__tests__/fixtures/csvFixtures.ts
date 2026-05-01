@@ -21,3 +21,10 @@ export const ROWS_CRLF = [
   ["x", "y"],
   ["1", "2"],
 ];
+
+describe("csvFixtures", () => {
+  it("exports reusable fixture values", () => {
+    expect(SIMPLE_CSV).toBeTruthy();
+    expect(SIMPLE_ROWS.length).toBeGreaterThan(0);
+  });
+});

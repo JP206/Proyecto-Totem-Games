@@ -1,0 +1,65 @@
+.app-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 20px;
+  background-color: var(--color-primary-subtle);
+  border: 2px solid var(--color-neutral-medium);
+  border-radius: 12px;
+}
+
+.app-page-header-main {
+  flex: 1;
+  min-width: 220px;
+}
+
+.app-page-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-page-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-secondary-pink);
+  flex-shrink: 0;
+}
+
+.app-page-header-copy {
+  min-width: 0;
+}
+
+.app-page-header-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--color-white);
+  font-size: var(--text-xl);
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+
+.app-page-header-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-page-header-subtitle {
+  margin: 6px 0 0;
+  color: var(--color-neutral-light);
+  font-size: var(--text-sm);
+}
+
+.app-page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}

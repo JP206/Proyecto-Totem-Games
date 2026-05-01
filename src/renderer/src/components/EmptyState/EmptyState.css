@@ -1,0 +1,36 @@
+.app-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 48px 24px;
+  background-color: var(--color-neutral-dark);
+  border: 2px dashed var(--color-neutral-medium);
+  border-radius: 12px;
+  color: var(--color-neutral-light);
+}
+
+.app-empty-state-icon {
+  color: var(--color-neutral-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-empty-state-title {
+  color: var(--color-white);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.app-empty-state-description {
+  font-size: var(--text-sm);
+  max-width: 520px;
+}
+
+.app-empty-state-action {
+  display: flex;
+  justify-content: center;
+}

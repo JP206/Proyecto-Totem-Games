@@ -58,6 +58,17 @@ describe("DesktopManager", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    electronAPI.selectFolder.mockResolvedValue("C:/repo");
+    electronAPI.readFolder.mockResolvedValue([]);
+    electronAPI.onMenuSelectFolder.mockImplementation((cb: () => void) => {
+      selectFolderCb = cb;
+    });
+    electronAPI.onMenuRefreshRepos.mockImplementation((cb: () => void) => {
+      refreshReposCb = cb;
+    });
+    electronAPI.onMenuLogout.mockImplementation((cb: () => void) => {
+      logoutCb = cb;
+    });
     selectFolderCb = undefined;
     refreshReposCb = undefined;
     logoutCb = undefined;
@@ -68,10 +79,16 @@ describe("DesktopManager", () => {
         this.type = type;
       }
     };
-    (global as any).window = {
-      electronAPI,
-      dispatchEvent: jest.fn(),
-    };
+    Object.defineProperty(window, "electronAPI", {
+      configurable: true,
+      value: electronAPI,
+      writable: true,
+    });
+    Object.defineProperty(window, "dispatchEvent", {
+      configurable: true,
+      value: jest.fn(),
+      writable: true,
+    });
   });
 
   it("returns singleton instance", () => {
