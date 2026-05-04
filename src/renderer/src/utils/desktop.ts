@@ -1,7 +1,6 @@
 // src/renderer/src/utils/desktop.ts
 import {
   ElectronAPI,
-  MessageData,
   GitCloneData,
   RepoInformation,
   RepoData,

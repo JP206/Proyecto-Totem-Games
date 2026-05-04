@@ -1,0 +1,49 @@
+.app-toast {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background-color: var(--color-neutral-darker);
+  border: 2px solid;
+  border-radius: 8px;
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  z-index: 9999;
+  animation: app-toast-slide-in 0.3s ease-out;
+  max-width: min(420px, calc(100vw - 48px));
+}
+
+.app-toast.success {
+  border-color: var(--color-success);
+}
+
+.app-toast.error {
+  border-color: var(--color-error);
+}
+
+.app-toast.warning {
+  border-color: var(--color-warning);
+}
+
+/* When Toast is used inside a modal, anchor to the modal box */
+.app-toast.translation-preview-toast {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  left: auto;
+  max-width: min(380px, calc(100% - 32px));
+}
+
+@keyframes app-toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

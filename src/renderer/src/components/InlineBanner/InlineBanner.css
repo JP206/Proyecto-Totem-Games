@@ -1,0 +1,54 @@
+.app-inline-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-neutral-medium);
+  font-size: var(--text-sm);
+}
+
+.app-inline-banner--info {
+  background-color: rgba(90, 206, 229, 0.08);
+  color: var(--color-white);
+  border-color: var(--color-secondary-cyan);
+}
+
+.app-inline-banner--success {
+  background-color: rgba(46, 164, 79, 0.08);
+  color: var(--color-white);
+  border-color: var(--color-success);
+}
+
+.app-inline-banner--warning {
+  background-color: rgba(255, 191, 0, 0.08);
+  color: var(--color-white);
+  border-color: var(--color-warning);
+}
+
+.app-inline-banner--error {
+  background-color: rgba(248, 81, 73, 0.08);
+  color: var(--color-white);
+  border-color: var(--color-error);
+}
+
+.app-inline-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-inline-banner-message {
+  line-height: 1.45;
+}
+
+.app-inline-banner-spin {
+  animation: app-inline-banner-spin 0.9s linear infinite;
+}
+
+@keyframes app-inline-banner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

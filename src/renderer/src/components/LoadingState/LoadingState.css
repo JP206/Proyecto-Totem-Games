@@ -1,0 +1,36 @@
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-spinner-large {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 15px;
+  border: 3px solid var(--color-primary-subtle);
+  border-top-color: var(--color-secondary-cyan);
+  border-radius: 50%;
+  animation: app-spin 1s linear infinite;
+}
+
+.app-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--color-neutral-lighter);
+  font-size: var(--text-sm);
+}
+
+.app-loading-state.full-page {
+  min-height: calc(100vh - 70px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.app-loading-state p {
+  margin: 0;
+  text-align: center;
+}

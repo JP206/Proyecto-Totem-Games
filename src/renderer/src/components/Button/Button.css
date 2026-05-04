@@ -1,0 +1,141 @@
+.app-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.app-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.app-button--sm {
+  min-height: 34px;
+  padding: 8px 12px;
+  font-size: var(--text-xs);
+}
+
+.app-button--md {
+  min-height: 40px;
+  padding: 10px 16px;
+  font-size: var(--text-sm);
+}
+
+.app-button--lg {
+  min-height: 46px;
+  padding: 12px 20px;
+  font-size: var(--text-base);
+}
+
+.app-button--full-width {
+  width: 100%;
+}
+
+.app-button--primary,
+.app-button--success {
+  color: var(--color-white);
+  border: none;
+}
+
+.app-button--primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-main) 0%,
+    var(--color-primary-light) 100%
+  );
+}
+
+.app-button--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(180, 90, 211, 0.35);
+}
+
+.app-button--success {
+  background: linear-gradient(
+    135deg,
+    var(--color-success) 0%,
+    var(--color-success-hover) 100%
+  );
+}
+
+.app-button--success:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(46, 164, 79, 0.35);
+}
+
+.app-button--secondary {
+  background-color: var(--color-neutral-dark);
+  color: var(--color-neutral-lighter);
+  border-color: var(--color-neutral-medium);
+}
+
+.app-button--secondary:hover:not(:disabled) {
+  background-color: var(--color-neutral-medium);
+  border-color: var(--color-secondary-cyan);
+}
+
+.app-button--ghost {
+  background-color: transparent;
+  color: var(--color-neutral-lighter);
+  border-color: var(--color-neutral-medium);
+}
+
+.app-button--ghost:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-secondary-cyan);
+}
+
+.app-button--danger {
+  background: linear-gradient(135deg, var(--color-error) 0%, rgb(176, 51, 51) 100%);
+  color: var(--color-white);
+  border: none;
+}
+
+.app-button--danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(248, 81, 73, 0.3);
+}
+
+.app-button-icon,
+.app-button-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-button-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--color-white);
+  border-radius: 50%;
+  animation: app-button-spin 0.8s linear infinite;
+}
+
+.app-button--secondary .app-button-spinner,
+.app-button--ghost .app-button-spinner {
+  border-color: rgba(201, 209, 217, 0.25);
+  border-top-color: var(--color-neutral-lighter);
+}
+
+@keyframes app-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

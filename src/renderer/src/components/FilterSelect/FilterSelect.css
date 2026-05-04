@@ -1,0 +1,27 @@
+.app-filter-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.app-filter-select-label {
+  font-size: var(--text-xs);
+  color: var(--color-neutral-light);
+}
+
+.app-filter-select-input {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-neutral-medium);
+  background-color: var(--color-neutral-dark);
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  outline: none;
+}
+
+.app-filter-select-input:focus {
+  border-color: var(--color-secondary-cyan);
+}

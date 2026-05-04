@@ -1,0 +1,171 @@
+export interface LanguageOption {
+  id: string;
+  name: string;
+  code: string;
+  region?: string;
+  country?: string;
+}
+
+export const AVAILABLE_LANGUAGES: LanguageOption[] = [
+  {
+    id: "es_uy",
+    name: "Español (Uruguay)",
+    code: "ES-UY",
+    region: "América",
+    country: "Uruguay",
+  },
+  {
+    id: "es_es",
+    name: "Español (España)",
+    code: "ES-ES",
+    region: "Europa",
+    country: "España",
+  },
+  {
+    id: "es_mx",
+    name: "Español (México)",
+    code: "ES-MX",
+    region: "América",
+    country: "México",
+  },
+  {
+    id: "es_ar",
+    name: "Español (Argentina)",
+    code: "ES-AR",
+    region: "América",
+    country: "Argentina",
+  },
+  {
+    id: "es_co",
+    name: "Español (Colombia)",
+    code: "ES-CO",
+    region: "América",
+    country: "Colombia",
+  },
+  {
+    id: "es_cl",
+    name: "Español (Chile)",
+    code: "ES-CL",
+    region: "América",
+    country: "Chile",
+  },
+  {
+    id: "en_us",
+    name: "Inglés (Estados Unidos)",
+    code: "EN-US",
+    region: "América",
+    country: "EE.UU.",
+  },
+  {
+    id: "en_gb",
+    name: "Inglés (Reino Unido)",
+    code: "EN-GB",
+    region: "Europa",
+    country: "Reino Unido",
+  },
+  {
+    id: "en_au",
+    name: "Inglés (Australia)",
+    code: "EN-AU",
+    region: "Oceanía",
+    country: "Australia",
+  },
+  {
+    id: "de_de",
+    name: "Alemán (Alemania)",
+    code: "DE-DE",
+    region: "Europa",
+    country: "Alemania",
+  },
+  {
+    id: "pt_br",
+    name: "Portugués (Brasil)",
+    code: "PT-BR",
+    region: "América",
+    country: "Brasil",
+  },
+  {
+    id: "pt_pt",
+    name: "Portugués (Portugal)",
+    code: "PT-PT",
+    region: "Europa",
+    country: "Portugal",
+  },
+  {
+    id: "fr_fr",
+    name: "Francés (Francia)",
+    code: "FR-FR",
+    region: "Europa",
+    country: "Francia",
+  },
+  {
+    id: "fr_ca",
+    name: "Francés (Canadá)",
+    code: "FR-CA",
+    region: "América",
+    country: "Canadá",
+  },
+  {
+    id: "ru_ru",
+    name: "Ruso (Rusia)",
+    code: "RU-RU",
+    region: "Europa",
+    country: "Rusia",
+  },
+  {
+    id: "zh_tw",
+    name: "Chino tradicional (Taiwán)",
+    code: "ZH-TW",
+    region: "Asia",
+    country: "Taiwán",
+  },
+  {
+    id: "zh_cn",
+    name: "Chino simplificado (China)",
+    code: "ZH-CN",
+    region: "Asia",
+    country: "China",
+  },
+  {
+    id: "ja_jp",
+    name: "Japonés (Japón)",
+    code: "JA-JP",
+    region: "Asia",
+    country: "Japón",
+  },
+  {
+    id: "ko_kr",
+    name: "Coreano (Corea del Sur)",
+    code: "KO-KR",
+    region: "Asia",
+    country: "Corea del Sur",
+  },
+  {
+    id: "it_it",
+    name: "Italiano (Italia)",
+    code: "IT-IT",
+    region: "Europa",
+    country: "Italia",
+  },
+  {
+    id: "tr_tr",
+    name: "Turco (Turquía)",
+    code: "TR-TR",
+    region: "Asia",
+    country: "Turquía",
+  },
+  {
+    id: "id_id",
+    name: "Indonesio (Indonesia)",
+    code: "ID-ID",
+    region: "Asia",
+    country: "Indonesia",
+  },
+  {
+    id: "ca_es",
+    name: "Catalán (España)",
+    code: "CA-ES",
+    region: "Europa",
+    country: "España",
+  },
+];
