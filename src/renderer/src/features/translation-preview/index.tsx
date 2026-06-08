@@ -1,5 +1,5 @@
 // src/renderer/src/pages/TranslationPreview.tsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DesktopManager from "../../utils/desktop";
 import PageWithNavbar from "../../components/PageWithNavbar/PageWithNavbar";
@@ -167,19 +167,31 @@ const TranslationPreview: React.FC = () => {
     state?.targetLanguages,
   ]);
 
+  // Tracks the csvContent that editableRows was last built from. Navigating to a
+  // new translation result reuses this route's component instance (no remount),
+  // so we must re-sync whenever csvContent actually changes; otherwise editableRows
+  // keeps stale data (e.g. the spell-check phase with no translated columns) and a
+  // save would drop the header and every cell the user didn't edit by hand.
+  const initializedContentRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!state?.fileInfo?.csvContent || editableRows.length > 0) return;
-    const rows = parseCSV(state.fileInfo.csvContent);
+    const csv = state?.fileInfo?.csvContent;
+    if (!csv || initializedContentRef.current === csv) return;
+    initializedContentRef.current = csv;
+    const rows = parseCSV(csv);
     setEditableRows(rows.map((r) => r.slice()));
     const orig = rows.map((r) => r.slice());
-    if (state.spellCheckOnly && state.spellCheckPreview?.length) {
+    if (state?.spellCheckOnly && state.spellCheckPreview?.length) {
       for (const p of state.spellCheckPreview) {
         if (orig[p.rowIndex] && orig[p.rowIndex]!.length > 1)
           orig[p.rowIndex]![1] = p.originalSource;
       }
     }
     setOriginalRows(orig);
-  }, [state?.fileInfo?.csvContent]);
+  }, [
+    state?.fileInfo?.csvContent,
+    state?.spellCheckOnly,
+    state?.spellCheckPreview,
+  ]);
 
   const dataRowIndices = useMemo(() => {
     // Only show rows that actually have content (key or source text).
