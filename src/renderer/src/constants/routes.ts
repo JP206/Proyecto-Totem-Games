@@ -12,10 +12,12 @@ export const ROUTES = {
   profile: "/profile",
   users: "/users",
   projects: "/projects",
+  adminMetrics: "/admin-metrics",
 } as const;
 
 /** Routes where the main Navbar is not rendered. */
 export const NAVBAR_HIDDEN_PATHS: readonly string[] = [
   ROUTES.login,
   ROUTES.dashboard,
+  ROUTES.adminMetrics,
 ];

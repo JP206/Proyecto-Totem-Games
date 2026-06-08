@@ -15,6 +15,7 @@ import { getTokensToday, addTokensToday } from "../../utils/tokenUsage";
 import FileListSection from "./components/FileListSection";
 import LandingFloatingHelp from "./components/LandingFloatingHelp";
 import { LANDING_PANEL_TITLE } from "./constants";
+import { detectLanguagesFromFile } from "./utils/detectLanguagesFromFile";
 import "./landing.css";
 
 interface FileItem { name: string; path: string; isDirectory: boolean; isFile: boolean; }
@@ -29,7 +30,7 @@ const Landing: React.FC = () => {
     repoPath: "", repoName: "", generalRepoPath: "", loading: true, updatingGeneral: false,
     selectedFile: null as FileItem | null, targetLanguages: [] as Language[],
     contextFiles: [] as ContextFile[], glossaryFiles: [] as ContextFile[],
-    showContexts: false, showGlossaries: false,
+    showContexts: true, showGlossaries: true,
     translating: false, progressPercent: 0, providerMode: null as "openai" | "gemini" | null,
     spellCheck: false, openaiModel: "gpt-4.1-mini", geminiModel: "gemini-1.5-flash",
     spellCheckBeforeTranslate: false, tokensToday: 0,
@@ -37,7 +38,7 @@ const Landing: React.FC = () => {
     hasPersonalOpenAI: false, hasPersonalGemini: false,
     openaiModels: [] as string[], geminiModels: [] as string[],
     openaiEmbeddingModels: [] as string[], geminiEmbeddingModels: [] as string[],
-    showProviderConfig: false,
+    showProviderConfig: true,
     confidenceTextSimilarity: false,
     confidenceEmbeddingSimilarity: false,
     confidenceEmbeddingModel: "",
@@ -181,6 +182,21 @@ const Landing: React.FC = () => {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [state.repoPath]);
+
+  useEffect(() => {
+    if (!state.selectedFile?.path) return;
+    let cancelled = false;
+
+    (async () => {
+      const detected = await detectLanguagesFromFile(state.selectedFile!.path);
+      if (cancelled) return;
+      setState((prev) => ({ ...prev, targetLanguages: detected }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.selectedFile?.path]);
 
   // Cargar proyecto desde el store  
   const loadProject = async () => {
@@ -695,8 +711,12 @@ const Landing: React.FC = () => {
       />
 
       <div className="landing-container" aria-label={LANDING_PANEL_TITLE}>
-        <div className="landing-content">
-          <div className="config-panel">
+        <div className="landing-main">
+          <div className="landing-header">
+            <h2 className="panel-title">
+              <Layers size={20} /> Localizador{" "}
+              <span className="panel-subtitle">Complete los campos</span>
+            </h2>
             {state.repoPath && (
               <div className="landing-tokens-today">
                 <Coins size={18} />
@@ -708,7 +728,9 @@ const Landing: React.FC = () => {
                 </span>
               </div>
             )}
-            <h2 className="panel-title"><Layers size={20} /> Localizador <span className="panel-subtitle">Complete los campos</span></h2>
+          </div>
+
+          <div className="landing-config-grid">
             <FileListSection
               title="CONTEXTOS"
               icon={BookOpen}
@@ -771,13 +793,46 @@ const Landing: React.FC = () => {
                 )
               }
             />
-            <LanguageSelector selectedLanguages={state.targetLanguages} onToggleLanguage={toggleLanguage} onToggleRegion={toggleRegion} />
-            <div className="config-section">
-              <div className="section-header" onClick={() => setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig }))}>
-                <h3>Proveedor de IA <span className="section-count">{state.providerMode === "openai" ? "OpenAI" : state.providerMode === "gemini" ? "Gemini" : "Sin seleccionar"}</span></h3>
+            <div className="config-section landing-provider-section">
+              <div
+                className="section-header"
+                onClick={() =>
+                  setState((prev) => ({
+                    ...prev,
+                    showProviderConfig: !prev.showProviderConfig,
+                  }))
+                }
+              >
+                <h3>
+                  Proveedor de IA{" "}
+                  <span className="section-count">
+                    {state.providerMode === "openai"
+                      ? "OpenAI"
+                      : state.providerMode === "gemini"
+                        ? "Gemini"
+                        : "Sin seleccionar"}
+                  </span>
+                </h3>
                 <div className="section-actions">
-                  <button className="dropdown-toggle" onClick={(e) => { e.stopPropagation(); setState(prev => ({ ...prev, showProviderConfig: !prev.showProviderConfig })); }} title={state.showProviderConfig ? "Ocultar configuración" : "Mostrar configuración"}>
-                    <ChevronDown size={16} className={state.showProviderConfig ? "open" : ""} />
+                  <button
+                    className="dropdown-toggle"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setState((prev) => ({
+                        ...prev,
+                        showProviderConfig: !prev.showProviderConfig,
+                      }));
+                    }}
+                    title={
+                      state.showProviderConfig
+                        ? "Ocultar configuración"
+                        : "Mostrar configuración"
+                    }
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={state.showProviderConfig ? "open" : ""}
+                    />
                   </button>
                 </div>
               </div>
@@ -785,41 +840,105 @@ const Landing: React.FC = () => {
                 <div className="dropdown-content">
                   <div className="spellcheck-option">
                     <label className="spellcheck-label">
-                      <input type="radio" checked={state.providerMode === "openai"} onChange={() => setState(prev => ({ ...prev, providerMode: "openai" }))} disabled={!state.hasPersonalOpenAI} />
+                      <input
+                        type="radio"
+                        checked={state.providerMode === "openai"}
+                        onChange={() =>
+                          setState((prev) => ({ ...prev, providerMode: "openai" }))
+                        }
+                        disabled={!state.hasPersonalOpenAI}
+                      />
                       <span>OpenAI</span>
                     </label>
-                    {!state.hasPersonalOpenAI && state.providerMode === "openai" && <small className="spellcheck-note">No hay una key personal de OpenAI configurada.</small>}
+                    {!state.hasPersonalOpenAI &&
+                      state.providerMode === "openai" && (
+                        <small className="spellcheck-note">
+                          No hay una key personal de OpenAI configurada.
+                        </small>
+                      )}
                     {state.hasPersonalOpenAI && (
                       <div className="profile-model-section">
-                        <label className="profile-input-label">Modelo personal de OpenAI</label>
-                        <select className="profile-select" value={state.personalOpenaiModel} onChange={(e) => setState(prev => ({ ...prev, personalOpenaiModel: e.target.value }))}>
-                          <option value="">Usar modelo configurado en el perfil</option>
-                          {state.openaiModels.map((id) => <option key={id} value={id}>{id}</option>)}
+                        <label className="profile-input-label">
+                          Modelo personal de OpenAI
+                        </label>
+                        <select
+                          className="profile-select"
+                          value={state.personalOpenaiModel}
+                          onChange={(e) =>
+                            setState((prev) => ({
+                              ...prev,
+                              personalOpenaiModel: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">
+                            Usar modelo configurado en el perfil
+                          </option>
+                          {state.openaiModels.map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     )}
                   </div>
                   <div className="spellcheck-option" style={{ marginTop: 8 }}>
                     <label className="spellcheck-label">
-                      <input type="radio" checked={state.providerMode === "gemini"} onChange={() => setState(prev => ({ ...prev, providerMode: "gemini" }))} disabled={!state.hasPersonalGemini} />
+                      <input
+                        type="radio"
+                        checked={state.providerMode === "gemini"}
+                        onChange={() =>
+                          setState((prev) => ({ ...prev, providerMode: "gemini" }))
+                        }
+                        disabled={!state.hasPersonalGemini}
+                      />
                       <span>Gemini</span>
                     </label>
-                    {!state.hasPersonalGemini && state.providerMode === "gemini" && <small className="spellcheck-note">No hay una key personal de Gemini configurada.</small>}
+                    {!state.hasPersonalGemini &&
+                      state.providerMode === "gemini" && (
+                        <small className="spellcheck-note">
+                          No hay una key personal de Gemini configurada.
+                        </small>
+                      )}
                     {state.hasPersonalGemini && (
                       <div className="profile-model-section">
-                        <label className="profile-input-label">Modelo personal de Gemini</label>
-                        <select className="profile-select" value={state.personalGeminiModel} onChange={(e) => setState(prev => ({ ...prev, personalGeminiModel: e.target.value }))}>
-                          <option value="">Usar modelo configurado en el perfil</option>
-                          {state.geminiModels.map((id) => <option key={id} value={id}>{id}</option>)}
+                        <label className="profile-input-label">
+                          Modelo personal de Gemini
+                        </label>
+                        <select
+                          className="profile-select"
+                          value={state.personalGeminiModel}
+                          onChange={(e) =>
+                            setState((prev) => ({
+                              ...prev,
+                              personalGeminiModel: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">
+                            Usar modelo configurado en el perfil
+                          </option>
+                          {state.geminiModels.map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     )}
                   </div>
                   <div className="spellcheck-option" style={{ marginTop: 8 }}>
-                    <div className="profile-input-label" style={{ marginBottom: 6 }}>
+                    <div
+                      className="profile-input-label"
+                      style={{ marginBottom: 6 }}
+                    >
                       Confianza (retraducción, más costo)
                     </div>
-                    <label className="spellcheck-label" style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <label
+                      className="spellcheck-label"
+                      style={{ display: "flex", alignItems: "flex-start", gap: 8 }}
+                    >
                       <input
                         type="checkbox"
                         checked={state.confidenceTextSimilarity}
@@ -832,12 +951,26 @@ const Landing: React.FC = () => {
                       />
                       <span>
                         Similitud de texto (léxica)
-                        <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
+                        <span
+                          style={{
+                            marginLeft: 6,
+                            display: "inline-flex",
+                            verticalAlign: "middle",
+                          }}
+                        >
                           <LandingFloatingHelp text="Compara el parecido entre el original y la retraducción (palabras y forma)." />
                         </span>
                       </span>
                     </label>
-                    <label className="spellcheck-label" style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 6 }}>
+                    <label
+                      className="spellcheck-label"
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        marginTop: 6,
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={state.confidenceEmbeddingSimilarity}
@@ -850,14 +983,22 @@ const Landing: React.FC = () => {
                       />
                       <span>
                         Similitud por embeddings (significado)
-                        <span style={{ marginLeft: 6, display: "inline-flex", verticalAlign: "middle" }}>
+                        <span
+                          style={{
+                            marginLeft: 6,
+                            display: "inline-flex",
+                            verticalAlign: "middle",
+                          }}
+                        >
                           <LandingFloatingHelp text="Compara vectores del original y la retraducción; puede marcar bien una traducción aunque cambien las palabras. No requiere activar similitud de texto." />
                         </span>
                       </span>
                     </label>
                     {state.confidenceEmbeddingSimilarity && (
                       <div className="profile-model-section" style={{ marginTop: 8 }}>
-                        <label className="profile-input-label">Modelo de embeddings</label>
+                        <label className="profile-input-label">
+                          Modelo de embeddings
+                        </label>
                         <select
                           className="profile-select"
                           value={state.confidenceEmbeddingModel}
@@ -883,104 +1024,190 @@ const Landing: React.FC = () => {
                   </div>
                   <div className="info-note" style={{ marginTop: 12 }}>
                     <AlertCircle size={16} />
-                    <span>¿Querés usar tu propia API key? Configurala en tu perfil o{" "}
-                      <button type="button" className="landing-link-button" onClick={() => navigate("/profile", { state: { from: "landing" } })}>clickeando aquí</button>.
+                    <span>
+                      ¿Querés usar tu propia API key? Configurala en tu perfil o{" "}
+                      <button
+                        type="button"
+                        className="landing-link-button"
+                        onClick={() =>
+                          navigate("/profile", { state: { from: "landing" } })
+                        }
+                      >
+                        clickeando aquí
+                      </button>
+                      .
                     </span>
                   </div>
                 </div>
               )}
             </div>
-            <div className="info-note"><AlertCircle size={16} /><span>Archivos con <Globe size={12} /> son globales. Los archivos se usarán en el orden de prioridad indicado</span></div>
           </div>
-          <div className="work-panel">
-            <div className="work-header">
-              <h3>Subir archivo a localizar</h3>
-              {state.selectedFile && (
-                <div className="selected-file-info">
-                  <FileSpreadsheet size={20} />
-                  <div><strong>Archivo:</strong> <small>{state.selectedFile.name}</small></div>
-                </div>
-              )}
-            </div>
-            <div className="drop-area unified" onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }} onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); }} onDrop={async (e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); const file = e.dataTransfer.files[0]; if (file) await handleFileUpload(file); }} onClick={() => document.getElementById("file-upload")?.click()}>
-              <div className="drop-icon"><FileSpreadsheet size={48} /></div>
-              <p className="drop-title">Arrastra o haz click</p>
-              <p className="drop-description">Archivo a localizar (.csv o .xlsx)</p>
-              <input id="file-upload" type="file" accept=".csv,.xlsx" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
-                e.target.value = "";
-              }} style={{ display: "none" }} />
-            </div>
-            <div className="spellcheck-option">
-              <label className="spellcheck-label">
-                <input 
-                  type="checkbox" 
-                  checked={state.spellCheck || state.spellCheckBeforeTranslate} 
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setState(prev => ({ 
-                      ...prev, 
-                      spellCheck: checked,
-                      spellCheckBeforeTranslate: checked 
-                    }));
-                  }} 
+
+          <div className="landing-languages-row">
+            <LanguageSelector
+              selectedLanguages={state.targetLanguages}
+              onToggleLanguage={toggleLanguage}
+              onToggleRegion={toggleRegion}
+              defaultOpen
+            />
+          </div>
+
+          <div className="info-note landing-info-note">
+            <AlertCircle size={16} />
+            <span>
+              Archivos con <Globe size={12} /> son globales. Los archivos se
+              usarán en el orden de prioridad indicado
+            </span>
+          </div>
+
+          <div className="landing-actions-row">
+            {state.estimatingCost && (
+              <div className="landing-token-estimate landing-token-estimate--loading">
+                <Binary
+                  size={22}
+                  className="landing-token-estimate-icon"
+                  aria-hidden
                 />
-                <span className="spellcheck-text">
-                  <Sparkles size={16} className="spellcheck-icon" />
-                  Revisar ortografía con IA
-                </span>
-              </label>
-              <small className="spellcheck-note">
-                Corrige automáticamente errores ortográficos y gramaticales antes de traducir
-              </small>
-            </div>
-            <div className="action-section">
-              {state.estimatingCost && (
-                <div className="landing-token-estimate landing-token-estimate--loading">
-                  <Binary size={22} className="landing-token-estimate-icon" aria-hidden />
-                  <div className="landing-token-estimate-body">
-                    <div className="landing-token-estimate-label">Estimación de tokens</div>
-                    <div className="landing-token-estimate-value">
-                      <span className="spinner-small" style={{ display: "inline-block", marginRight: 8 }} />
-                      Calculando…
-                    </div>
+                <div className="landing-token-estimate-body">
+                  <div className="landing-token-estimate-label">
+                    Estimación de tokens
+                  </div>
+                  <div className="landing-token-estimate-value">
+                    <span
+                      className="spinner-small"
+                      style={{ display: "inline-block", marginRight: 8 }}
+                    />
+                    Calculando…
                   </div>
                 </div>
-              )}
-              {!state.estimatingCost && state.estimatedTokens > 0 && (
-                <div className="landing-token-estimate">
-                  <Binary size={22} className="landing-token-estimate-icon" aria-hidden />
-                  <div className="landing-token-estimate-body">
-                    <div className="landing-token-estimate-label">Estimación de tokens (aprox.)</div>
-                    <div className="landing-token-estimate-value">
-                      {state.estimatedTokens.toLocaleString()} tokens
-                    </div>
-                    <div className="landing-token-estimate-hint">
-                      Incluye traducción{state.spellCheck || state.spellCheckBeforeTranslate ? ", revisión ortográfica" : ""}, contextos y glosarios seleccionados.
-                    </div>
+              </div>
+            )}
+            {!state.estimatingCost && state.estimatedTokens > 0 && (
+              <div className="landing-token-estimate">
+                <Binary
+                  size={22}
+                  className="landing-token-estimate-icon"
+                  aria-hidden
+                />
+                <div className="landing-token-estimate-body">
+                  <div className="landing-token-estimate-label">
+                    Estimación de tokens (aprox.)
+                  </div>
+                  <div className="landing-token-estimate-value">
+                    {state.estimatedTokens.toLocaleString()} tokens
+                  </div>
+                  <div className="landing-token-estimate-hint">
+                    Incluye traducción
+                    {state.spellCheck || state.spellCheckBeforeTranslate
+                      ? ", revisión ortográfica"
+                      : ""}
+                    , contextos y glosarios seleccionados.
                   </div>
                 </div>
+              </div>
+            )}
+            <button
+              className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`}
+              onClick={startLocalization}
+              disabled={
+                !state.selectedFile ||
+                !state.targetLanguages.length ||
+                !state.providerMode ||
+                (state.providerMode === "openai" && !state.hasPersonalOpenAI) ||
+                (state.providerMode === "gemini" && !state.hasPersonalGemini) ||
+                (state.confidenceEmbeddingSimilarity &&
+                  !state.confidenceEmbeddingModel) ||
+                state.translating
+              }
+            >
+              {state.translating ? (
+                <>
+                  <div className="spinner-small" />
+                  {state.spellCheck || state.spellCheckBeforeTranslate
+                    ? `Revisando... ${state.progressPercent}%`
+                    : `Procesando... ${state.progressPercent}%`}
+                </>
+              ) : (
+                <>
+                  <Download size={20} />
+                  {state.selectedFile && state.targetLanguages.length > 0
+                    ? `Iniciar Localización (${state.targetLanguages.length} idioma${state.targetLanguages.length > 1 ? "s" : ""})`
+                    : "Iniciar Localización"}
+                </>
               )}
-              <button className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`} onClick={startLocalization} disabled={!state.selectedFile || !state.targetLanguages.length || !state.providerMode || (state.providerMode === "openai" && !state.hasPersonalOpenAI) || (state.providerMode === "gemini" && !state.hasPersonalGemini) || (state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) || state.translating}>
-                {state.translating ? (
-                  <>
-                    <div className="spinner-small" /> 
-                    {state.spellCheck || state.spellCheckBeforeTranslate 
-                      ? `Revisando... ${state.progressPercent}%` 
-                      : `Procesando... ${state.progressPercent}%`}
-                  </>
-                ) : (
-                  <>
-                    <Download size={20} /> 
-                    {state.selectedFile && state.targetLanguages.length > 0
-                      ? `Iniciar Localización (${state.targetLanguages.length} idioma${state.targetLanguages.length > 1 ? "s" : ""})`
-                      : "Iniciar Localización"}
-                  </>
-                )}
-              </button>
-            </div>
+            </button>
           </div>
+        </div>
+
+        <div
+          className="landing-file-strip"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.currentTarget.classList.add("drag-over");
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove("drag-over");
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove("drag-over");
+            const file = e.dataTransfer.files[0];
+            if (file) await handleFileUpload(file);
+          }}
+        >
+          <div className="landing-file-strip-file">
+            <FileSpreadsheet size={20} />
+            {state.selectedFile ? (
+              <div className="landing-file-strip-details">
+                <strong>{state.selectedFile.name}</strong>
+                <small>{state.selectedFile.path}</small>
+              </div>
+            ) : (
+              <span className="landing-file-strip-placeholder">
+                Ningún archivo seleccionado
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="landing-file-select-btn"
+            onClick={() => document.getElementById("file-upload")?.click()}
+          >
+            <FileSpreadsheet size={18} />
+            Seleccionar archivo
+          </button>
+          <div className="landing-file-strip-spellcheck">
+            <label className="spellcheck-label">
+              <input
+                type="checkbox"
+                checked={state.spellCheck || state.spellCheckBeforeTranslate}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setState((prev) => ({
+                    ...prev,
+                    spellCheck: checked,
+                    spellCheckBeforeTranslate: checked,
+                  }));
+                }}
+              />
+              <span className="spellcheck-text">
+                <Sparkles size={16} className="spellcheck-icon" />
+                Revisar ortografía con IA
+              </span>
+            </label>
+          </div>
+          <input
+            id="file-upload"
+            type="file"
+            accept=".csv,.xlsx"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = "";
+            }}
+            style={{ display: "none" }}
+          />
         </div>
       </div>
     </PageWithNavbar>

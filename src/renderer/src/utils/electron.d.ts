@@ -27,6 +27,7 @@ export interface IssueData {
 export interface GitCommandData {
   command: string;
   cwd: string;
+  token?: string;
 }
 
 export interface MessageData {
@@ -202,6 +203,37 @@ export interface SavePersonalAIConfigResult {
   defaultModelId?: string | null;
 }
 
+export type UserOrgRole = "administrador" | "desarrollador" | "sin-acceso";
+
+export interface TranslationMetricLanguage {
+  lang: string;
+  lexical: number;
+  meaning: number;
+  confidence: number;
+}
+
+export interface TranslationMetricRecord {
+  id: string;
+  date: string;
+  file: string;
+  provider: string;
+  model: string;
+  similarity: { lexical: boolean; embeddings: boolean };
+  spellcheck: boolean;
+  totalTexts: number;
+  correctedTexts: number;
+  correctionRate: number;
+  tokens: { spellcheck: number; translation: number; total: number };
+  languages: TranslationMetricLanguage[];
+  project?: string;
+}
+
+export interface AiMetricsLoadResult {
+  records: TranslationMetricRecord[];
+  projects: string[];
+  sources: string[];
+}
+
 export interface ElectronAPI {
   // Sistema de archivos
   selectFolder: () => Promise<string | null>;
@@ -211,6 +243,8 @@ export interface ElectronAPI {
   deleteFolder: (path: string) => Promise<boolean>;
   saveFile: (data: SaveFileData) => Promise<{ success: boolean; path: string }>;
   readFile: (filePath: string) => Promise<string>;
+  readLocalizeFileHeaders: (filePath: string) => Promise<string[]>;
+  getAiMetrics: () => Promise<AiMetricsLoadResult>;
   createFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
 
   // AI translation
@@ -308,7 +342,7 @@ export interface ElectronAPI {
   onMenuLogout: (callback: () => void) => void;
 
   // Administrador o Desarrollador
-  verifyUserRole: (data: { token: string; username: string }) => Promise<{ role: "administrador" | "desarrollador"; error?: string }>;
+  verifyUserRole: (data: { token: string; username: string }) => Promise<{ role: UserOrgRole; error?: string }>;
 }
 
 declare global {

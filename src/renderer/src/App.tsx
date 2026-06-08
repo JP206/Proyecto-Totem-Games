@@ -18,6 +18,7 @@ import ContextsGlossaries from "./features/contexts-glossaries";
 import Profile from "./features/profile";
 import Users from "./features/users";
 import Projects from "./features/projects";
+import AdminMetrics from "./features/admin-metrics";
 
 function App() {
   useEffect(() => {
@@ -50,6 +51,8 @@ function App() {
         <Route path="/users" element={<Users />} />
 
         <Route path="/projects" element={<Projects />} />
+
+        <Route path="/admin-metrics" element={<AdminMetrics />} />
       </Routes>
     </Router>
   );

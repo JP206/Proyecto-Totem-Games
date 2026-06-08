@@ -12,14 +12,16 @@ interface LanguageSelectorProps {
   selectedLanguages: LanguageOption[];
   onToggleLanguage: (language: LanguageOption) => void;
   onToggleRegion?: (region: string, languages: LanguageOption[]) => void;
+  defaultOpen?: boolean;
 }
 
 const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   selectedLanguages,
   onToggleLanguage,
   onToggleRegion,
+  defaultOpen = false,
 }) => {
-  const [showLanguages, setShowLanguages] = useState(false);
+  const [showLanguages, setShowLanguages] = useState(defaultOpen);
 
   const languagesByRegion = AVAILABLE_LANGUAGES.reduce(
     (acc, lang) => {

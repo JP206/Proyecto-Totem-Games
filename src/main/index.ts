@@ -19,9 +19,39 @@ import {
   SpellCheckPayload,
   SpellCheckResult,
 } from "./ai/spellcheck";
+import { loadAiMetrics } from "./ai/loadMetrics";
+import { readLocalizeFileHeaders } from "./ai/localizeFileHeaders";
 
 const execAsync = promisify(exec);
 const store = new Store();
+
+const NETWORK_GIT_COMMAND = /\bgit\s+(fetch|pull|push|clone|ls-remote)\b/i;
+
+function getStoredGithubToken(): string | undefined {
+  const raw = store.get("github_token");
+  return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
+}
+
+/** Use the app GitHub token for network git ops so GCM/browser prompts are not shown. */
+function wrapGitCommandWithAuth(
+  command: string,
+  token: string | undefined,
+): { command: string; env: NodeJS.ProcessEnv } {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+
+  if (!token || !NETWORK_GIT_COMMAND.test(command)) {
+    return { command, env };
+  }
+
+  env.GIT_TERMINAL_PROMPT = "0";
+  env.GCM_INTERACTIVE = "Never";
+
+  const basicAuth = Buffer.from(`x-access-token:${token}`).toString("base64");
+  const subcommand = command.replace(/^git\s+/i, "");
+  const wrappedCommand = `git -c credential.helper= -c "http.extraHeader=Authorization: Basic ${basicAuth}" ${subcommand}`;
+
+  return { command: wrappedCommand, env };
+}
 
 type ProviderId = "openai" | "gemini";
 
@@ -943,11 +973,18 @@ ipcMain.handle(
 // 5. COMANDO GIT GENÉRICO
 ipcMain.handle(
   "git-command",
-  async (event: any, data: { command: string; cwd: string }) => {
+  async (event: any, data: { command: string; cwd: string; token?: string }) => {
     try {
-      const { stdout, stderr } = await execAsync(data.command, {
+      const token =
+        (typeof data.token === "string" && data.token.trim()
+          ? data.token.trim()
+          : undefined) || getStoredGithubToken();
+      const { command, env } = wrapGitCommandWithAuth(data.command, token);
+
+      const { stdout, stderr } = await execAsync(command, {
         cwd: data.cwd,
         timeout: 60000,
+        env,
       });
 
       if (stderr) {
@@ -1243,6 +1280,32 @@ ipcMain.handle("read-file", async (event: any, filePath: string) => {
   } catch (error: any) {
     console.error("Error leyendo archivo:", error);
     throw new Error(`Error leyendo archivo: ${error.message}`);
+  }
+});
+
+// 11c2. LEER ENCABEZADOS DE ARCHIVO A LOCALIZAR
+ipcMain.handle(
+  "read-localize-file-headers",
+  async (_event: any, filePath: string) => {
+    try {
+      return await readLocalizeFileHeaders(filePath);
+    } catch (error: any) {
+      console.error("Error leyendo encabezados:", error);
+      throw new Error(
+        `Error leyendo encabezados del archivo: ${error.message}`,
+      );
+    }
+  },
+);
+
+// 11c3. LEER MÉTRICAS DE IA DESDE REPOS LOCALES
+ipcMain.handle("get-ai-metrics", async () => {
+  try {
+    const selectedFolder = store.get("selected_folder") as string | undefined;
+    return await loadAiMetrics(selectedFolder);
+  } catch (error: any) {
+    console.error("Error cargando métricas de IA:", error);
+    throw new Error(error?.message || "Error cargando métricas de IA");
   }
 });
 

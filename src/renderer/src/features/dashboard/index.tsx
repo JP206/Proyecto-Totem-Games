@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Folder, Monitor, MapPin, Download, RefreshCw, Calendar,
   DownloadCloud, Github, CheckCircle, AlertCircle, Clock,
-  Search, Trash2, AlertTriangle, RefreshCwOff, Users
+  Search, Trash2, AlertTriangle, RefreshCwOff, Users, BarChart3
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
@@ -215,6 +215,10 @@ const Dashboard: React.FC = () => {
     navigate("/projects");
   };
 
+  const navigateToMetrics = () => {
+    navigate("/admin-metrics");
+  };
+
   const isRepoCloned = (repoName: string) => localRepos.some(r => r.name === repoName);
 
   const statusBadge = (status: string) => {
@@ -273,6 +277,11 @@ const Dashboard: React.FC = () => {
               <button onClick={navigateToUsers} className="btn-admin">
                 <Users size={16} />
                 Gestionar Usuarios
+              </button>
+
+              <button onClick={navigateToMetrics} className="btn-metrics">
+                <BarChart3 size={16} />
+                Métricas
               </button>
             </>
           )}
