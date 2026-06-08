@@ -39,7 +39,8 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!token.trim()) {
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
       setError("Por favor ingresa tu token de GitHub");
       return;
     }
@@ -54,7 +55,7 @@ const Login: React.FC = () => {
       // Verificar token con GitHub API
       const response = await fetch("https://api.github.com/user", {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${trimmedToken}`,
           Accept: "application/vnd.github.v3+json",
         },
       });
@@ -63,7 +64,7 @@ const Login: React.FC = () => {
         const userData = await response.json();
         
         // Guardar en configuración
-        await desktop.setConfig("github_token", token);
+        await desktop.setConfig("github_token", trimmedToken);
         await desktop.setConfig("github_user", userData);
 
         setSuccess(true);

@@ -801,7 +801,8 @@ button:disabled {
   .btn-refresh-all,
   .btn-folder,
   .btn-projects,
-  .btn-admin {
+  .btn-admin,
+  .btn-metrics {
     width: 100%;
     justify-content: center;
   }
@@ -874,4 +875,34 @@ button:disabled {
 
 .btn-projects:active {
   transform: translateY(0);
+}
+
+.btn-metrics {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-metrics:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-metrics:active {
+  transform: translateY(0);
+}
+
+.btn-metrics svg {
+  width: 16px;
+  height: 16px;
 }

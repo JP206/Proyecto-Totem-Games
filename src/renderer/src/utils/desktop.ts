@@ -14,6 +14,8 @@ import {
   RunCostEstimate,
   UploadTranslationPayload,
   UploadTranslationResult,
+  AiMetricsLoadResult,
+  UserOrgRole,
 } from "./electron";
 
 class DesktopManager {
@@ -260,7 +262,7 @@ class DesktopManager {
   }
 
   // Administrador o Desarrollador
-  async verifyUserRole(token: string, username: string): Promise<{ role: "administrador" | "desarrollador"; error?: string }> {
+  async verifyUserRole(token: string, username: string): Promise<{ role: UserOrgRole; error?: string }> {
     return await this.electron.verifyUserRole({ token, username });
   }
 
@@ -310,6 +312,10 @@ class DesktopManager {
     content: string;
   }): Promise<{ success: boolean; error?: string }> {
     return await this.electron.writeTranslationFile(data);
+  }
+
+  async getAiMetrics(): Promise<AiMetricsLoadResult> {
+    return await this.electron.getAiMetrics();
   }
 }
 
