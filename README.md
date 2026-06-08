@@ -11,10 +11,8 @@
 
 En la carpeta raíz correr los siguientes comandos:
 
-- npm inicializar_proy
+- npm run inicializar_proy
 
 # Para correr el proyecto
-
-En caso de que existan las carpetas "dist" y "build" en la carpeta raíz, borrarlas
 
 - npm run probar
