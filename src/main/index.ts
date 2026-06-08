@@ -19,6 +19,7 @@ import {
   SpellCheckPayload,
   SpellCheckResult,
 } from "./ai/spellcheck";
+import { readLocalizeFileHeaders } from "./ai/localizeFileHeaders";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -1245,6 +1246,21 @@ ipcMain.handle("read-file", async (event: any, filePath: string) => {
     throw new Error(`Error leyendo archivo: ${error.message}`);
   }
 });
+
+// 11c2. LEER ENCABEZADOS DE ARCHIVO A LOCALIZAR
+ipcMain.handle(
+  "read-localize-file-headers",
+  async (_event: any, filePath: string) => {
+    try {
+      return await readLocalizeFileHeaders(filePath);
+    } catch (error: any) {
+      console.error("Error leyendo encabezados:", error);
+      throw new Error(
+        `Error leyendo encabezados del archivo: ${error.message}`,
+      );
+    }
+  },
+);
 
 // 11d. CREAR CARPETA
 ipcMain.handle("create-folder", async (event: any, folderPath: string) => {

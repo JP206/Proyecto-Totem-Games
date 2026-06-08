@@ -161,6 +161,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 11c. LEER ARCHIVO
   readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
 
+  readLocalizeFileHeaders: (filePath: string) =>
+    ipcRenderer.invoke("read-localize-file-headers", filePath),
+
   // 11d. Crear carpeta
   createFolder: (folderPath: string) => ipcRenderer.invoke("create-folder", folderPath),
 

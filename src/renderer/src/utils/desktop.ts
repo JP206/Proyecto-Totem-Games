@@ -90,6 +90,15 @@ class DesktopManager {
     }
   }
 
+  async readLocalizeFileHeaders(filePath: string): Promise<string[]> {
+    try {
+      return await this.electron.readLocalizeFileHeaders(filePath);
+    } catch (error) {
+      console.error("Error leyendo encabezados del archivo:", error);
+      return [];
+    }
+  }
+
   async createFolder(folderPath: string): Promise<boolean> {
     try {
       const result = await this.electron.createFolder(folderPath);
