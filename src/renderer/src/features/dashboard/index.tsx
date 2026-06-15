@@ -8,6 +8,7 @@ import {
   DownloadCloud, Github, CheckCircle, AlertCircle, Clock,
   Search, Trash2, AlertTriangle, RefreshCwOff, Users, BarChart3
 } from "lucide-react";
+import { HIDDEN_REPOS } from "../../constants/hiddenRepos";
 
 const Dashboard: React.FC = () => {
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
@@ -68,23 +69,24 @@ const Dashboard: React.FC = () => {
       const desktop = DesktopManager.getInstance();
       const files = await desktop.readFolder(folder);
       const repos = await Promise.all(
-        files.filter((f: any) => f.isGitRepo).map(async (repo: any) => {
-          await desktop.gitCommand({ command: "git fetch origin", cwd: repo.path }).catch(() => null);
-          const log = await desktop.gitCommand({ command: "git log -1 --format=%cd --date=iso", cwd: repo.path }).catch(() => null);
-          const branchStatus = await desktop.gitCommand({ command: "git status -b --porcelain", cwd: repo.path }).catch(() => null);
-          const localChanges = await desktop.gitCommand({ command: "git status --porcelain", cwd: repo.path }).catch(() => "");
+        files.filter((f: any) => f.isGitRepo && !HIDDEN_REPOS.includes(f.name.toLowerCase()))
+          .map(async (repo: any) => {
+            await desktop.gitCommand({ command: "git fetch origin", cwd: repo.path }).catch(() => null);
+            const log = await desktop.gitCommand({ command: "git log -1 --format=%cd --date=iso", cwd: repo.path }).catch(() => null);
+            const branchStatus = await desktop.gitCommand({ command: "git status -b --porcelain", cwd: repo.path }).catch(() => null);
+            const localChanges = await desktop.gitCommand({ command: "git status --porcelain", cwd: repo.path }).catch(() => "");
 
-          let state = "unknown";
-          if (localChanges && localChanges.trim().length > 0) {
-            state = "modified";
-          } else if (branchStatus) {
-            if (branchStatus.includes("behind")) state = "behind";
-            else if (branchStatus.includes("ahead")) state = "ahead";
-            else state = "up-to-date";
-          }
+            let state = "unknown";
+            if (localChanges && localChanges.trim().length > 0) {
+              state = "modified";
+            } else if (branchStatus) {
+              if (branchStatus.includes("behind")) state = "behind";
+              else if (branchStatus.includes("ahead")) state = "ahead";
+              else state = "up-to-date";
+            }
 
-          return { ...repo, status: { lastPull: log ? new Date(log.trim()) : null, status: state } };
-        })
+            return { ...repo, status: { lastPull: log ? new Date(log.trim()) : null, status: state } };
+          })
       );
       setLocalRepos(repos);
     } finally {
@@ -109,7 +111,13 @@ const Dashboard: React.FC = () => {
     const token = await desktop.getConfig("github_token");
     if (token) {
       const res = await desktop.getOrgRepos("Proyecto-Final-de-Grado", token);
-      if (res) setGithubRepos(res);
+      if (res) {
+        setGithubRepos(
+          res.filter(
+            repo => !HIDDEN_REPOS.includes(repo.name.toLowerCase())
+          )
+        );
+      }
     }
     if (selectedFolder) await loadLocalRepos(selectedFolder);
     setGlobalLoading(false);
@@ -218,8 +226,8 @@ const Dashboard: React.FC = () => {
     return map[status] || map.unknown;
   };
 
-  const filteredLocal = localRepos.filter(r => r.name.toLowerCase().includes(search.local.toLowerCase()));
-  const filteredGithub = githubRepos.filter(r => r.name.toLowerCase().includes(search.github.toLowerCase()));
+  const filteredLocal = localRepos.filter(r => r.name.toLowerCase().includes(search.local.toLowerCase()) && !HIDDEN_REPOS.includes(r.name.toLowerCase()));
+  const filteredGithub = githubRepos.filter(r => r.name.toLowerCase().includes(search.github.toLowerCase()) && !HIDDEN_REPOS.includes(r.name.toLowerCase()));
 
   const Modal = ({ show, onClose, children, className = "" }: any) => show ? (
     <div className="modal-overlay" onClick={onClose}>
@@ -293,7 +301,7 @@ const Dashboard: React.FC = () => {
 
                 <div className="search-box">
                   <Search size={16} className="search-icon" />
-                  <input placeholder="Buscar..." value={search.local} onChange={e => setSearch(s => ({ ...s, local: e.target.value }))} maxLength={100}/>
+                  <input placeholder="Buscar..." value={search.local} onChange={e => setSearch(s => ({ ...s, local: e.target.value }))} maxLength={100} />
                 </div>
 
                 {loadingLocal ? (
@@ -344,7 +352,7 @@ const Dashboard: React.FC = () => {
             <h3><Github size={18} /> GitHub <span className="badge green">{githubRepos.length}</span></h3>
             <div className="search-box">
               <Search size={16} className="search-icon" />
-              <input placeholder="Buscar..." value={search.github} onChange={e => setSearch(s => ({ ...s, github: e.target.value }))} maxLength={100}/>
+              <input placeholder="Buscar..." value={search.github} onChange={e => setSearch(s => ({ ...s, github: e.target.value }))} maxLength={100} />
             </div>
 
             {loading.github ? (
