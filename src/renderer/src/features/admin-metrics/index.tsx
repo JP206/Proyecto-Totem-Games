@@ -516,7 +516,7 @@ export default function AdminMetricsPage() {
               onClick={() => setShowDetails((current) => !current)}
             >
               {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              {showDetails ? "Ocultar detalle" : "Ver más detalle"}
+              {showDetails ? "Ocultar detalles" : "Ver más detalles"}
             </button>
 
             {showDetails ? (

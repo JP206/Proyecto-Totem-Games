@@ -93,15 +93,6 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchGithub = async () => {
-    // setLoading(d => ({ ...d, github: true }));
-    // const token = await DesktopManager.getInstance().getConfig("github_token");
-    // if (token) {
-    //   const res = await fetch("https://api.github.com/user/repos", {
-    //     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
-    //   });
-    //   if (res.ok) setGithubRepos(await res.json());
-    // }
-    // setLoading(d => ({ ...d, github: false }));
     setLoading(d => ({ ...d, github: true }));
     const desktop = DesktopManager.getInstance();
     const token = await desktop.getConfig("github_token");
@@ -114,16 +105,11 @@ const Dashboard: React.FC = () => {
 
   const refreshAll = async () => {
     setGlobalLoading(true);
-    const token = await DesktopManager.getInstance().getConfig("github_token");
+    const desktop = DesktopManager.getInstance();
+    const token = await desktop.getConfig("github_token");
     if (token) {
-      try {
-        const res = await fetch("https://api.github.com/user/repos", {
-          headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" }
-        });
-        if (res.ok) setGithubRepos(await res.json());
-      } catch (error) {
-        console.error("Error actualizando GitHub:", error);
-      }
+      const res = await desktop.getOrgRepos("Proyecto-Final-de-Grado", token);
+      if (res) setGithubRepos(res);
     }
     if (selectedFolder) await loadLocalRepos(selectedFolder);
     setGlobalLoading(false);
@@ -307,7 +293,7 @@ const Dashboard: React.FC = () => {
 
                 <div className="search-box">
                   <Search size={16} className="search-icon" />
-                  <input placeholder="Buscar..." value={search.local} onChange={e => setSearch(s => ({ ...s, local: e.target.value }))} />
+                  <input placeholder="Buscar..." value={search.local} onChange={e => setSearch(s => ({ ...s, local: e.target.value }))} maxLength={100}/>
                 </div>
 
                 {loadingLocal ? (
@@ -358,7 +344,7 @@ const Dashboard: React.FC = () => {
             <h3><Github size={18} /> GitHub <span className="badge green">{githubRepos.length}</span></h3>
             <div className="search-box">
               <Search size={16} className="search-icon" />
-              <input placeholder="Buscar..." value={search.github} onChange={e => setSearch(s => ({ ...s, github: e.target.value }))} />
+              <input placeholder="Buscar..." value={search.github} onChange={e => setSearch(s => ({ ...s, github: e.target.value }))} maxLength={100}/>
             </div>
 
             {loading.github ? (
