@@ -1,5 +1,5 @@
 ﻿/* LanguageSelector + shared config-section (from landing) */
-/* Secciones de configuraciÃ³n */
+/* Secciones de configuracion */
 .config-section {
   margin-bottom: 20px;
   border: 1px solid var(--color-neutral-medium);
@@ -48,7 +48,7 @@
   margin-left: 8px;
 }
 
-/* Acciones de secciÃ³n */
+/* Acciones de seccion */
 .section-actions {
   display: flex;
   align-items: center;
@@ -56,7 +56,7 @@
   margin-right: 8px;
 }
 
-/* BotÃ³n Ãºnico de seleccionar/deseleccionar todo */
+/* Boton unico de seleccionar/deseleccionar todo */
 .toggle-all-btn {
   background: transparent;
   border: 1px solid var(--color-neutral-medium);
@@ -252,7 +252,7 @@
   cursor: not-allowed;
 }
 
-/* Icono global - MÃS LLAMATIVO */
+/* Icono global - MAS LLAMATIVO */
 .global-icon {
   color: var(--color-secondary-cyan);
   filter: drop-shadow(0 0 2px rgba(90, 206, 229, 0.5));
@@ -298,16 +298,15 @@
 }
 
 .languages-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  columns: 2;
+  column-gap: 16px;
 }
 
 /* Region group para idiomas */
 .region-group {
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-neutral-medium);
-  padding-bottom: 12px;
+  break-inside: avoid;
+  display: inline-block;
+  width: 100%;
 }
 
 .region-group:last-child {
@@ -373,4 +372,10 @@
 .selected-language small {
   color: var(--color-neutral-light);
   margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .languages-list {
+    grid-template-columns: 1fr;
+  }
 }
