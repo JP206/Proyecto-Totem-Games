@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import DesktopManager from "../desktop";
 
 describe("DesktopManager", () => {
