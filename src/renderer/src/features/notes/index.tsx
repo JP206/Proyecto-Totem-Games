@@ -295,6 +295,7 @@ export default function Notes() {
                   value={searchTerm}
                   onChange={setSearchTerm}
                   placeholder="Buscar por título o autor..."
+                  maxLength={100}
                 />
               </div>
               <Button

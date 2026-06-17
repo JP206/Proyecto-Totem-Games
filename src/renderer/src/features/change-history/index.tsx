@@ -123,6 +123,7 @@ export default function ChangeHistory() {
                                 value={searchTerm}
                                 onChange={setSearchTerm}
                                 placeholder="Buscar por commit, autor o fecha..."
+                                maxLength={100}
                             />
                         </div>
                     }

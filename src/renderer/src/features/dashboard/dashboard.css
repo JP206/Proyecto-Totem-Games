@@ -759,6 +759,33 @@ button:disabled {
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn-refresh-all,
+  .btn-folder,
+  .btn-projects,
+  .btn-admin,
+  .btn-metrics {
+    padding: 8px 12px;
+    font-size: var(--text-xs);
+    gap: 6px;
+  }
+
+  .btn-refresh-all svg,
+  .btn-folder svg,
+  .btn-projects svg,
+  .btn-admin svg,
+  .btn-metrics svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 @media (max-width: 992px) {
   .dashboard {
     overflow-y: auto;
@@ -795,7 +822,9 @@ button:disabled {
 
   .header-actions {
     width: 100%;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 
   .btn-refresh-all,
@@ -826,6 +855,10 @@ button:disabled {
 @media (max-width: 480px) {
   .dashboard {
     padding: 10px;
+  }
+
+  .header-actions {
+    grid-template-columns: 1fr;
   }
 
   .card {

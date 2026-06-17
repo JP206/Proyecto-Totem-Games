@@ -8,6 +8,7 @@ export interface SearchFieldProps {
   placeholder?: string;
   className?: string;
   clearLabel?: string;
+  maxLength?: number;
 }
 
 const SearchField: React.FC<SearchFieldProps> = ({
@@ -16,6 +17,7 @@ const SearchField: React.FC<SearchFieldProps> = ({
   placeholder = "Buscar...",
   className = "",
   clearLabel = "Limpiar búsqueda",
+  maxLength = 100,
 }) => {
   return (
     <div className={`app-search-field ${className}`.trim()}>
@@ -26,6 +28,7 @@ const SearchField: React.FC<SearchFieldProps> = ({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="app-search-field-input"
+        maxLength={maxLength}
       />
       {value ? (
         <button
