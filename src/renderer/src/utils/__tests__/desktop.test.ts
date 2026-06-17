@@ -79,6 +79,7 @@ describe("DesktopManager", () => {
         this.type = type;
       }
     };
+    (global as any).window = (global as any).window ?? {};
     Object.defineProperty(window, "electronAPI", {
       configurable: true,
       value: electronAPI,
