@@ -207,9 +207,9 @@ export type UserOrgRole = "administrador" | "desarrollador" | "sin-acceso";
 
 export interface TranslationMetricLanguage {
   lang: string;
-  lexical: number;
-  meaning: number;
-  confidence: number;
+  lexical?: number;
+  meaning?: number;
+  confidence?: number;
 }
 
 export interface TranslationMetricRecord {
@@ -218,13 +218,14 @@ export interface TranslationMetricRecord {
   file: string;
   provider: string;
   model: string;
-  similarity: { lexical: boolean; embeddings: boolean };
+  similarity?: { lexical?: boolean; embeddings?: boolean };
   spellcheck: boolean;
   totalTexts: number;
-  correctedTexts: number;
-  correctionRate: number;
-  tokens: { spellcheck: number; translation: number; total: number };
+  correctedTexts?: number;
+  correctionRate?: number;
+  tokens: { spellcheck?: number; translation?: number; total: number };
   languages: TranslationMetricLanguage[];
+  useCustomApiKey?: boolean;
   project?: string;
 }
 

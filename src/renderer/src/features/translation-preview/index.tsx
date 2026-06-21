@@ -1187,13 +1187,15 @@ const TranslationPreview: React.FC = () => {
                           previewRow?.sourceText ||
                           "";
                       } else {
-                        if (editCol !== undefined)
+                        if (showRoundTripCheck && langData?.roundTripText) {
+                          displayText = langData.roundTripText;
+                        } else if (editCol !== undefined) {
                           displayText = getCellValue(dataRowIndex, editCol);
+                        }
                         if (!displayText && langData) {
                           if (showRoundTripCheck) {
                             displayText = langData.roundTripText || "";
-                          } else
-                          if (currentProviderView === "openai")
+                          } else if (currentProviderView === "openai")
                             displayText =
                               langData.openaiText || langData.mergedText || "";
                           else if (currentProviderView === "gemini")

@@ -8,6 +8,10 @@ import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
 import { detectDelimiter } from "./csvDelimiter";
 import { createTokenEstimator } from "./tokenEstimate";
+import {
+  appendTranslationMetric,
+  buildTranslationMetricRecord,
+} from "./saveMetrics";
 
 const TRANSLATION_PROGRESS_CHANNEL = "translation-progress";
 
@@ -813,6 +817,32 @@ export async function translateFileInMain(
     await fs.writeFile(payload.filePath, buf);
 
     updatedContent = csvStringify(rows);
+  }
+
+  if (translatedRowsCount > 0) {
+    try {
+      const metricRecord = buildTranslationMetricRecord(
+        payload,
+        previewRows,
+        {
+          totalRows: previewRows.length,
+          translatedRows: translatedRowsCount,
+          tokensUsed: totalTokensUsed || undefined,
+        },
+        selectedProvider,
+        {
+          computeTextSimilarity: confOpts.computeTextSimilarity,
+          computeEmbeddingSimilarity: confOpts.computeEmbeddingSimilarity,
+        },
+      );
+      await appendTranslationMetric(
+        payload.repoPath,
+        payload.projectName,
+        metricRecord,
+      );
+    } catch (err) {
+      console.error("[AI Translate] Error guardando métricas:", err);
+    }
   }
 
   return {

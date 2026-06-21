@@ -4,12 +4,11 @@ import {
   AiMetricsLoadResult,
   TranslationMetricRecord,
 } from "./metricsTypes";
-
-export const GENERAL_REPO_NAME = "repo-general-totem-games";
-
-const METRICS_DIRS = ["metricas", "metricas_ia"];
-const HISTORIAL_FILE = "historial.json";
-const LOCALIZE_METRICS_FILE = "metricas_ia.json";
+import {
+  GAME_METRICS_DIR,
+  GAME_METRICS_FILE,
+  GENERAL_REPO_NAME,
+} from "./saveMetrics";
 
 function isValidRecord(value: unknown): value is TranslationMetricRecord {
   if (!value || typeof value !== "object") return false;
@@ -26,11 +25,6 @@ function inferProjectFromId(id: string): string | undefined {
   const parts = id.split("_");
   if (parts.length < 2) return undefined;
   return parts[parts.length - 1] || undefined;
-}
-
-function projectFromMetricsFilename(filename: string): string | undefined {
-  if (filename === HISTORIAL_FILE) return undefined;
-  return filename.replace(/-metrics\.json$/i, "").replace(/\.json$/i, "");
 }
 
 function normalizeRecord(
@@ -57,8 +51,15 @@ function normalizeRecord(
         : record.totalTexts > 0
           ? (correctedTexts / record.totalTexts) * 100
           : 0,
-    tokens: record.tokens || { spellcheck: 0, translation: 0, total: 0 },
-    similarity: record.similarity || { lexical: false, embeddings: false },
+    tokens: {
+      spellcheck: record.tokens?.spellcheck ?? 0,
+      translation: record.tokens?.translation ?? 0,
+      total: record.tokens?.total ?? 0,
+    },
+    similarity: {
+      lexical: Boolean(record.similarity?.lexical),
+      embeddings: Boolean(record.similarity?.embeddings),
+    },
     spellcheck: Boolean(record.spellcheck),
     languages: (record.languages || []).map((lang) => ({
       lang: lang.lang,
@@ -124,76 +125,13 @@ async function readMetricsFile(
   }
 }
 
-async function readMetricsDirectory(
-  dirPath: string,
-): Promise<TranslationMetricRecord[]> {
-  if (!(await fileExists(dirPath))) return [];
-
-  const entries = await fs.readdir(dirPath);
-  const records: TranslationMetricRecord[] = [];
-
-  for (const entry of entries) {
-    if (!entry.endsWith(".json")) continue;
-    const filePath = path.join(dirPath, entry);
-    const projectFromFile = projectFromMetricsFilename(entry);
-    records.push(...(await readMetricsFile(filePath, projectFromFile)));
-  }
-
-  return records;
-}
-
-async function loadGeneralRepoMetrics(
-  selectedFolder: string,
-): Promise<{ records: TranslationMetricRecord[]; sources: string[] }> {
-  const generalPath = path.join(selectedFolder, GENERAL_REPO_NAME);
-  const records: TranslationMetricRecord[] = [];
-  const sources: string[] = [];
-
-  for (const dirName of METRICS_DIRS) {
-    const metricsDir = path.join(generalPath, dirName);
-    const historialPath = path.join(metricsDir, HISTORIAL_FILE);
-    const dirRecords: TranslationMetricRecord[] = [];
-
-    if (await fileExists(historialPath)) {
-      dirRecords.push(...(await readMetricsFile(historialPath)));
-    }
-
-    dirRecords.push(...(await readMetricsDirectory(metricsDir)));
-
-    if (dirRecords.length > 0) {
-      sources.push(metricsDir);
-      records.push(...dirRecords);
-    }
-  }
-
-  return { records, sources };
-}
-
-async function loadLocalRepoMetrics(
+async function loadGameRepoMetrics(
   repoPath: string,
   repoName: string,
 ): Promise<TranslationMetricRecord[]> {
-  const candidates = [
-    path.join(repoPath, "Localizacion", LOCALIZE_METRICS_FILE),
-    ...METRICS_DIRS.flatMap((dirName) => [
-      path.join(repoPath, dirName, HISTORIAL_FILE),
-      path.join(repoPath, dirName, `${repoName}-metrics.json`),
-      path.join(repoPath, dirName, `${repoName}.json`),
-    ]),
-  ];
-
-  const records: TranslationMetricRecord[] = [];
-  for (const candidate of candidates) {
-    if (await fileExists(candidate)) {
-      records.push(...(await readMetricsFile(candidate, repoName)));
-    }
-  }
-
-  for (const dirName of METRICS_DIRS) {
-    records.push(...(await readMetricsDirectory(path.join(repoPath, dirName))));
-  }
-
-  return records;
+  const metricsPath = path.join(repoPath, GAME_METRICS_DIR, GAME_METRICS_FILE);
+  if (!(await fileExists(metricsPath))) return [];
+  return readMetricsFile(metricsPath, repoName);
 }
 
 function dedupeRecords(
@@ -221,12 +159,6 @@ export async function loadAiMetrics(
   const sources: string[] = [];
   const allRecords: TranslationMetricRecord[] = [];
 
-  const general = await loadGeneralRepoMetrics(selectedFolder);
-  if (general.records.length > 0) {
-    sources.push(...general.sources);
-    allRecords.push(...general.records);
-  }
-
   try {
     const entries = await fs.readdir(selectedFolder);
     for (const entry of entries) {
@@ -244,7 +176,7 @@ export async function loadAiMetrics(
       const gitPath = path.join(repoPath, ".git");
       if (!(await fileExists(gitPath))) continue;
 
-      const repoRecords = await loadLocalRepoMetrics(repoPath, entry);
+      const repoRecords = await loadGameRepoMetrics(repoPath, entry);
       if (repoRecords.length > 0) {
         sources.push(repoPath);
         allRecords.push(...repoRecords);

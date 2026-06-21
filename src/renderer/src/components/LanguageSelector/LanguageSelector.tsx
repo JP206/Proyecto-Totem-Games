@@ -10,6 +10,7 @@ export type { LanguageOption };
 
 interface LanguageSelectorProps {
   selectedLanguages: LanguageOption[];
+  lockedLanguageIds?: string[];
   onToggleLanguage: (language: LanguageOption) => void;
   onToggleRegion?: (region: string, languages: LanguageOption[]) => void;
   defaultOpen?: boolean;
@@ -17,6 +18,7 @@ interface LanguageSelectorProps {
 
 const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   selectedLanguages,
+  lockedLanguageIds = [],
   onToggleLanguage,
   onToggleRegion,
   defaultOpen = false,
@@ -94,10 +96,16 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
     }
   };
 
+  const isLanguageLocked = (langId: string) =>
+    lockedLanguageIds.includes(langId);
+
   const handleToggleAll = () => {
     if (allSelected) {
       AVAILABLE_LANGUAGES.forEach((lang) => {
-        if (selectedLanguages.some((l) => l.id === lang.id)) {
+        if (
+          selectedLanguages.some((l) => l.id === lang.id) &&
+          !isLanguageLocked(lang.id)
+        ) {
           onToggleLanguage(lang);
         }
       });
@@ -165,19 +173,29 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   const isSelected = selectedLanguages.some(
                     (l) => l.id === lang.id,
                   );
+                  const isLocked = isLanguageLocked(lang.id);
                   return (
                     <div
                       key={lang.id}
-                      className={`priority-item language-option ${isSelected ? "selected" : ""}`}
-                      onClick={() => onToggleLanguage(lang)}
+                      className={`priority-item language-option ${isSelected ? "selected" : ""}${isLocked ? " locked" : ""}`}
+                      onClick={() => {
+                        if (!isLocked || !isSelected) onToggleLanguage(lang);
+                      }}
                     >
                       <button
                         className="select-toggle"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onToggleLanguage(lang);
+                          if (!isLocked || !isSelected) onToggleLanguage(lang);
                         }}
-                        title={isSelected ? "Deseleccionar" : "Seleccionar"}
+                        title={
+                          isLocked && isSelected
+                            ? "Idioma detectado en el archivo (no se puede deseleccionar)"
+                            : isSelected
+                              ? "Deseleccionar"
+                              : "Seleccionar"
+                        }
+                        disabled={isLocked && isSelected}
                       >
                         {isSelected ? (
                           <CheckSquare size={16} />

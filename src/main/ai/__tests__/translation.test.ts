@@ -14,6 +14,10 @@ jest.mock("fs/promises", () => {
   return { __esModule: true, default: m.default };
 });
 
+jest.mock("../gitPushFile", () => ({
+  pushRepoFile: jest.fn().mockResolvedValue({ success: true }),
+}));
+
 jest.mock("../providers", () => ({ getProvider: jest.fn() }));
 
 const getProviderMock = getProvider as jest.Mock;
