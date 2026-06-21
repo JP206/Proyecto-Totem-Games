@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import type { WebContents } from "electron";
 import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
+import { isE2EMockMode, mockProviderRunConfig } from "./e2eMock";
 import { detectDelimiter } from "./csvDelimiter";
 import { createTokenEstimator } from "./tokenEstimate";
 import {
@@ -374,6 +375,12 @@ async function getEmbeddingVector(
 function getProviderToRun(
   payload: TranslateFilePayload,
 ): { id: ProviderMode; apiKey: string; modelId: string } {
+  if (isE2EMockMode()) {
+    const mode: ProviderMode =
+      payload.providerOptions.mode === "gemini" ? "gemini" : "openai";
+    return mockProviderRunConfig(mode);
+  }
+
   const {
     mode,
     openaiModel,

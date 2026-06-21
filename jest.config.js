@@ -9,6 +9,7 @@ module.exports = {
     "src/main/ai/**/*.ts",
     "src/renderer/src/utils/csv.ts",
     "src/renderer/src/utils/desktop.ts",
+    "!src/main/ai/e2eMock.ts",
     "!**/__tests__/**",
     "!**/*.d.ts",
     "!**/node_modules/**",
