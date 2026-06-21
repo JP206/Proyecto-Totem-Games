@@ -114,7 +114,7 @@ export function aggregateMetrics(
 
   for (const record of records) {
     totalTexts += record.totalTexts;
-    totalCorrected += record.correctedTexts;
+    totalCorrected += record.correctedTexts ?? 0;
     totalTokens += record.tokens?.total ?? 0;
     spellcheckTokens += record.tokens?.spellcheck ?? 0;
     translationTokens += record.tokens?.translation ?? 0;
@@ -129,14 +129,14 @@ export function aggregateMetrics(
         meaning: [],
         confidence: [],
       };
-      bucket.lexical.push(lang.lexical);
-      bucket.meaning.push(lang.meaning);
-      bucket.confidence.push(lang.confidence);
+      if (typeof lang.lexical === "number") bucket.lexical.push(lang.lexical);
+      if (typeof lang.meaning === "number") bucket.meaning.push(lang.meaning);
+      if (typeof lang.confidence === "number") bucket.confidence.push(lang.confidence);
       languageMap.set(lang.lang, bucket);
 
-      confidences.push(lang.confidence);
-      lexicals.push(lang.lexical);
-      meanings.push(lang.meaning);
+      if (typeof lang.confidence === "number") confidences.push(lang.confidence);
+      if (typeof lang.lexical === "number") lexicals.push(lang.lexical);
+      if (typeof lang.meaning === "number") meanings.push(lang.meaning);
     }
 
     const providerStats = providerMap.get(record.provider) || {
@@ -146,7 +146,7 @@ export function aggregateMetrics(
     };
     providerStats.runs += 1;
     providerStats.tokens += record.tokens?.total ?? 0;
-    providerStats.correctionRates.push(record.correctionRate);
+    providerStats.correctionRates.push(record.correctionRate ?? 0);
     providerMap.set(record.provider, providerStats);
 
     const projectKey = record.project || "desconocido";
@@ -158,7 +158,9 @@ export function aggregateMetrics(
     projectStats.runs += 1;
     projectStats.tokens += record.tokens?.total ?? 0;
     for (const lang of record.languages || []) {
-      projectStats.confidences.push(lang.confidence);
+      if (typeof lang.confidence === "number") {
+        projectStats.confidences.push(lang.confidence);
+      }
     }
     projectMap.set(projectKey, projectStats);
   }
@@ -167,7 +169,7 @@ export function aggregateMetrics(
     totalRuns: records.length,
     totalTexts,
     totalCorrected,
-    avgCorrectionRate: average(records.map((record) => record.correctionRate)),
+    avgCorrectionRate: average(records.map((record) => record.correctionRate ?? 0)),
     totalTokens,
     avgTokensPerRun: records.length ? totalTokens / records.length : 0,
     spellcheckTokens,

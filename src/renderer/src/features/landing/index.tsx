@@ -29,6 +29,7 @@ const Landing: React.FC = () => {
   const [state, setState] = useState({
     repoPath: "", repoName: "", generalRepoPath: "", loading: true, updatingGeneral: false,
     selectedFile: null as FileItem | null, targetLanguages: [] as Language[],
+    detectedLanguageIds: [] as string[],
     contextFiles: [] as ContextFile[], glossaryFiles: [] as ContextFile[],
     showContexts: true, showGlossaries: true,
     translating: false, progressPercent: 0, providerMode: null as "openai" | "gemini" | null,
@@ -190,7 +191,11 @@ const Landing: React.FC = () => {
     (async () => {
       const detected = await detectLanguagesFromFile(state.selectedFile!.path);
       if (cancelled) return;
-      setState((prev) => ({ ...prev, targetLanguages: detected }));
+      setState((prev) => ({
+        ...prev,
+        targetLanguages: detected,
+        detectedLanguageIds: detected.map((lang) => lang.id),
+      }));
     })();
 
     return () => {
@@ -473,12 +478,18 @@ const Landing: React.FC = () => {
 
   // Idiomas
   const toggleLanguage = (lang: Language) => {
-    setState(prev => ({
-      ...prev,
-      targetLanguages: prev.targetLanguages.some(l => l.id === lang.id)
-        ? prev.targetLanguages.filter(l => l.id !== lang.id)
-        : [...prev.targetLanguages, lang]
-    }));
+    setState(prev => {
+      const isSelected = prev.targetLanguages.some(l => l.id === lang.id);
+      if (isSelected && prev.detectedLanguageIds.includes(lang.id)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        targetLanguages: isSelected
+          ? prev.targetLanguages.filter(l => l.id !== lang.id)
+          : [...prev.targetLanguages, lang],
+      };
+    });
   };
 
   const toggleRegion = (region: string, languages: Language[]) => {
@@ -487,8 +498,13 @@ const Landing: React.FC = () => {
     setState(prev => ({
       ...prev,
       targetLanguages: allSelected
-        ? prev.targetLanguages.filter(l => !ids.includes(l.id))
-        : [...prev.targetLanguages, ...languages.filter(l => !prev.targetLanguages.some(p => p.id === l.id))]
+        ? prev.targetLanguages.filter(
+            l => !ids.includes(l.id) || prev.detectedLanguageIds.includes(l.id),
+          )
+        : [
+            ...prev.targetLanguages,
+            ...languages.filter(l => !prev.targetLanguages.some(p => p.id === l.id)),
+          ],
     }));
   };
 
@@ -530,9 +546,12 @@ const Landing: React.FC = () => {
     setState(prev => ({ ...prev, translating: true, progressPercent: 0 }));
     
     try {
+      const headers = await desktop.readLocalizeFileHeaders(state.selectedFile.path);
+      const sourceLanguageName = headers[1]?.trim() || "Origen";
+
       const payload = {
         repoPath: state.repoPath, projectName: state.repoName, filePath: state.selectedFile.path,
-        sourceLanguageName: undefined as string | undefined,
+        sourceLanguageName,
         targetLanguages: state.targetLanguages.map(l => ({ code: l.code, name: l.name })),
         contexts: state.contextFiles.filter(c => c.selected).map(c => c.path),
         glossaries: state.glossaryFiles.filter(g => g.selected).map(g => g.path),
@@ -578,7 +597,7 @@ const Landing: React.FC = () => {
               repoPath: state.repoPath, 
               providerMode: state.providerMode, 
               targetLanguages: state.targetLanguages,
-              sourceLanguageName: "Origen"
+              sourceLanguageName,
             } 
           });
         } else {
@@ -599,7 +618,7 @@ const Landing: React.FC = () => {
               targetLanguages: state.targetLanguages }, 
               repoPath: state.repoPath, 
               providerMode: state.providerMode,
-              sourceLanguageName: "Origen"
+              sourceLanguageName,
             } 
           });
         }
@@ -620,7 +639,7 @@ const Landing: React.FC = () => {
             targetLanguages: state.targetLanguages }, 
             repoPath: state.repoPath, 
             providerMode: state.providerMode,
-            sourceLanguageName: "Origen"
+            sourceLanguageName,
           } 
         });
       }
@@ -1046,6 +1065,7 @@ const Landing: React.FC = () => {
           <div className="landing-languages-row">
             <LanguageSelector
               selectedLanguages={state.targetLanguages}
+              lockedLanguageIds={state.detectedLanguageIds}
               onToggleLanguage={toggleLanguage}
               onToggleRegion={toggleRegion}
               defaultOpen
@@ -1106,36 +1126,6 @@ const Landing: React.FC = () => {
                 </div>
               </div>
             )}
-            <button
-              className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`}
-              onClick={startLocalization}
-              disabled={
-                !state.selectedFile ||
-                !state.targetLanguages.length ||
-                !state.providerMode ||
-                (state.providerMode === "openai" && !state.hasPersonalOpenAI) ||
-                (state.providerMode === "gemini" && !state.hasPersonalGemini) ||
-                (state.confidenceEmbeddingSimilarity &&
-                  !state.confidenceEmbeddingModel) ||
-                state.translating
-              }
-            >
-              {state.translating ? (
-                <>
-                  <div className="spinner-small" />
-                  {state.spellCheck || state.spellCheckBeforeTranslate
-                    ? `Revisando... ${state.progressPercent}%`
-                    : `Procesando... ${state.progressPercent}%`}
-                </>
-              ) : (
-                <>
-                  <Download size={20} />
-                  {state.selectedFile && state.targetLanguages.length > 0
-                    ? `Iniciar Localización (${state.targetLanguages.length} idioma${state.targetLanguages.length > 1 ? "s" : ""})`
-                    : "Iniciar Localización"}
-                </>
-              )}
-            </button>
           </div>
         </div>
 
@@ -1197,6 +1187,36 @@ const Landing: React.FC = () => {
               </span>
             </label>
           </div>
+          <button
+            className={`localize-btn ${state.selectedFile && state.targetLanguages.length > 0 && state.providerMode && ((state.providerMode === "openai" && state.hasPersonalOpenAI) || (state.providerMode === "gemini" && state.hasPersonalGemini)) && !(state.confidenceEmbeddingSimilarity && !state.confidenceEmbeddingModel) ? "active" : "disabled"}`}
+            onClick={startLocalization}
+            disabled={
+              !state.selectedFile ||
+              !state.targetLanguages.length ||
+              !state.providerMode ||
+              (state.providerMode === "openai" && !state.hasPersonalOpenAI) ||
+              (state.providerMode === "gemini" && !state.hasPersonalGemini) ||
+              (state.confidenceEmbeddingSimilarity &&
+                !state.confidenceEmbeddingModel) ||
+              state.translating
+            }
+          >
+            {state.translating ? (
+              <>
+                <div className="spinner-small" />
+                {state.spellCheck || state.spellCheckBeforeTranslate
+                  ? `Revisando... ${state.progressPercent}%`
+                  : `Procesando... ${state.progressPercent}%`}
+              </>
+            ) : (
+              <>
+                <Download size={20} />
+                {state.selectedFile && state.targetLanguages.length > 0
+                  ? `Iniciar Localización (${state.targetLanguages.length} idioma${state.targetLanguages.length > 1 ? "s" : ""})`
+                  : "Iniciar Localización"}
+              </>
+            )}
+          </button>
           <input
             id="file-upload"
             type="file"

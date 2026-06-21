@@ -398,7 +398,7 @@ export default function AdminMetricsPage() {
           <EmptyState
             icon={<BarChart3 size={48} />}
             title="Sin métricas disponibles"
-            description="No se encontraron archivos en repo-general-totem-games/metricas. Verificá que existan archivos *-metrics.json."
+            description="No se encontraron métricas en los repos de juegos. Verificá que exista Localizacion/metricas_ia.json tras traducir."
           />
         ) : filteredRecords.length === 0 ? (
           <EmptyState
@@ -596,7 +596,7 @@ export default function AdminMetricsPage() {
                         <div className="metrics-recent-meta">
                           <span>{record.date}</span>
                           <span>{record.provider} · {record.model}</span>
-                          <span>{formatNumber(record.correctionRate)}% corr.</span>
+                          <span>{formatNumber(record.correctionRate ?? 0)}% corr.</span>
                           <span>{formatInteger(record.tokens?.total ?? 0)} tokens</span>
                         </div>
                         <div className="metrics-recent-tags">

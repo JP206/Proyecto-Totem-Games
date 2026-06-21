@@ -192,6 +192,13 @@
   white-space: nowrap;
 }
 
+.landing-file-strip .localize-btn {
+  flex: 0 0 auto;
+  min-width: 240px;
+  width: auto;
+  padding: 12px 20px;
+}
+
 .panel-title {
   display: flex;
   flex-direction: column;
@@ -684,6 +691,11 @@ body {
   .landing-file-strip {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .landing-file-strip .localize-btn {
+    width: 100%;
+    min-width: 0;
   }
 
   .landing-file-strip-spellcheck .spellcheck-label {
