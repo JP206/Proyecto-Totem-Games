@@ -75,6 +75,14 @@ web_modules/
 .env
 .env.*
 !.env.example
+!.env.e2e.example
+
+# E2E / load test secrets and generated artifacts
+e2e/.secrets/
+test-reports/
+playwright-report/
+test-results/
+.playwright/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

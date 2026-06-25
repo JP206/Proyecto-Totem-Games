@@ -12,6 +12,7 @@ import { getProvider } from "./providers";
 import type { TranslationResultItem } from "./providers";
 import { detectDelimiter } from "./csvDelimiter";
 import { createTokenEstimator } from "./tokenEstimate";
+import { isE2EMockMode, mockProviderRunConfig } from "./e2eMock";
 
 const PROGRESS_CHANNEL = "spellcheck-progress";
 
@@ -78,6 +79,12 @@ function isRowEffectivelyEmpty(row: any[] | undefined | null): boolean {
 function getProvidersToRun(
   payload: SpellCheckPayload,
 ): { id: ProviderMode; apiKey: string; modelId: string } {
+  if (isE2EMockMode()) {
+    const mode: ProviderMode =
+      payload.providerOptions.mode === "gemini" ? "gemini" : "openai";
+    return mockProviderRunConfig(mode);
+  }
+
   const {
     mode,
     openaiModel,

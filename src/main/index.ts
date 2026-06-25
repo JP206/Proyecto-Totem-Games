@@ -21,6 +21,7 @@ import {
 } from "./ai/spellcheck";
 import { loadAiMetrics } from "./ai/loadMetrics";
 import { readLocalizeFileHeaders } from "./ai/localizeFileHeaders";
+import { isE2EMockMode, mockPersonalConfigSummary } from "./ai/e2eMock";
 
 const execAsync = promisify(exec);
 const store = new Store();
@@ -232,7 +233,7 @@ function createWindow() {
     path.join(__dirname, "../../src/renderer/build/index.html"),
   );
 
-  if (!app.isPackaged) {
+  if (!app.isPackaged && process.env.E2E !== "1") {
     mainWindow.webContents.openDevTools();
   }
 }
@@ -1015,6 +1016,10 @@ ipcMain.handle(
 );
 
 ipcMain.handle("ai-get-personal-config", async (): Promise<PersonalAIConfigSummary> => {
+  if (isE2EMockMode()) {
+    return mockPersonalConfigSummary() as PersonalAIConfigSummary;
+  }
+
   const cfg = getAiPersonalConfig();
 
   const summary: PersonalAIConfigSummary = {

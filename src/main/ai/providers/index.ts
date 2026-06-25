@@ -1,6 +1,7 @@
 import type { ITranslationProvider } from "./types";
 import { openaiProvider } from "./openai";
 import { geminiProvider } from "./gemini";
+import { isE2EMockMode, e2eMockProvider } from "../e2eMock";
 
 export type {
   ITranslationProvider,
@@ -23,6 +24,7 @@ const providersById = new Map<string, ITranslationProvider>([
  * Add new providers to providersById to support them in the UI and translation flow.
  */
 export function getProvider(id: string): ITranslationProvider | undefined {
+  if (isE2EMockMode()) return e2eMockProvider;
   return providersById.get(id);
 }
 
