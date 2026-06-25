@@ -126,6 +126,11 @@ test.describe("Contexts/Glossaries CRUD (real GitHub, destructive)", () => {
     }
   });
 
+  /** Contexts/glossaries uses inline modals, not the shared Modal with role="dialog". */
+  function createModal(page: Page) {
+    return page.locator(".modal-overlay .modal");
+  }
+
   async function openPage(): Promise<Page> {
     const repo = getConfig().testRepo!;
     launched = await launchApp({
@@ -159,16 +164,18 @@ test.describe("Contexts/Glossaries CRUD (real GitHub, destructive)", () => {
     const page = await openPage();
     const title = `${RUN_TAG}_ctx`;
 
-    await page.getByRole("button", { name: "Nuevo" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByPlaceholder("Título del contexto").fill(title);
-    await dialog.getByPlaceholder("Describe el contexto...").fill("contenido e2e");
-    await dialog.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("button", { name: "Nuevo", exact: true }).click();
+    const modal = createModal(page);
+    await modal.getByPlaceholder("Título del contexto").fill(title);
+    await modal.getByPlaceholder("Describe el contexto...").fill("contenido e2e");
+    await modal.getByRole("button", { name: "Crear" }).click();
 
     await expect(page.getByText("Sincronizando con GitHub...")).toBeHidden({
       timeout: 60_000,
     });
-    await expect(page.getByText(title)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 30_000,
+    });
 
     // teardown: remove the pushed file
     const repo = getConfig().testRepo!;
@@ -183,18 +190,26 @@ test.describe("Contexts/Glossaries CRUD (real GitHub, destructive)", () => {
     const page = await openPage();
     const title = `${RUN_TAG}_ctx_del`;
 
-    await page.getByRole("button", { name: "Nuevo" }).click();
-    let dialog = page.getByRole("dialog");
-    await dialog.getByPlaceholder("Título del contexto").fill(title);
-    await dialog.getByPlaceholder("Describe el contexto...").fill("a borrar");
-    await dialog.getByRole("button", { name: "Crear" }).click();
-    await expect(page.getByText(title)).toBeVisible({ timeout: 40_000 });
+    await page.getByRole("button", { name: "Nuevo", exact: true }).click();
+    const modal = createModal(page);
+    await modal.getByPlaceholder("Título del contexto").fill(title);
+    await modal.getByPlaceholder("Describe el contexto...").fill("a borrar");
+    await modal.getByRole("button", { name: "Crear" }).click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 40_000,
+    });
 
     // open the card actions and delete
-    await page.locator('[title="Eliminar"]').first().click();
+    await page
+      .locator(".item-card")
+      .filter({ has: page.getByRole("heading", { name: title }) })
+      .locator('[title="Eliminar"]')
+      .click();
     await expect(page.getByText("¿Eliminar?")).toBeVisible();
     await page.getByRole("button", { name: "Eliminar" }).last().click();
-    await expect(page.getByText(title)).toHaveCount(0, { timeout: 40_000 });
+    await expect(page.getByRole("heading", { name: title })).toHaveCount(0, {
+      timeout: 40_000,
+    });
   });
 
   test("admin can create a general context", async () => {
@@ -202,20 +217,22 @@ test.describe("Contexts/Glossaries CRUD (real GitHub, destructive)", () => {
     const page = await openPage();
     const title = `${RUN_TAG}_general`;
 
-    await page.getByRole("button", { name: "Nuevo" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByPlaceholder("Título del contexto").fill(title);
-    // Admin-only "Tipo" selector -> General
-    await dialog
-      .locator("select")
-      .selectOption({ label: "General (todos los proyectos)" })
-      .catch(() => undefined);
-    await dialog.getByPlaceholder("Describe el contexto...").fill("contexto general e2e");
-    await dialog.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("button", { name: "Nuevo", exact: true }).click();
+    const modal = createModal(page);
+    await modal.getByPlaceholder("Título del contexto").fill(title);
+    await modal
+      .getByRole("button", { name: "General (todos los proyectos)" })
+      .click();
+    await modal
+      .getByPlaceholder("Describe el contexto...")
+      .fill("contexto general e2e");
+    await modal.getByRole("button", { name: "Crear" }).click();
 
     await expect(page.getByText("Sincronizando con GitHub...")).toBeHidden({
       timeout: 60_000,
     });
-    await expect(page.getByText(title)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });

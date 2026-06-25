@@ -310,13 +310,9 @@ export default function Notes() {
           }
         />
 
-        {searchTerm && (
+        {searchTerm && filteredNotes.length > 0 && (
           <div className="search-results-info">
-            {filteredNotes.length === 0 ? (
-              <p>No se encontraron notas para "<strong>{searchTerm}</strong>"</p>
-            ) : (
-              <p>Se encontraron {filteredNotes.length} nota(s) para "<strong>{searchTerm}</strong>"</p>
-            )}
+            <p>Se encontraron {filteredNotes.length} nota(s) para "<strong>{searchTerm}</strong>"</p>
           </div>
         )}
 

@@ -143,9 +143,14 @@ test.describe("metrics rendering (admin only)", () => {
     await projectSelect.selectOption({ label: "juego-a" });
 
     // Expand details and confirm the project breakdown reflects a single project.
+    // Scope to the "Por proyecto" table so we don't match the filter <option>s or
+    // the recent-runs list (which also contain the project name).
     await page.locator(".metrics-details-toggle").click();
-    await expect(page.getByText("juego-a")).toBeVisible();
-    await expect(page.getByText("juego-b")).toHaveCount(0);
+    const projectTable = page
+      .locator(".metrics-panel", { hasText: "Por proyecto" })
+      .locator("table");
+    await expect(projectTable.getByText("juego-a")).toBeVisible();
+    await expect(projectTable.getByText("juego-b")).toHaveCount(0);
   });
 
   test("empty selected_folder shows the no-metrics state", async () => {
